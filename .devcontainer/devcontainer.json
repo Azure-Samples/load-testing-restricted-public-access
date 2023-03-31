@@ -1,0 +1,37 @@
+{
+	"$schema": "https://json-schema.org/draft-07/schema#",
+	"name": "Workspace",
+	"workspaceFolder": "/workspace",
+	  "build": {
+		  "dockerfile": "Dockerfile",
+		  "context": "..",
+		  "args": { }
+	  },
+
+	  "customizations": {
+		  "vscode": {
+			  "settings": { },
+			  
+			  "extensions": [
+				  "humao.rest-client",
+				  "hediet.vscode-drawio",
+				  "ms-vscode.hexeditor"
+				  ]
+		  }
+	  },  
+	  "remoteUser": "vscode",
+	  "features": {
+		  "git": "latest",
+		  "azure-cli": "latest",
+	  "ghcr.io/devcontainers/features/docker-in-docker:1": {
+		"version": "latest"
+	  }
+	  },  
+	  "mounts": [
+		  "type=bind,source=${localWorkspaceFolder},target=/workspace",
+		  "type=bind,source=${localEnv:HOME}${env:USERPROFILE}/.ssh,target=/home/vscode/.ssh",
+		  "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock",    
+		  "source=content-volume,target=/content,type=volume"
+	  ],  
+	"postAttachCommand": "mkdir -p /home/$(id -un)/.ssh && touch /home/$(id -un)/.ssh/config && sudo chown -R vscode:vscode /var/run/docker.sock && sudo chown -R vscode:vscode /content"
+}

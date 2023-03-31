@@ -1,4 +1,4 @@
-# Contributing to [project-title]
+# Contributing to Using Azure Load Testing to test services based on Azure Event Hubs with restricted public access
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
