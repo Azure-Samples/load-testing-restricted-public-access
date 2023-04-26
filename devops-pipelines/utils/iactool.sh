@@ -593,14 +593,13 @@ if [[ "${ACTION}" == "opentest" ]] ; then
 fi
 
 if [[ "${ACTION}" == "closetest" ]] ; then
-    printMessage "Opening access to Eventhub and Keyvault..."
+    printMessage "Closing access to Eventhub and Keyvault..."
     # Check Azure connection
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
     checkError
     readConfigurationFile "$CONFIGURATION_FILE"
 
-    printMessage "Closing access to Eventhub and Keyvault..."
     printProgress "Close access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
     cmd="az keyvault update --default-action Deny --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
     echo "$cmd"
