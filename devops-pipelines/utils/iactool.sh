@@ -417,7 +417,8 @@ if [[ "${ACTION}" == "runtest" ]] ; then
     azLogin
     checkError
 
-    printProgress "Getting Load Testing token..."    
+    printProgress "Getting Load Testing token..."  
+    az config set extension.use_dynamic_install=yes_without_prompt  
     LOAD_TESTING_RESOURCE_GROUP=$(getLoadTestingResourceGroupName "${AZURE_TEST_SUFFIX}")
     LOAD_TESTING_RESOURCE=$(getLoadTestingResourceName "${AZURE_TEST_SUFFIX}")
     cmd="az load  show --name ${LOAD_TESTING_RESOURCE} --resource-group ${LOAD_TESTING_RESOURCE_GROUP}"
@@ -479,6 +480,27 @@ if [[ "${ACTION}" == "runtest" ]] ; then
      --data-binary  \"@$SCRIPTS_DIRECTORY/../../devops-pipelines/load-testing/load-testing-eventhubevents2.csv\" "
     # echo "$cmd"
     eval "$cmd" >/dev/null
+
+
+
+    printProgress "Waiting the validation of the jmx file for test  ${LOAD_TESTING_TEST_NAME}..."    
+    statuscmd="curl -s -X GET \
+    \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/load-testing-eventhub-restricted-public-access.jmx?fileType=JMX_FILE&api-version=2022-11-01\" \
+     -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
+    # echo "$statuscmd" 
+    JMX_STATUS="unknown"
+    while [ "${JMX_STATUS}" != "VALIDATION_FAILURE" ] && [ "${JMX_STATUS}" != "VALIDATION_SUCCESS" ] && [ "${JMX_STATUS}" != "VALIDATION_NOT_REQUIRED" ] && [ "${JMX_STATUS}" != "null" ]
+    do
+        sleep 10
+        JMX_STATUS=$(eval "$statuscmd" | jq -r '.validationStatus')
+        printProgress "Current JMX status: ${JMX_STATUS}" 
+    done
+
+    if [[ $JMX_STATUS == "VALIDATION_FAILURE" ]]; then
+        printError "Validation of the jmx file for test  '${LOAD_TESTING_TEST_NAME}' failed."
+        exit 1
+    fi
+
 
     printProgress "Store the EventHub token in the Azure Key Vault for test ${LOAD_TESTING_RESOURCE}..."    
     key=$(az eventhubs namespace authorization-rule keys list --resource-group "${RESOURCE_GROUP}" --namespace-name "${EVENTHUB_NAME_SPACE}" --name RootManageSharedAccessKey | jq -r .primaryKey)
