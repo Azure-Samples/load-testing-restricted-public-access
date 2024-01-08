@@ -186,7 +186,7 @@ Usually this step is not required in a pipeline as the connection with Azure is 
     ```bash
         vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a login
     ```
-
+    
     After this step the default Azure subscription has been selected. You can still change the Azure subscription, using Azure CLI command below:
 
     ```bash
