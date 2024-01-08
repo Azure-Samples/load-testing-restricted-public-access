@@ -3,7 +3,7 @@
 #- Purpose: Script used to install pre-requisites, deploy/undeploy service, start/stop service, test service
 #- Parameters are:
 #- [-a] ACTION - value: login, install, getsuffix, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest 
-#- [-c] configuration file - which contains the list of path of each iactool.sh to call (configuration/default.env by default)
+#- [-c] configuration file - which contains the list of path of each load-testing-tool.sh to call (configuration/default.env by default)
 #- [-h] event Hub Sku - Event Hub Sku - by default Standard  values: "Basic","Standard","Premium"
 #
 
@@ -33,8 +33,8 @@ function usage() {
 
     echo
     echo "Example:"
-    echo -e " bash ./iactool.sh -a install "
-    echo -e " bash ./iactool.sh -a deploy -c .evhtool.env"
+    echo -e " bash ./load-testing-tool.sh -a install "
+    echo -e " bash ./load-testing-tool.sh -a deploy -c .evhtool.env"
     
 }
 

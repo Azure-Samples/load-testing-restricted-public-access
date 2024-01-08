@@ -151,7 +151,7 @@ You need to install the following pre-requisite on your machine
 
 ### How to deploy infrastructure and launch load test from the Dev Container terminal
 
-The Dev Container is now running, you can use the bash file [./devops-pipelines/utils/iactool.sh](./devops-pipelines/utils/iactool.sh) to:
+The Dev Container is now running, you can use the bash file [./devops-pipelines/utils/load-testing-tool.sh](./devops-pipelines/utils/load-testing-tool.sh) to:
 
 - deploy the infrastructure with Azure Event Hubs
 - deploy the Load Testing infrastructure
@@ -163,7 +163,7 @@ The Dev Container is now running, you can use the bash file [./devops-pipelines/
 
 If you are not interested in running the load testing manually from the Dev Container terminal, you can directly jump to the chapter [Using Azure DevOps pipelines and Github Actions](#using-azure-devops-pipelines-and-github-actions) to automate the infrastructure deployment and load tests.
 
-Below the list of arguments associated with 'iactool.sh':
+Below the list of arguments associated with 'load-testing-tool.sh':
 
 - -a  Sets iactool action {login, install, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
 - -c  Sets the iactool configuration file
@@ -177,14 +177,14 @@ Follow the steps below to install the pre-requisites on your host machine which 
 1. You can launch the installation of the pre-requisites using the command below with the action "install"
 
     ```bash
-        vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a install
+        vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a install
     ```
 
-2. Once the pre-requisites are installed, launch the Azure login process using 'iactool.sh -a login'.  
+2. Once the pre-requisites are installed, launch the Azure login process using 'load-testing-tool.sh -a login'.  
 Usually this step is not required in a pipeline as the connection with Azure is already established.
 
     ```bash
-        vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a login
+        vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a login
     ```
     
     After this step the default Azure subscription has been selected. You can still change the Azure subscription, using Azure CLI command below:
@@ -196,7 +196,7 @@ Usually this step is not required in a pipeline as the connection with Azure is 
 3. Once you are connected to your Azure subscription, you can create the configuration file which is used to deploy the infrastructure.
 
     ```bash
-        vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a createconfig -c ./configuration/.default.env -r 'eastus2' 
+        vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a createconfig -c ./configuration/.default.env -r 'eastus2' 
     ```
 
     After this step, the variables AZURE_REGION, AZURE_TEST_SUFFIX, AZURE_SUBSCRIPTION_ID and AZURE_TENANT_ID used for the deployment are stored in the file ./configuration/.default.env.
@@ -219,7 +219,7 @@ Usually this step is not required in a pipeline as the connection with Azure is 
 Once the pre-requisites are installed and the configuration ready, you can deploy the infrastructure you want to test, using the following arguments:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a deploy -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a deploy -c ./configuration/.default.env 
 ```
 
 As the bash file deploys an Event Hubs infrastructure, you can also select the following options:
@@ -230,7 +230,7 @@ As the bash file deploys an Event Hubs infrastructure, you can also select the f
 For instance run the following command to deploy Event Hubs with Standard SKU:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a deploy -c ./configuration/.default.env -h 'Standard' 
+    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a deploy -c ./configuration/.default.env -h 'Standard' 
 ```
 
 After few minutes, the resources are visible on the Azure Portal.
@@ -243,7 +243,7 @@ After this step, the Event Hubs based infrastructure is ready and we can deploy 
 Once the infrastructure is deployed, you can deploy the load testing infrastructure, using the following arguments:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a deploytest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a deploytest -c ./configuration/.default.env 
 ```
 
 This step deploys the following resources:
@@ -272,7 +272,7 @@ Once the load testing infrastructure is deployed, you need to open the access to
 The command line below configures the network access to Azure Event Hubs and Azure Key Vault:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a opentest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a opentest -c ./configuration/.default.env 
 ```
 
 This step adds the public IP address associated with the Load Testing infrastructure in the list of IP addresses allowed to access Azure Event Hubs. It also opens the access to Azure Key Vault.
@@ -282,7 +282,7 @@ This step adds the public IP address associated with the Load Testing infrastruc
 Once the Azure Event Hubs and Azure Key Vault are configured, you can launch the load test scenario with the following command line.
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a runtest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a runtest -c ./configuration/.default.env 
 ```
 
 By default, the load test scenario runs with the following parameters:
@@ -373,7 +373,7 @@ For this step, the bash file uses curl commands to call the Azure Load Testing D
 If you don't want to run any new load test, you can close the access to the Azure Event Hubs and Azure Key Vault, with the following command line:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a closetest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a closetest -c ./configuration/.default.env 
 ```
 
 #### Undeploying the load testing infrastructure
@@ -381,16 +381,16 @@ If you don't want to run any new load test, you can close the access to the Azur
 You can also undeploy the load testing infrastructure with the following command:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a undeploytest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a undeploytest -c ./configuration/.default.env 
 ```
 
 #### Undeploying the infrastructure
 
-Once the load testing infrastructure is undeployed, you can undeploy the infrastructure using iactool.sh with action 'undeploy'.
+Once the load testing infrastructure is undeployed, you can undeploy the infrastructure using load-testing-tool.sh with action 'undeploy'.
 For instance the following command:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a undeploy -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a undeploy -c ./configuration/.default.env 
 ```
 
 ## Using Azure DevOps pipelines and Github Actions
@@ -661,7 +661,7 @@ When you enter the value of AZURE_TEST_SUFFIX, select a value which will not gen
 You can use the command line below to generate a value which will avoid any conflict with existing Azure Storage, Azure Key Vault and Azure Events Hubs:
 
 ```bash
-  vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a getsuffix 
+  vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a getsuffix 
 ```
 
 1. On the GitHub portal page associated with your project, navigate on the the page 'Settings' and select the submenu 'Actions' in the menu 'Secrets and variables' and select the tab 'Variables' on the page 'Actions secrets and variables'.
@@ -823,7 +823,7 @@ For instance, below the Azure DevOps pipeline step in [azure-pipelines-load-test
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
-                cmd="devops-pipelines/utils/iactool.sh -a opentest -c $(CONFIGURATION_FILE)"
+                cmd="devops-pipelines/utils/load-testing-tool.sh -a opentest -c $(CONFIGURATION_FILE)"
                 echo "$cmd"
                 eval "$cmd"
 ```
@@ -1154,7 +1154,7 @@ At least, when the test is completed, you can check in the result file whether b
 
 ### Using Data Plane Load Test Administration and Load Test Run REST API
 
-When you use iactool.sh bash file with the option 'runtest' to run the load tests, it uses Data Plane Load Test Administration and Load Test Run REST APIs to create the test, run the test and monitor the test.
+When you use load-testing-tool.sh bash file with the option 'runtest' to run the load tests, it uses Data Plane Load Test Administration and Load Test Run REST APIs to create the test, run the test and monitor the test.
 
 Before calling the REST API, you need to get the Load Testing Token. First you need to retrieve the Load Testing Hostname from the Load Testing Azure resource. Once you can get the hostname, you can get the token using the Azure CLI command 'az account get-access-token' see below:
 

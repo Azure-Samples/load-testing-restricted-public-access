@@ -82,7 +82,7 @@ jobs:
       - name: Deploy Infrastructure
         id: deploy
         run: |
-          cmd="devops-pipelines/utils/iactool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -h ${{ github.event.inputs.eventhubSku }}"
+          cmd="devops-pipelines/utils/load-testing-tool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -h ${{ github.event.inputs.eventhubSku }}"
           echo "$cmd"
           eval "$cmd"
           # Read new variables set after the deployment in configuration file
@@ -140,7 +140,7 @@ jobs:
       - name: Deploy Load Testing Infrastructure
         id: deployloadtest
         run: |
-          cmd="devops-pipelines/utils/iactool.sh -a deploytest -c ${{ env.CONFIGURATION_FILE }} "
+          cmd="devops-pipelines/utils/load-testing-tool.sh -a deploytest -c ${{ env.CONFIGURATION_FILE }} "
           echo "$cmd"
           eval "$cmd"
 
@@ -158,7 +158,7 @@ jobs:
 
       - name: Open access to EventHub and KeyVault for the test
         run: |
-          cmd="devops-pipelines/utils/iactool.sh -a opentest -c ${{ env.CONFIGURATION_FILE }}"
+          cmd="devops-pipelines/utils/load-testing-tool.sh -a opentest -c ${{ env.CONFIGURATION_FILE }}"
           echo "$cmd"
           eval "$cmd"
 
@@ -250,7 +250,7 @@ jobs:
       - name: Close access to EventHub and KeyVault for the test
         if: ${{ always() }}
         run: |
-          cmd="devops-pipelines/utils/iactool.sh -a closetest -c ${{ env.CONFIGURATION_FILE }}"
+          cmd="devops-pipelines/utils/load-testing-tool.sh -a closetest -c ${{ env.CONFIGURATION_FILE }}"
           echo "$cmd"
           eval "$cmd"
 

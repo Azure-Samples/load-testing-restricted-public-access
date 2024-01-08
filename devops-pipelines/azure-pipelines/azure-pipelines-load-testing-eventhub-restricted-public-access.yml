@@ -83,7 +83,7 @@ stages:
               failOnStandardError: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
-                cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/iactool.sh -a deploy -c $(CONFIGURATION_FILE) -h ${{ parameters.eventhubSku }} "
+                cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/load-testing-tool.sh -a deploy -c $(CONFIGURATION_FILE) -h ${{ parameters.eventhubSku }} "
                 echo "##[command]$cmd"
                 eval "$cmd"
                 # Read new variables set after the deployment in configuration file
@@ -160,7 +160,7 @@ stages:
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
-                cmd="devops-pipelines/utils/iactool.sh -a deploytest -c $(CONFIGURATION_FILE) "
+                cmd="devops-pipelines/utils/load-testing-tool.sh -a deploytest -c $(CONFIGURATION_FILE) "
                 echo "$cmd"
                 eval "$cmd"
 
@@ -185,7 +185,7 @@ stages:
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
-                cmd="devops-pipelines/utils/iactool.sh -a opentest -c $(CONFIGURATION_FILE)"
+                cmd="devops-pipelines/utils/load-testing-tool.sh -a opentest -c $(CONFIGURATION_FILE)"
                 echo "$cmd"
                 eval "$cmd"
 
@@ -306,7 +306,7 @@ stages:
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
-                cmd="devops-pipelines/utils/iactool.sh -a closetest -c $(CONFIGURATION_FILE)"
+                cmd="devops-pipelines/utils/load-testing-tool.sh -a closetest -c $(CONFIGURATION_FILE)"
                 echo "$cmd"
                 eval "$cmd"
 
