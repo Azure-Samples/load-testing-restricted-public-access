@@ -9,7 +9,7 @@
 
 # executable
 ###########################################################################################################################################################################################
-set -eu
+set -u
 #repoRoot="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 # shellcheck disable=SC2034
 parent_path=$(
@@ -45,9 +45,9 @@ AZURE_SUBSCRIPTION_ID=""
 AZURE_TENANT_ID=""   
 AZURE_REGION="eastus2"
 LOAD_TESTING_SECRET_NAME="EVENTHUB-TOKEN"
-LOAD_TESTING_DURATION="60"
+LOAD_TESTING_DURATION="20"
 LOAD_TESTING_THREADS="1"
-LOAD_TESTING_ENGINE_INSTANCES="1"
+LOAD_TESTING_ENGINE_INSTANCES="2"
 LOAD_TESTING_ERROR_PERCENTAGE="5"
 LOAD_TESTING_RESPONSE_TIME="100"
 LOAD_TESTING_TEST_NAME="eventhub-restricted-public-access"
@@ -240,9 +240,10 @@ if [[ "${ACTION}" == "deploy" ]] ; then
         if [ "$UserSPMsiRoleAssignmentCount" != "1" ];
         then
             printProgress  "Assigning 'Azure Event Hubs Data Sender' role assignment on scope '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_INPUT_1_NAME}'..."
-            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_INPUT_1_NAME}\" --role \"Azure Event Hubs Data Sender\"  2>/dev/null"
+            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_INPUT_1_NAME}\" --role \"Azure Event Hubs Data Sender\"  "
             printProgress "$cmd"
             eval "$cmd" >/dev/null
+            checkError
         fi
 
 
@@ -252,9 +253,10 @@ if [[ "${ACTION}" == "deploy" ]] ; then
         if [ "$UserSPMsiRoleAssignmentCount" != "1" ];
         then
             printProgress  "Assigning 'Azure Event Hubs Data Sender' role assignment on scope '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_INPUT_2_NAME}'..."
-            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_INPUT_2_NAME}\" --role \"Azure Event Hubs Data Sender\"  2>/dev/null"
+            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_INPUT_2_NAME}\" --role \"Azure Event Hubs Data Sender\"  "
             printProgress "$cmd"
             eval "$cmd" >/dev/null
+            checkError
         fi
 
         printProgress "Checking role assignment 'Azure Event Hubs Data Receiver' between  '${UserSPMsiPrincipalId}' and name space '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_OUTPUT_1_NAME}'"
@@ -263,16 +265,15 @@ if [[ "${ACTION}" == "deploy" ]] ; then
         if [ "$UserSPMsiRoleAssignmentCount" != "1" ];
         then
             printProgress  "Assigning 'Azure Event Hubs Data Receiver' role assignment on scope '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_OUTPUT_1_NAME}'..."
-            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_OUTPUT_1_NAME}\" --role \"Azure Event Hubs Data Receiver\"  2>/dev/null"
+            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_OUTPUT_1_NAME}\" --role \"Azure Event Hubs Data Receiver\"  "
             printProgress "$cmd"
             eval "$cmd" >/dev/null
+            checkError
         fi
     fi
     printMessage "Assigning Roles 'Azure Event Hubs Data Sender' and 'Azure Event Hubs Data Receiver' on scope Event Hub done"
     
     printMessage "Deploying the infrastructure done"
-
-
     exit 0
 fi
 
@@ -346,9 +347,11 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
     if [ "$RoleAssignmentCount" != "1" ];
     then
         printProgress "Assigning 'Network Contributor' role assignment on scope VNET '${LOAD_TESTING_VNET_NAME}'..."
-        cmd="az role assignment create --assignee-object-id \"${PRINCIPAL_ID}\" --assignee-principal-type '${UserType}' --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${LOAD_TESTING_RESOURCE_GROUP}\"/providers/Microsoft.Network/virtualNetworks/\"${LOAD_TESTING_VNET_NAME}\" --role \"Network Contributor\"  2>/dev/null"
+        #cmd="az role assignment create --assignee-object-id \"${PRINCIPAL_ID}\" --assignee-principal-type '${UserType}' --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${LOAD_TESTING_RESOURCE_GROUP}\"/providers/Microsoft.Network/virtualNetworks/\"${LOAD_TESTING_VNET_NAME}\" --role \"Network Contributor\"  2>/dev/null"
+        cmd="az role assignment create --assignee-object-id \"${PRINCIPAL_ID}\" --assignee-principal-type '${UserType}' --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${LOAD_TESTING_RESOURCE_GROUP}\"/providers/Microsoft.Network/virtualNetworks/\"${LOAD_TESTING_VNET_NAME}\" --role \"Network Contributor\"  "
         printProgress "$cmd"
         eval "$cmd" >/dev/null
+        checkError
     fi
 
     printMessage "Assigning Roles 'Load Test Contributor' for current user or service principal on scope Load Test ${LOAD_TESTING_NAME}"
@@ -360,6 +363,7 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
         cmd="az role assignment create --assignee-object-id \"${PRINCIPAL_ID}\" --assignee-principal-type '${UserType}' --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${LOAD_TESTING_RESOURCE_GROUP}\"/providers/Microsoft.LoadTestService/loadTests/\"${LOAD_TESTING_NAME}\" --role \"Load Test Contributor\"  2>/dev/null"
         printProgress "$cmd"
         eval "$cmd" >/dev/null
+        checkError
     fi
 
     LOAD_TESTING_PRINCIPAL_ID=$(az resource list -n  "${LOAD_TESTING_NAME}" -g "${LOAD_TESTING_RESOURCE_GROUP}" | jq '.[0].identity.principalId' | tr -d '"')
@@ -374,9 +378,10 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
     if [ "$RoleAssignmentCount" != "1" ];
     then
         printProgress "Assigning 'Key Vault Secrets Officer' role assignment on scope KEY VAULT '${KEY_VAULT_NAME}'..."
-        cmd="az role assignment create --assignee-object-id \"${PRINCIPAL_ID}\" --assignee-principal-type '${UserType}' --scope \"/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${LOAD_TESTING_RESOURCE_GROUP}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT_NAME}\" --role \"Key Vault Secrets Officer\"  2>/dev/null"
+        cmd="az role assignment create --assignee-object-id \"${PRINCIPAL_ID}\" --assignee-principal-type '${UserType}' --scope \"/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${LOAD_TESTING_RESOURCE_GROUP}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT_NAME}\" --role \"Key Vault Secrets Officer\"  "
         printProgress "$cmd"
         eval "$cmd" >/dev/null
+        checkError
     fi
 
     printMessage "Assigning Roles 'Key Vault Secrets User' for load test managed identity  on scope key vault  ${KEY_VAULT_NAME}"
@@ -385,9 +390,10 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
     if [ "$RoleAssignmentCount" != "1" ];
     then
         printProgress "Assigning 'Key Vault Secrets User' role assignment for Load Test PrincipalId  on scope KEY VAULT '${KEY_VAULT_NAME}'..."
-        cmd="az role assignment create --assignee-object-id \"${LOAD_TESTING_PRINCIPAL_ID}\" --assignee-principal-type 'ServicePrincipal' --scope \"/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${LOAD_TESTING_RESOURCE_GROUP}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT_NAME}\" --role \"Key Vault Secrets User\"  2>/dev/null"
+        cmd="az role assignment create --assignee-object-id \"${LOAD_TESTING_PRINCIPAL_ID}\" --assignee-principal-type 'ServicePrincipal' --scope \"/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${LOAD_TESTING_RESOURCE_GROUP}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT_NAME}\" --role \"Key Vault Secrets User\"  "
         printProgress "$cmd"
         eval "$cmd" >/dev/null
+        checkError
     fi
 
     printMessage "Assigning Roles 'Network Contributor'  on scope VNET done"
@@ -508,6 +514,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
     cmd="az keyvault secret set --vault-name \"${LOAD_TESTING_KEY_VAULT_NAME}\" --name \"${LOAD_TESTING_SECRET_NAME}\" --value \"${EVENTHUB_TOKEN}\" --output none"
     # echo "$cmd"
     eval "${cmd}"
+    checkError
 
     printProgress ""
     LOAD_TESTING_TEST_RUN_ID=$(cat /proc/sys/kernel/random/uuid)
@@ -564,19 +571,67 @@ if [[ "${ACTION}" == "runtest" ]] ; then
     else
         printMessage "Running load testing successful"
     fi
-    printMessage "Waiting for the results..."
-    LOAD_TESTING_RESULT="NOT_APPLICABLE"
-    while [ "${LOAD_TESTING_RESULT}" == "NOT_APPLICABLE" ] 
-    do
-        sleep 10
-        LOAD_TESTING_RESULT=$(eval "$statuscmd" | jq -r '.testResult')
-        printProgress "Current results status: ${LOAD_TESTING_RESULT}" 
-    done
-    LOAD_TESTING_STATISTICS=$(eval "$statuscmd" | jq -r '.testRunStatistics')
-    printMessage "Running load testing successful"
-    printMessage "Result: $LOAD_TESTING_RESULT"
-    printMessage "Statistics: $LOAD_TESTING_STATISTICS"        
-    exit 0
+
+    if [ "${LOAD_TESTING_STATUS}" == "DONE" ] 
+    then
+        printMessage "Waiting for the results..."
+        LOAD_TESTING_RESULT="NOT_APPLICABLE"
+        while [ "${LOAD_TESTING_RESULT}" == "NOT_APPLICABLE" ] 
+        do
+            sleep 10
+            LOAD_TESTING_RESULT=$(eval "$statuscmd" | jq -r '.testResult')
+            printProgress "Current results status: ${LOAD_TESTING_RESULT}" 
+        done
+        # Renewing the token
+        LOAD_TESTING_TOKEN=$(az account get-access-token --resource "${LOAD_TESTING_HOSTNAME}" --scope "https://cnt-prod.loadtesting.azure.com/.default" | jq -r '.accessToken')
+        statuscmd="curl -s -X GET \
+        \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
+        -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
+        LOAD_TESTING_RESULT=$(eval "$statuscmd")
+        printMessage "Result: $LOAD_TESTING_RESULT"
+        LOAD_TESTING_STATISTICS=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testRunStatistics')
+        LOAD_TESTING_RESULTS_CSV_URL=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.url')
+        LOAD_TESTING_RESULTS_CSV_FILE=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.fileName')
+        LOAD_TESTING_RESULTS_LOGS_URL=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.url')
+        LOAD_TESTING_RESULTS_LOGS_FILE=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.fileName')
+
+        if [[ ! -z "${LOAD_TESTING_RESULTS_CSV_FILE}"  && "${LOAD_TESTING_RESULTS_CSV_FILE}" != "null" ]]
+        then
+            printProgress "Downloading CSV file: ${LOAD_TESTING_RESULTS_CSV_FILE}..."    
+            downloadcmd="curl -s -X GET \"${LOAD_TESTING_RESULTS_CSV_URL}\" --output \"${LOAD_TESTING_RESULTS_CSV_FILE}\""
+            # echo ${downloadcmd}
+            $(eval "$downloadcmd")
+            unzip -o "${LOAD_TESTING_RESULTS_CSV_FILE}" 
+            INDEX=1
+            while (( INDEX <= LOAD_TESTING_ENGINE_INSTANCES )); do     
+                echo "Result file for engine ${INDEX}: engine${INDEX}_results.csv"
+                # Uncomment the line below if you want to display the results for each engine in the stdout
+                # cat engine${INDEX}_results.csv
+                (( INDEX++ ))
+            done 
+        else
+            printWarning "Result zip file not available through the Azure Load Testing REST API" 
+            echo "statuscmd: ${statuscmd}"
+            echo "LOAD_TESTING_RESULT: ${LOAD_TESTING_RESULT}"
+        fi
+
+        if [[ ! -z "${LOAD_TESTING_RESULTS_LOGS_FILE}"  && "${LOAD_TESTING_RESULTS_LOGS_FILE}" != "null" ]]
+        then
+            printProgress "Downloading Logs file: ${LOAD_TESTING_RESULTS_LOGS_FILE}..."    
+            downloadcmd="curl -s -X GET \"${LOAD_TESTING_RESULTS_LOGS_URL}\" --output \"${LOAD_TESTING_RESULTS_LOGS_FILE}\""
+            # echo ${downloadcmd}
+            $(eval "$downloadcmd")
+        else
+            printWarning "Logs zip file not available through the Azure Load Testing REST API" 
+            echo "statuscmd: ${statuscmd}"
+            echo "LOAD_TESTING_RESULT: ${LOAD_TESTING_RESULT}"
+        fi
+        
+        printMessage "Running load testing successful"
+        #printMessage "Result: $LOAD_TESTING_RESULT"
+        printMessage "Statistics: $LOAD_TESTING_STATISTICS"  
+        exit 0
+    fi
 fi
 
 if [[ "${ACTION}" == "opentest" ]] ; then
@@ -591,13 +646,18 @@ if [[ "${ACTION}" == "opentest" ]] ; then
     if [[ -n ${EVENTHUB_NAME_SPACE} ]]; then
         if [[ -n $(az eventhubs namespace show --name "${EVENTHUB_NAME_SPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
             if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
-                cmd="az eventhubs namespace network-rule list  --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} | jq -r '.ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
+                cmd="az eventhubs namespace network-rule-set list  --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} | jq -r '.[].ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
+                # echo "cmd=${cmd}"
                 ALLOW=$(eval "${cmd}")
                 if [ ! "${ALLOW}" == "Allow" ]  
                 then
-                    cmd="az eventhubs namespace network-rule add --ip-address ${LOAD_TESTING_PUBLIC_IP_ADDRESS} --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} "
-                    echo "$cmd"
+                    # Get Agent IP address
+                    ip=$(curl -s https://ifconfig.me/ip) || true
+                    #cmd="az eventhubs namespace network-rule-set create --ip-rules '[{\"action\":\"Allow\",\"ipMask\":\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\"}]' --public-network-access 'SecuredByPerimeter' --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} "
+                    cmd="az eventhubs namespace network-rule-set update --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} --default-action Deny --public-network Enabled --ip-rules \"[{ip-mask:${ip},action:Allow},{ip-mask:${LOAD_TESTING_PUBLIC_IP_ADDRESS},action:Allow}]\"  "
+                    # echo "$cmd"
                     eval "${cmd}" >/dev/null
+                    checkError
                     # Wait 30 seconds for the access to the eventhubs
                     sleep 30
                 fi
@@ -607,8 +667,9 @@ if [[ "${ACTION}" == "opentest" ]] ; then
 
     printProgress "Open access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
     cmd="az keyvault update --default-action Allow --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
-    echo "$cmd"
+    # echo "$cmd"
     eval "${cmd}" >/dev/null
+    checkError
     printMessage "Eventhub and Keyvault are now accessible from Azure Load Testing"
 
     exit 0
@@ -624,16 +685,20 @@ if [[ "${ACTION}" == "closetest" ]] ; then
 
     printProgress "Close access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
     cmd="az keyvault update --default-action Deny --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
-    echo "$cmd"
+    # echo "$cmd"
     eval "${cmd}" >/dev/null
+    checkError
 
     printProgress "Close access to EventHubs '${EVENTHUB_NAME_SPACE}' access for the load testing resource with pubic ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
     if [[ -n ${EVENTHUB_NAME_SPACE} ]]; then
         if [[ -n $(az eventhubs namespace show --name "${EVENTHUB_NAME_SPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
             if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
-                cmd="az eventhubs namespace network-rule remove --ip-address ${LOAD_TESTING_PUBLIC_IP_ADDRESS} --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} "
-                echo "$cmd"
+                # Get Agent IP address
+                ip=$(curl -s https://ifconfig.me/ip) || true
+                cmd="az eventhubs namespace network-rule-set update --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} --default-action Deny --public-network Enabled --ip-rules '[{ip-mask:${ip},action:Allow}]'  "
+                # echo "$cmd"
                 eval "${cmd}" >/dev/null
+                checkError
             fi
         fi
     fi
