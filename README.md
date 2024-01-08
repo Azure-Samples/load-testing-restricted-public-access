@@ -9,6 +9,7 @@
 - [Under the hood](#under-the-hood)
 - [Contribute](#contribute)
 
+
 ## Introduction
 
 This Azure Load Testing sample describes how to test an architecture based an Azure Event Hubs with public access restrictions. Access to the Azure Event Hubs endpoint is restricted to specific client IP addresses. For example, the Azure Event Hubs service is only accessible from on-premises Event sources.
