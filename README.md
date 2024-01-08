@@ -176,11 +176,9 @@ Follow the steps below to install the pre-requisites on your host machine which 
 
 1. You can launch the installation of the pre-requisites using the command below with the action "install"
 
-
-    vscode ➜ /workspace $
-          ```
-          ./devops-pipelines/utils/iactool.sh  -a install
-          ```
+    ```bash
+        vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a install
+    ```
 
 2. Once the pre-requisites are installed, launch the Azure login process using 'iactool.sh -a login'.  
 Usually this step is not required in a pipeline as the connection with Azure is already established.
@@ -188,7 +186,7 @@ Usually this step is not required in a pipeline as the connection with Azure is 
     ```bash
         vscode ➜ /workspace $ ./devops-pipelines/utils/iactool.sh  -a login
     ```
-
+    
     After this step the default Azure subscription has been selected. You can still change the Azure subscription, using Azure CLI command below:
 
     ```bash
