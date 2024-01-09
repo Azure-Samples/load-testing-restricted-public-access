@@ -187,35 +187,35 @@
         }
     ],    
     "outputs": {
-      "natGatewayName": {
+      "LOAD_TESTING_NAT_GATEWAY_NAME": {
         "type": "string",
         "value": "[variables('loadTestingNATGatewayName')]"
       },
-      "publicIPAddressName": {
+      "LOAD_TESTING_PIP_NAME": {
         "type": "string",
         "value": "[variables('loadTestingPip')]"
       },
-      "vnetName": {
+      "LOAD_TESTING_VNET_NAME": {
         "type": "string",
         "value": "[variables('loadTestingVNETName')]"
       },
-      "subnetName": {
+      "LOAD_TESTING_SUBNET_NAME": {
         "type": "string",
         "value": "[variables('loadTestingSubnetName')]"
       },
-      "publicIPAddress": {
+      "LOAD_TESTING_PUBLIC_IP_ADDRESS": {
         "type": "string",
         "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses',variables('loadTestingPip'))).IpAddress]"
       },
-      "subnetId": {
+      "LOAD_TESTING_SUBNET_ID": {
         "type": "string",
         "value": "[concat(resourceId('Microsoft.Network/virtualNetworks', variables('loadTestingVNETName')), '/subnets/',  variables('loadTestingSubnetName'))]"
       },
-      "keyVaultName": {
+      "LOAD_TESTING_KEY_VAULT_NAME": {
         "type": "string",
         "value": "[parameters('akvName')]"
       }, 
-      "loadTestName": {
+      "LOAD_TESTING_NAME": {
         "type": "string",
         "value": "[parameters('loadTestName')]"
       }       

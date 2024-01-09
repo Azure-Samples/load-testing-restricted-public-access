@@ -9,19 +9,7 @@
       "metadata": {
         "description": "name suffix."
       }
-    },
-    "eventHubsNamespace": {
-      "type": "string",
-      "metadata": {
-        "description": "The EventHubs Namespace name."
-      }
-    },    
-    "storageAccountName": {
-      "type": "string",
-      "metadata": {
-        "description": "The storage account name."
-      }
-    },    
+    },   
     "sku": {
       "type": "string",
       "defaultValue": "Standard",
@@ -59,6 +47,8 @@
   },
   "variables": {
     "appInsightsName": "[concat('ai', parameters('suffix'))]",  
+    "eventHubsNamespace": "[concat('evh', parameters('suffix'))]",  
+    "storageAccountName": "[concat('sa', parameters('suffix'))]",  
     "storageInputContainerName":"[take(concat('input', parameters('suffix')),63)]",
     "storageOutputContainerName":"[take(concat('output', parameters('suffix')),63)]",
     "eventHubInput1Name": "evinput1",  
@@ -83,7 +73,7 @@
     {
       "type": "Microsoft.EventHub/namespaces",
       "apiVersion": "2022-01-01-preview",
-      "name": "[parameters('eventHubsNamespace')]",
+      "name": "[variables('eventHubsNamespace')]",
       "location": "[parameters('location')]",
       "sku": {
         "capacity": "[parameters('skuCapacity')]",
@@ -101,7 +91,7 @@
           "name": "[variables('eventHubInput1Name')]",
           "type": "eventhubs",
           "dependsOn": [
-            "[resourceId('Microsoft.EventHub/namespaces/', parameters('eventHubsNamespace'))]"
+            "[resourceId('Microsoft.EventHub/namespaces/', variables('eventHubsNamespace'))]"
           ],
           "properties": {
             "messageRetentionInDays": 1,
@@ -158,7 +148,7 @@
           "name": "[variables('eventHubInput2Name')]",
           "type": "eventhubs",
           "dependsOn": [
-            "[resourceId('Microsoft.EventHub/namespaces/', parameters('eventHubsNamespace'))]"
+            "[resourceId('Microsoft.EventHub/namespaces/', variables('eventHubsNamespace'))]"
           ],
           "properties": {
             "messageRetentionInDays": 1,
@@ -215,7 +205,7 @@
           "name": "[variables('eventHubOutput1Name')]",
           "type": "eventhubs",
           "dependsOn": [
-            "[resourceId('Microsoft.EventHub/namespaces/', parameters('eventHubsNamespace'))]"
+            "[resourceId('Microsoft.EventHub/namespaces/', variables('eventHubsNamespace'))]"
           ],
           "properties": {},
           "resources": [
@@ -235,10 +225,10 @@
     {
       "type": "Microsoft.EventHub/namespaces/networkRuleSets",
       "apiVersion": "2021-11-01",
-      "name": "[concat(parameters('eventHubsNamespace'), '/default')]",
+      "name": "[concat(variables('eventHubsNamespace'), '/default')]",
       "location": "[parameters('location')]",
       "dependsOn": [
-          "[resourceId('Microsoft.EventHub/namespaces', parameters('eventHubsNamespace'))]"
+          "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubsNamespace'))]"
       ],
       "properties": {
           "publicNetworkAccess": "Enabled",
@@ -258,7 +248,7 @@
         "tier": "Standard"
       },
       "kind": "StorageV2",
-      "name": "[parameters('storageAccountName')]",
+      "name": "[variables('storageAccountName')]",
       "apiVersion": "2022-09-01",
       "location":  "[parameters('location')]",
       "properties": {
@@ -286,9 +276,9 @@
     {
       "type": "Microsoft.Storage/storageAccounts/blobServices",
       "apiVersion": "2022-09-01",
-      "name": "[concat(parameters('storageAccountName'), '/default')]",
+      "name": "[concat(variables('storageAccountName'), '/default')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
       ],
       "properties": {
         "deleteRetentionPolicy": {
@@ -299,9 +289,9 @@
     {
       "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
       "apiVersion": "2022-09-01",
-      "name": "[concat(parameters('storageAccountName'), '/default/',variables('storageInputContainerName'))]",
+      "name": "[concat(variables('storageAccountName'), '/default/',variables('storageInputContainerName'))]",
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
       ],
       "properties": {
         "publicAccess": "None"
@@ -310,9 +300,9 @@
     {
       "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
       "apiVersion": "2022-09-01",
-      "name": "[concat(parameters('storageAccountName'), '/default/',variables('storageOutputContainerName'))]",
+      "name": "[concat(variables('storageAccountName'), '/default/',variables('storageOutputContainerName'))]",
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
       ],
       "properties": {
         "publicAccess": "None"
@@ -320,55 +310,55 @@
     }   
   ],
   "outputs": {
-    "namespaceName": {
+    "AZURE_RESOURCE_EVENTHUBS_NAMESPACE": {
       "type": "string",
-      "value": "[parameters('eventHubsNamespace')]"
+      "value": "[variables('eventHubsNamespace')]"
     },    
-    "eventHubInput1Name": {
+    "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME": {
       "type": "string",
       "value": "[variables('eventHubInput1Name')]"
     },
-    "eventHubInput2Name": {
+    "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME": {
       "type": "string",
       "value": "[variables('eventHubInput2Name')]"
     },
-    "eventHubOutput1Name": {
+    "AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME": {
       "type": "string",
       "value": "[variables('eventHubOutput1Name')]"
     },
-    "eventHubInput1ConsumerGroup":{
+    "AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP":{
       "type": "string",
       "value": "[variables('eventHubinput1ConsumerGroup')]"
     },
-    "eventHubInput2ConsumerGroup":{
+    "AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP":{
       "type": "string",
       "value": "[variables('eventHubInput2ConsumerGroup')]"
     },
-    "eventHubOutput1ConsumerGroup":{
+    "AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP":{
       "type": "string",
       "value": "[variables('eventHubOutput1ConsumerGroup')]"
     },
-    "storageAccountName": {
+    "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME": {
       "type": "string",
-      "value": "[parameters('storageAccountName')]"
+      "value": "[variables('storageAccountName')]"
     },  
-    "inputContainerName": {
+    "AZURE_RESOURCE_INPUT_CONTAINER_NAME": {
       "type": "string",
       "value": "[variables('storageInputContainerName')]"
     },
-    "outputContainerName": {
+    "AZURE_RESOURCE_OUTPUT_CONTAINER_NAME": {
       "type": "string",
       "value": "[variables('storageOutputContainerName')]"
     },
-    "outputAppInsightsName": {
+    "AZURE_RESOURCE_APP_INSIGHTS_NAME": {
       "value": "[variables('appInsightsName')]",
       "type": "string"
     },    
-    "outputAppInsightsConnectionString": {
+    "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING": {
       "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]",
       "type": "string"
     },
-    "outputAppInsightsInstrumentationKey": {
+    "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY": {
       "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').InstrumentationKey]",
       "type": "string"
     }    

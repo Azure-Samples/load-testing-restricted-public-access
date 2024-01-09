@@ -1,0 +1,43 @@
+{
+  "description": "{name}-{date} Run",
+  "testId": "{id}",
+  "displayName": "{name}-{date}",
+  "loadTestConfiguration": {
+    "engineInstances": "{engineInstances}",
+    "splitAllCSVs": false
+  },
+  "passFailCriteria": {
+    "passFailMetrics": {
+      "fefd759d-7fe8-4f83-8b6d-aeebe0f491fe": {
+        "clientMetric": "response_time_ms",
+        "aggregate": "avg",
+        "condition": ">",
+        "value":  "{responseTimeMs}",
+        "action": "continue"
+      },
+      "fefd759d-7fe8-4f83-8b6d-aeebe0f491ff": {
+        "clientMetric": "error",
+        "aggregate": "percentage",
+        "condition": ">",
+        "value": "{errorPercentage}",
+        "action": "continue"
+      }
+    }
+  },
+  "secrets": {
+    "{loadTestSecretName}": {
+      "value": "https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}/",
+      "type": "AKV_SECRET_URI"
+    }
+  },
+  "environmentVariables": {
+    "eventhub_name_space": "{eventhubNameSpace}",
+    "eventhub_input_1": "{eventhubInput1}",
+    "eventhub_input_2": "{eventhubInput2}",
+    "duration": "{duration}",
+    "threads": "{threads}"
+  },
+  "subnetId": "{subnetId}",
+  "keyvaultReferenceIdentityType": "SystemAssigned"
+}
+

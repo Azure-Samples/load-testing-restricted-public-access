@@ -40,7 +40,7 @@ function usage() {
 
 ACTION=
 CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../../configuration/.default.env"
-AZURE_RESOURCE_SKU="Standard"
+AZURE_RESOURCE_SKU="B1"
 AZURE_SUBSCRIPTION_ID=""
 AZURE_TENANT_ID=""   
 AZURE_REGION="eastus2"
@@ -121,7 +121,7 @@ fi
 
 # check if configuration file is set 
 if [[ -z $CONFIGURATION_FILE ]]; then
-    CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../../../projects/eventhub/configuration/.default.env"
+    CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../../../projects/web-app-auth/configuration/.default.env"
 fi
 
 # get Azure Subscription and Tenant Id if already connected
@@ -148,11 +148,6 @@ if [[ "${ACTION}" == "createconfig" ]] ; then
     then
         AZURE_TEST_SUFFIX=$(getNewSuffix "${AZURE_SUBSCRIPTION_ID}")
         printMessage "Suffix found AZURE_TEST_SUFFIX: '${AZURE_TEST_SUFFIX}'"
-        RESOURCE_GROUP=$(getResourceGroupName "${AZURE_TEST_SUFFIX}")
-        LOAD_TESTING_RESOURCE_GROUP=$(getLoadTestingResourceGroupName "${AZURE_TEST_SUFFIX}")
-        STORAGE_ACCOUNT_NAME=$(getStorageAccountResourceName "${AZURE_TEST_SUFFIX}")
-        EVENT_HUB_NAME=$(getEventHubsResourceName "${AZURE_TEST_SUFFIX}")
-        KEY_VAULT_NAME=$(getKeyVaultResourceName "${AZURE_TEST_SUFFIX}")
         cat > "$CONFIGURATION_FILE" << EOF
 AZURE_REGION="${AZURE_REGION}"
 AZURE_TEST_SUFFIX=${AZURE_TEST_SUFFIX}
@@ -205,8 +200,8 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     STORAGE_ACCOUNT_NAME=$(getStorageAccountResourceName "${AZURE_TEST_SUFFIX}")
     EVENT_HUB_NAME=$(getEventHubsResourceName "${AZURE_TEST_SUFFIX}")
 
-    deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_TEST_SUFFIX" "$RESOURCE_GROUP" \
-    "$AZURE_RESOURCE_SKU" "$ip" "$SCRIPTS_DIRECTORY/../../../projects/eventhub/infrastructure/infrastructure-to-test/arm/global.json" 
+    deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_TEST_SUFFIX" "$RESOURCE_GROUP"  \
+     "$AZURE_RESOURCE_SKU" "$ip" "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/infrastructure/infrastructure-to-test/arm/global.json" 
     updateConfigurationFile "${CONFIGURATION_FILE}" "RESOURCE_GROUP" "${RESOURCE_GROUP}"
     updateConfigurationFile "${CONFIGURATION_FILE}" "EVENTHUB_NAME_SPACE" "${EVENTHUB_NAME_SPACE}" 
     updateConfigurationFile "${CONFIGURATION_FILE}" "EVENTHUB_INPUT_1_NAME" "${EVENTHUB_INPUT_1_NAME}" 
@@ -308,7 +303,7 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
     LOAD_TESTING_RESOURCE=$(getLoadTestingResourceName "${AZURE_TEST_SUFFIX}")
 
     deployAzureTestInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_TEST_SUFFIX" "$LOAD_TESTING_RESOURCE_GROUP" "$LOAD_TESTING_RESOURCE" "$KEY_VAULT_NAME" \
-      "$SCRIPTS_DIRECTORY/../../../projects/eventhub/infrastructure/load-testing-infrastructure/arm/global.json"  
+      "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/infrastructure/load-testing-infrastructure/arm/global.json"  
     updateConfigurationFile "${CONFIGURATION_FILE}" "LOAD_TESTING_RESOURCE_GROUP" "${LOAD_TESTING_RESOURCE_GROUP}"
     # shellcheck disable=SC2153
     updateConfigurationFile "${CONFIGURATION_FILE}" "LOAD_TESTING_NAME" "${LOAD_TESTING_NAME}"
@@ -425,7 +420,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
     checkError
-    for i in $(ls -d ./projects/eventhub/scenarios/*/); 
+    for i in $(ls -d ./projects/web-app-auth/scenarios/*/); 
     do 
         LOAD_TESTING_SCENARIO=$(basename ${i%%/})
         printProgress "Checking whether scenario '${LOAD_TESTING_SCENARIO}' is valid with all the required files..."  
@@ -447,7 +442,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         printProgress "Creating/Updating test ${LOAD_TESTING_TEST_NAME} ID:${LOAD_TESTING_TEST_ID}..."    
         # Update Load Testing configuration file
         TEMP_DIR=$(mktemp -d)
-        cp  "$SCRIPTS_DIRECTORY/../../../projects/eventhub/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.template.json"  "$TEMP_DIR/load-testing.json"
+        cp  "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.template.json"  "$TEMP_DIR/load-testing.json"
         sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing.json"
         sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing.json"
         sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing.json"
@@ -477,19 +472,19 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         cmd="curl -s -X PUT \
         \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/load-testing.jmx?fileType=JMX_FILE&api-version=2022-11-01\" \
         -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-        --data-binary  \"@$SCRIPTS_DIRECTORY/../../../projects/eventhub/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.jmx\" "
+        --data-binary  \"@$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.jmx\" "
         # echo "$cmd"
         eval "$cmd" >/dev/null
 
 
-        for i in $(ls -d ./projects/eventhub/scenarios/${LOAD_TESTING_SCENARIO}/*.csv);
+        for i in $(ls -d ./projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/*.csv);
         do 
             LOAD_TESTING_DATA_FILE=$(basename ${i%%/})
             printProgress "Uploading ${LOAD_TESTING_DATA_FILE} for test ${LOAD_TESTING_TEST_NAME}..."    
             cmd="curl -s -X PUT \
             \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/${LOAD_TESTING_DATA_FILE}?fileType=ADDITIONAL_ARTIFACTS&api-version=2022-11-01\" \
             -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-            --data-binary  \"@$SCRIPTS_DIRECTORY/../../../projects/eventhub/scenarios/${LOAD_TESTING_SCENARIO}/${LOAD_TESTING_DATA_FILE}\" "
+            --data-binary  \"@$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/${LOAD_TESTING_DATA_FILE}\" "
             # echo "$cmd"
             eval "$cmd" >/dev/null
         done 
@@ -529,7 +524,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         # Update Load Testing configuration file
         LOAD_TESTING_DATE=$(date +"%y%m%d-%H%M%S")
         TEMP_DIR=$(mktemp -d)
-        cp  "$SCRIPTS_DIRECTORY/../../../projects/eventhub/scenarios/${LOAD_TESTING_SCENARIO}/load-testing-run.template.json"  "$TEMP_DIR/load-testing-run.json"
+        cp  "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing-run.template.json"  "$TEMP_DIR/load-testing-run.json"
         sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing-run.json"
         sed -i "s/{id}/${LOAD_TESTING_TEST_ID}/g" "$TEMP_DIR/load-testing-run.json"
         sed -i "s/{date}/${LOAD_TESTING_DATE}/g" "$TEMP_DIR/load-testing-run.json"
