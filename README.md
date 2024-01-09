@@ -5,6 +5,7 @@
 - [Introduction](#introduction)
 - [Repository folder structure](#repository-folder-structure)
 - [Getting started](#getting-started)
+- [Using Azure DevOps pipelines and Github Actions](#using-azure-devops-pipelines-and-github-actions)
 - [List of sample projects](#list-of-sample-project)
 - [Contribute](#contribute)
 
