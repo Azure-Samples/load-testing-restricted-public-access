@@ -46,7 +46,7 @@ function usage() {
     infoMessage " -r  Sets the Azure Region (eastus2 by default)"
     infoMessage
     infoMessage "Example:"
-    infoMessage " bash createazdoresources.sh -o myOrg -p myProj -y myRepo -s b5c9fc83-fbd0-4368-9cb6-1b5823479b6a  -t 691ad3eb-9808-44f8-b9bf-368c69a4f712 -i 6a13df32-a807-43c4-8277-16f454c7078b -k xxxxxxxxxxxxxxxxxxxx"
+    infoMessage " bash create-azdo-resources.sh -o myOrg -p myProj -y myRepo -s b5c9fc83-fbd0-4368-9cb6-1b5823479b6a  -t 691ad3eb-9808-44f8-b9bf-368c69a4f712 -i 6a13df32-a807-43c4-8277-16f454c7078b -k xxxxxxxxxxxxxxxxxxxx"
 }
 
 # Run 'az config set extension.use_dynamic_install=yes_without_prompt' to allow installing extensions without prompt 
@@ -98,7 +98,7 @@ fi
 
 checkError() {
     if [ $? -ne 0 ]; then
-        echo -e "${RED}\nAn error occurred in createazdoresources.sh bash${NC}"
+        echo -e "${RED}\nAn error occurred in create-azdo-resources.sh bash${NC}"
         exit 1
     fi
 }
@@ -187,10 +187,10 @@ then
     if [ -z "${pipelineId}" ]
     then
         infoMessage "Creating Pipeline..." 
-        pipelineJsonResult=$(az pipelines create  --org "https://dev.azure.com/${organization}/" --project "${project}" --name "${pipelineName}" --description "${pipelineDescription}" --repository "${repository}" --branch "${pipelineBranch}" --repository-type tfsgit --yml-path ./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml)
+        pipelineJsonResult=$(az pipelines create  --org "https://dev.azure.com/${organization}/" --project "${project}" --name "${pipelineName}" --description "${pipelineDescription}" --repository "${repository}" --branch "${pipelineBranch}" --repository-type tfsgit --yml-path ./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml)
     else
         infoMessage "Updating Pipeline..." 
-        pipelineJsonResult=$(az pipelines update  --org "https://dev.azure.com/${organization}/" --project "${project}" --id "${pipelineId}" --description "${pipelineDescription}"  --branch "${pipelineBranch}"  --yml-path ./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml)
+        pipelineJsonResult=$(az pipelines update  --org "https://dev.azure.com/${organization}/" --project "${project}" --id "${pipelineId}" --description "${pipelineDescription}"  --branch "${pipelineBranch}"  --yml-path ./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml)
     fi
     if [ -z "${pipelineJsonResult}" ]
     then

@@ -5,7 +5,7 @@ trigger:
       - "main"
   paths:
     include:
-      - devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml
+      - devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml
       - devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.yaml
       - devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx
 

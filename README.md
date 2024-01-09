@@ -3,17 +3,14 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Features and architectures](#features-and-architectures)
+- [Repository folder structure](#repository-folder-structure)
 - [Getting started](#getting-started)
-- [Using Azure DevOps pipelines and Github Actions](#using-azure-devops-pipelines-and-github-actions)
-- [Under the hood](#under-the-hood)
+- [List of sample projects](#list-of-sample-project)
 - [Contribute](#contribute)
 
 ## Introduction
 
-This Azure Load Testing sample describes how to test an architecture based an Azure Event Hubs with public access restrictions. Access to the Azure Event Hubs endpoint is restricted to specific client IP addresses. For example, the Azure Event Hubs service is only accessible from on-premises Event sources.
-
-This repository contains:
+This repository includes several Azure Load Testing sample projects. Each project contains:
 
 - bash files and ARM templates to:
   - deploy/undeploy the infrastructure to test,
@@ -22,7 +19,7 @@ This repository contains:
   - run the load test
 - an Azure DevOps pipeline and a Github Action to automate the load testing scenario.
 
-The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load testing includes the following steps:
+The pipelines (Azure DevOps pipelines and Github Actions) running load testing includes the following steps:
 
 - deploy the infrastructure to test
 - deploy the load testing infrastructure
@@ -31,44 +28,125 @@ The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load
 - update the infrastructure after the load test
 - publish the load testing results  
 
-This scenario uses a [new feature](https://learn.microsoft.com/en-us/azure/load-testing/concept-azure-load-testing-vnet-injection#scenario-load-test-a-public-endpoint-with-access-restrictions) of Azure Load Testing to support VNET integration, for this scenario the Azure Event Hubs is deployed with restricted public access.
-In that case, the load testing infrastructure is extended with an Azure Virtual Network and an Azure NAT Gateway to use the same source public IP address for the requests coming from the load testing infrastructure.
-This source public IP address is added in the Event Hub firewall configuration before running the tests and removed once the tests are completed.
+## Repository folder structure
 
-## Features and architectures
+This chapter describes the repository folder structure. The repository contains the following common folders:
 
-This chapter describes the architecture based on Azure Event Hubs with public access restriction to load test.
-The Azure Event Hubs endpoint is accessible from the services whose source IP address is allowed (defined in the Azure Event Hubs firewall IP addresses list).  
-This service based on Azure Event Hubs could be for instance used to analyze events and metrics coming from different sources on Internet. Those sources are allowed in adding the source IP addresses in the Azure Event Hubs firewall IP address list.
-The events and metrics are analyzed using different possible Azure Resources like Azure Stream Analytics, Azure Data Factory, Synapse Analytics, Azure Machine Learning, containers running on Azure Kubernetes Service, ...
-Once the events and metrics are analyzed, an event could be raised and sent to the Azure Event Hub output.
+- .devcontainer: contains all the files required for devcontainer 
+- .github: contains github markdown files 
+- docs: contains the image files used by the documentation  
+- scripts: contains the common bash files used to deploy and run the different tests:
+  - common.sh: this file include the functions used to deploy and run the different tests
+  - : this file is used to create the service principal associated with the pipelines
+  - createazdoresources.sh: this file is used to create the Azure DevOps resources
+  - get-event-hub-token.sh: this file is used to get EventHubs token
 
-  ![eventhub-architecture-restricted-public-access](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario.png)
+The folder 'projects' contains subfolders which are associated with a specific project.
+All the files specific to a project are stored in one single subfolder under the 'projects' folder.
 
-*Download a [SVG file](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario.svg) of this diagram.*
+Each project subfolder contains the following subfolders:
 
-This repository doesn't contain the code used to deploy the Events Analyzer resources. This repository contains the code to deploy an Azure Event Hubs service with 2 input Event Hubs and 1 output Event Hub.
-Moreover, it contains the code to run Azure Load Testing against Azure Event Hubs whose public network access is restricted. In that case, the load testing infrastructure is extended with an Azure Virtual Network and an Azure NAT Gateway to use the same source public IP address for the requests coming from the load testing infrastructure.
-This source public IP address is added in the Event Hub firewall configuration before running the tests and removed once the tests are completed.
-The infrastructure is also extended with an Azure Key Vault which is used to store the secrets like the EventHubs tokens.
+- configuration: contains the file .sample-default.env which set all the environment variables used to run the test
+- devops-pipelines: contains the Azure DevOps pipelines and Github Actions
+- docs: contains the images associated with the project documentation
+- infrastructure: contains the Infrastructure as code file to deploy the infrastructure to test and the load-testing infrastructure
+- scenarios: contains a subfolder for each load testing scenario. Each load testing scenario is defined with at least:
+  - load-testing.template.json: template file used to create the test with the bash file 'load-testing-tool.sh'
+  - load-testing.template.yaml: template file used to create the test with Azure DevOps
+  - load-testing-run.template.json: template file used to run the test with the bash file 'load-testing-tool.sh'
+  - load-testing.jmx: the JMX load testing file used by Azure Load Testing
+- scripts: contains the bash file 'load-testing-tool.sh' used to deploy the infrastructure to test, the load-testing infrastructure and run the tests. 
 
-  ![eventhub-architecture-restricted-public-access-load-testing](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing.png)
+Below the repository folder hierachy:
 
-*Download a [SVG file](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing.svg) of this diagram.*
+```text
+    ├── .devcontainer
+    │   ├── build-run-devcontainer.cmd
+    │   ├── build-run-devcontainer.sh
+    │   ├── devcontainer.json
+    │   └── Dockerfile
+    ├── .github
+    │   ├── CODE_OF_CONDUCT.md
+    │   ├── ISSUE_TEMPLATE.md
+    │   └── PULL_REQUEST_TEMPLATE.md
+    ├── docs
+    │   ├── *
+    ├── projects
+    │   ├── [ProjectName-1]
+    │   │   ├── configuration
+    │   │   │   └── .sample-default.env
+    │   │   ├── devops-pipelines
+    │   │   │   ├── azure-pipelines
+    │   │   │   │   ├── *.yaml
+    │   │   │   └── github-action
+    │   │   │       ├── *.yaml
+    │   │   ├── docs
+    │   │   │   ├── *
+    │   │   ├── infrastructure
+    │   │   │   ├── intrastructure-to-test
+    │   │   │   │   └── arm/bicep/terraform
+    │   │   │   │       ├── *
+    │   │   │   └── load-testing-infrastructure
+    │   │   │       └── arm/bicep/terraform
+    │   │   │           ├── *
+    │   │   ├── scenarios
+    │   │   │   ├── [ScenarioName-1]
+    │   │   │   │   ├── load-testing.template.json
+    │   │   │   │   ├── load-testing-run.template.json
+    │   │   │   │   ├── load-testing.template.yaml
+    │   │   │   │   ├── load-testing.jmx
+    │   │   │   │   ├── load-testing-data-1.csv
+    │   │   │   │   ├── load-testing-data-2.csv
+    │   │   │   │   │
+    │   │   │   │   └── load-testing-data-N.csv
+    │   │   │   ├── [ScenarioName-2]
+    │   │   │   │   ├── *
+    │   │   │   │   
+    │   │   │   │   
+    │   │   │   └── [ScenarioName-N]
+    │   │   │       ├── load-testing.template.json
+    │   │   │       ├── load-testing-run.template.json
+    │   │   │       ├── load-testing.template.yaml
+    │   │   │       ├── load-testing.jmx
+    │   │   │       ├── load-testing-data-1.csv
+    │   │   │       ├── load-testing-data-2.csv
+    │   │   │       │
+    │   │   │       └── load-testing-data-N.csv
+    │   │   ├── scripts
+    │   │   │   └── load-testing-tool.sh
+    │   │   └── README.md
+    │   │      
+    │   │      
+    │   │      
+    │   ├── [ProjectName-N]
+    │   │   ├── *
+    │   │   └── README.md
+    ├── scripts
+    │   ├── common.sh
+    │   ├── createazdoresources.sh
+    │   ├── 
+    │   └── get-event-hub-token.sh
+    ├── CHANGELOG.md
+    ├── CONTRIBUTING.md
+    ├── LICENSE.md
+    ├── README.md
+    └── .gitignore
+```
 
 ## Getting started
 
 This chapter describes how to :
 
 1. Install the pre-requisites including Visual Studio Code, Dev Container
-2. Create, deploy and run the load tests
+2. Create, deploy and run the load tests for any project called [projectName]
   
 This repository contains the following resources :
 
 - A Dev container under '.devcontainer' folder
-- The Azure configuration for a deployment under 'configuration' folder
-- The pipelines (Azure DevOps pipeline, Github Action) used to run the load testing scenarios and the bash files used to create and run the pipelines under 'devops-pipeline' folder
-- The ARM templates used to deploy the target infrastructure and the load testing resources under 'infra' folder
+- For each load testing project:
+  - The Azure configuration for a deployment under 'configuration' folder
+  - The pipelines (Azure DevOps pipeline, Github Action) used to run the load testing scenarios and the bash files used to create and run the pipelines under 'devops-pipelines' folder
+  - The ARM templates used to deploy the target infrastructure and the load testing resources under 'infra' folder
 
 ### Installing the pre-requisites
 
@@ -151,7 +229,7 @@ You need to install the following pre-requisite on your machine
 
 ### How to deploy infrastructure and launch load test from the Dev Container terminal
 
-The Dev Container is now running, you can use the bash file [./devops-pipelines/utils/load-testing-tool.sh](./devops-pipelines/utils/load-testing-tool.sh) to:
+The Dev Container is now running, you can use the bash file [./devops-pipelines/utils/load-testing-tool.sh](./projects/[projectName]/scripts/load-testing-tool.sh) to:
 
 - deploy the infrastructure with Azure Event Hubs
 - deploy the Load Testing infrastructure
@@ -167,7 +245,6 @@ Below the list of arguments associated with 'load-testing-tool.sh':
 
 - -a  Sets iactool action {login, install, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
 - -c  Sets the iactool configuration file
-- -h  Event Hub Sku - Azure Event Hub Sku - by default Standard (Basic, Standard, Premium)
 - -r  Sets the Azure Region for the deployment
 
 #### Installing the pre-requisites on the host machine
@@ -177,14 +254,14 @@ Follow the steps below to install the pre-requisites on your host machine which 
 1. You can launch the installation of the pre-requisites using the command below with the action "install"
 
     ```bash
-        vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a install
+        vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a install
     ```
 
 2. Once the pre-requisites are installed, launch the Azure login process using 'load-testing-tool.sh -a login'.  
 Usually this step is not required in a pipeline as the connection with Azure is already established.
 
     ```bash
-        vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a login
+        vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a login
     ```
     
     After this step the default Azure subscription has been selected. You can still change the Azure subscription, using Azure CLI command below:
@@ -196,13 +273,13 @@ Usually this step is not required in a pipeline as the connection with Azure is 
 3. Once you are connected to your Azure subscription, you can create the configuration file which is used to deploy the infrastructure.
 
     ```bash
-        vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a createconfig -c ./configuration/.default.env -r 'eastus2' 
+        vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a createconfig -c ./projects/[projectName]/configuration/.default.env -r 'eastus2' 
     ```
 
-    After this step, the variables AZURE_REGION, AZURE_TEST_SUFFIX, AZURE_SUBSCRIPTION_ID and AZURE_TENANT_ID used for the deployment are stored in the file ./configuration/.default.env.
+    After this step, the variables AZURE_REGION, AZURE_TEST_SUFFIX, AZURE_SUBSCRIPTION_ID and AZURE_TENANT_ID used for the deployment are stored in the file ./projects/[projectName]/configuration/.default.env.
 
     ```bash
-        vscode ➜ /workspace $ cat ./configuration/.default.env
+        vscode ➜ /workspace $ cat ./projects/[projectName]/configuration/.default.env
         AZURE_REGION="eastus2"
         AZURE_TEST_SUFFIX=evhub5039
         AZURE_SUBSCRIPTION_ID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
@@ -219,70 +296,51 @@ Usually this step is not required in a pipeline as the connection with Azure is 
 Once the pre-requisites are installed and the configuration ready, you can deploy the infrastructure you want to test, using the following arguments:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a deploy -c ./configuration/.default.env 
-```
-
-As the bash file deploys an Event Hubs infrastructure, you can also select the following options:
-    -h : Event Hubs Sku.  
-         Below the list of SKUs ("Standard" by default):
-          "Basic","Standard","Premium"
-
-For instance run the following command to deploy Event Hubs with Standard SKU:
-
-```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a deploy -c ./configuration/.default.env -h 'Standard' 
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a deploy -c ./projects/[projectName]/configuration/.default.env 
 ```
 
 After few minutes, the resources are visible on the Azure Portal.
-The infrastructure has been deployed with 2 inputs eventhub and one output eventhub and one consumer group for each event hub.
-Moreover, during this step the Roles "Azure Event Hubs Data Sender" and "Azure Event Hubs Data Receiver" on Azure Event Hubs Scope have been assigned to the current user or a service principal if running in a pipeline. Once those roles are assigned the user or the service principal can send and receive events to Azure Event Hubs.
-After this step, the Event Hubs based infrastructure is ready and we can deploy and run the load testing.
 
 #### Deploying the load testing infrastructure
 
 Once the infrastructure is deployed, you can deploy the load testing infrastructure, using the following arguments:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a deploytest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a deploytest -c ./projects/[projectName]/configuration/.default.env 
 ```
 
-This step deploys the following resources:
+This step deploys at least the following resources:
 
 - Azure Load Testing
-- Virtual network
 - Key vault
-- NAT gateway
-- Network security group
-- Public IP address
 
-It assigns the following roles:
+It assigns at least the following roles:
 
-- 'Network Contributor' for the current user on the Virtual Network scope
 - 'Load Test Contributor' for the current user on the Load Testing scope
 - 'Key Vault Secrets Officer' for the current user on the Key Vault scope
 - 'Key Vault Secrets User' for the Load Testing identity on the Key Vault scope
 
 #### Opening the access to Azure Event Hubs and Azure Key Vault
 
-Once the load testing infrastructure is deployed, you need to open the access to :
+Once the load testing infrastructure is deployed, you need at least to open the access to :
 
-- the Azure Event Hubs for the Azure Load Testing
+- the resource to test 
 - Azure Key Vault for the current user or current service principal and Azure Load Testing.
 
 The command line below configures the network access to Azure Event Hubs and Azure Key Vault:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a opentest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a opentest -c ./projects/[projectName]/configuration/.default.env 
 ```
 
-This step adds the public IP address associated with the Load Testing infrastructure in the list of IP addresses allowed to access Azure Event Hubs. It also opens the access to Azure Key Vault.
+This step opens at least the access to Azure Key Vault.
 
 #### Running the load test scenario
 
 Once the Azure Event Hubs and Azure Key Vault are configured, you can launch the load test scenario with the following command line.
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a runtest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a runtest -c ./projects/[projectName]/configuration/.default.env 
 ```
 
 By default, the load test scenario runs with the following parameters:
@@ -293,7 +351,7 @@ By default, the load test scenario runs with the following parameters:
 - Error trigger: 5%
 - Average Response Time trigger: 100ms
 
-You can change those parameters in editing the variables below in the configuration file, for instance: ./configuration/.default.env
+You can change those parameters in editing the variables below in the configuration file, for instance: ./projects/[projectName]/configuration/.default.env
 
 ```bash
 LOAD_TESTING_DURATION=60
@@ -373,7 +431,7 @@ For this step, the bash file uses curl commands to call the Azure Load Testing D
 If you don't want to run any new load test, you can close the access to the Azure Event Hubs and Azure Key Vault, with the following command line:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a closetest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a closetest -c ./projects/[projectName]/configuration/.default.env 
 ```
 
 #### Undeploying the load testing infrastructure
@@ -381,7 +439,7 @@ If you don't want to run any new load test, you can close the access to the Azur
 You can also undeploy the load testing infrastructure with the following command:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a undeploytest -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a undeploytest -c ./projects/[projectName]/configuration/.default.env 
 ```
 
 #### Undeploying the infrastructure
@@ -390,12 +448,12 @@ Once the load testing infrastructure is undeployed, you can undeploy the infrast
 For instance the following command:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a undeploy -c ./configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a undeploy -c ./projects/[projectName]/configuration/.default.env 
 ```
 
 ## Using Azure DevOps pipelines and Github Actions
 
-In this chapter, you will use Azure DevOps pipeline and/or Github Action to automate the deployment of the infrastructure and the launch of the load test.  
+In this chapter, you will use Azure DevOps pipeline and/or Github Action to automate the deployment of the infrastructure and the launch of the load test for a project called [projectName].  
 
 The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load testing includes the following steps:
 
@@ -410,7 +468,7 @@ The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load
 
 If you want to use Azure DevOps pipelines or Github Actions, an authentication with Azure using a Service Principal is required.
 
-In order to create this service principal you can use the following bash file: [devops-pipelines/utils/createrbacsp.sh](./devops-pipelines/utils/createrbacsp.sh)
+In order to create this service principal you can use the following bash file: [scripts/create-rbac-sp.sh](./scripts/create-rbac-sp.sh)
 
 This bash file assigns the role "Load Test Contributor" to the service principal, this role is mandatory to deploy and run Azure Load Testing from an Azure DevOps pipeline or a Github Action.
 
@@ -423,7 +481,7 @@ Before running this bash file you need to be connected with your Azure Account u
 Once you are connected with Azure, you can run the following bash to create the Service Principal:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/createrbacsp.sh -s <Azure-Subscription-Id> -a <Service-Principal-Name>
+    vscode ➜ /workspace $ ./devops-pipelines/utils/create-rbac-sp.sh -s <Azure-Subscription-Id> -a <Service-Principal-Name>
 ```
 
 where \<Azure-Subscription-Id\> is the subscriptionId of your Azure Account and \<Service-Principal-Name\> the name of the service principal which is created.  
@@ -432,7 +490,7 @@ Once completed, this bash file displays the information required for the Azure a
 For instance:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/createrbacsp.sh -s d3814ade-afe8-4260-9b5f-************ -a sp-loadtest-01
+    vscode ➜ /workspace $ ./devops-pipelines/utils/create-rbac-sp.sh -s d3814ade-afe8-4260-9b5f-************ -a sp-loadtest-01
 ```
 
 The bash file displays the following information in Json format:
@@ -462,8 +520,8 @@ The service principal for the Azure DevOps pipeline has been created, you can us
 
 The diagram below describes the architecture for this test with with Azure DevOps:
 
-- a resource group associated with the Event Hubs based infrastructure to test
-- a resource group associated with the load testing infrastructure and the VNET
+- a resource group associated with the infrastructure to test
+- a resource group associated with the load testing infrastructure
 - the Azure DevOps resources repository, pipeline and artifact
 
   ![eventhub-architecture-restricted-public-access-load-testing-azdo](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing-azdo.png)
@@ -519,13 +577,13 @@ You can now create the service connection for the authentication with your Azure
 
 #### **Create Azure DevOps Service Connection, Variable Group and pipeline**
 
-In order to create the service connection, Variable Group and pipeline you can use the following bash file: [devops-pipelines/utils/createazdoresources.sh](./devops-pipelines/utils/createazdoresources.sh)  
+In order to create the service connection, Variable Group and pipeline you can use the following bash file: [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh)  
 This bash file creates:
 
 - the service connection for the authentication with Azure Subscription. The name of this service connection is the name of the service principal created in the previous step with the prefix "sc-".
-- the variable group which contains the parameters of the pipeline like AZURE_TEST_SUFFIX, AZURE_REGION, SERVICE_CONNECTION. By default the name of this variable group is "load-testing-vg". If you want to change this name, you'll have to update the file [devops-pipelines/utils/createazdoresources.sh](./devops-pipelines/utils/createazdoresources.sh) and the pipeline file [azure-pipelines-load-testing-eventhub-restricted-public-access.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml).
-- the Azure DevOps pipeline to run the load testing. By default, the name of the pipeline is "Load-Testing-EventHubs". If you want to change this name, you'll have to update the file [devops-pipelines/utils/createazdoresources.sh](./devops-pipelines/utils/createazdoresources.sh).
-By default, the pipeline file should be present in the "main" branch, if it's not the case, you also need to update the file [devops-pipelines/utils/createazdoresources.sh](./devops-pipelines/utils/createazdoresources.sh).
+- the variable group which contains the parameters of the pipeline like AZURE_TEST_SUFFIX, AZURE_REGION, SERVICE_CONNECTION. By default the name of this variable group is "load-testing-vg". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh) and the pipeline file [azure-pipelines-load-testing.yml](./projects/eventhub/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml).
+- the Azure DevOps pipeline to run the load testing. By default, the name of the pipeline is "Load-Testing-EventHubs". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
+By default, the pipeline file should be present in the "main" branch, if it's not the case, you also need to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
   
 Before running this bash file you need to be connected with your Azure Account using Azure CLI. Run 'az login' in your linux environment or in your Dev Container Terminal
 
@@ -536,7 +594,7 @@ Before running this bash file you need to be connected with your Azure Account u
 Once you are connected with Azure, you can run the following bash to create the Service Principal:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/createazdoresources.sh -o "<MyORG>" -p "<MyProject>" -y "<MyRepository>" -s "<Azure-Subscription-Id>"  -t "<Azure-Tenant-Id>" -i "<ServicePrincipalId>" -k "<ServicePrincipalKey>"
+    vscode ➜ /workspace $ ./scripts/create-azdo-resources.sh -o "<MyORG>" -p "<MyProject>" -y "<MyRepository>" -s "<Azure-Subscription-Id>"  -t "<Azure-Tenant-Id>" -i "<ServicePrincipalId>" -k "<ServicePrincipalKey>"
 ```
 
 where:
@@ -546,13 +604,13 @@ where:
 - \<MyRepository\> is the name of your repository where the pipeline is stored,
 - \<Azure-Subscription-Id\> is the subscriptionId of your Azure Account,
 - \<Azure-Tenant-Id\> is the Tenant Id of your Azure AD Tenant,
-- \<ServicePrincipalId\> is the value "clientId" of your Service Principal created with the bash file [devops-pipelines/utils/createrbacsp.sh](./devops-pipelines/utils/createrbacsp.sh),
-- \<ServicePrincipalKey\> is the value "clientSecret" of your Service Principal created with the bash file [devops-pipelines/utils/createrbacsp.sh](./devops-pipelines/utils/createrbacsp.sh),
+- \<ServicePrincipalId\> is the value "clientId" of your Service Principal created with the bash file [scripts/create-rbac-sp.sh](./scripts/create-rbac-sp.sh),
+- \<ServicePrincipalKey\> is the value "clientSecret" of your Service Principal created with the bash file [scripts/create-rbac-sp.sh](./scripts/create-rbac-sp.sh),
 
 For instance:
 
 ```bash
-        vscode ➜ /workspace $ ./devops-pipelines/utils/createazdoresources.sh -o "TestAzDO" -p "load-testing-sharing" -y "load-testing-restricted-public-access" -s "d3814ade-afe8-4260-9b5f-xxxxxxxxxxxx"  -t "6a13df32-a807-43c4-8277-xxxxxxxxxxxx" -i "1d736738-9c5f-4de7-84f9-xxxxxxxxxxxx" -k "ok-8Q~Rsxxxxxxxxxxxx"
+        vscode ➜ /workspace $ ./scripts/create-azdo-resources.sh -o "TestAzDO" -p "load-testing-sharing" -y "load-testing-restricted-public-access" -s "d3814ade-afe8-4260-9b5f-xxxxxxxxxxxx"  -t "6a13df32-a807-43c4-8277-xxxxxxxxxxxx" -i "1d736738-9c5f-4de7-84f9-xxxxxxxxxxxx" -k "ok-8Q~Rsxxxxxxxxxxxx"
 ```
 
 Once completed, this bash file displays the information about the different resources created.
@@ -642,7 +700,7 @@ First, you need to create the Github Action Secret AZURE_CREDENTIALS for the aut
 
     ![github-action-secrets](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-secrets.png)
 
-2. Click on 'New repository secret' button, enter 'AZURE_CREDENTIALS' in the Name field and copy/paste the JSON value associated with the service principal created with createrbacsp.sh.
+2. Click on 'New repository secret' button, enter 'AZURE_CREDENTIALS' in the Name field and copy/paste the JSON value associated with the service principal created with create-rbac-sp.sh.
 
     ![github-action-add-secret](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-add-secret.png)
 
@@ -661,7 +719,7 @@ When you enter the value of AZURE_TEST_SUFFIX, select a value which will not gen
 You can use the command line below to generate a value which will avoid any conflict with existing Azure Storage, Azure Key Vault and Azure Events Hubs:
 
 ```bash
-  vscode ➜ /workspace $ ./devops-pipelines/utils/load-testing-tool.sh  -a getsuffix 
+  vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a getsuffix 
 ```
 
 1. On the GitHub portal page associated with your project, navigate on the the page 'Settings' and select the submenu 'Actions' in the menu 'Secrets and variables' and select the tab 'Variables' on the page 'Actions secrets and variables'.
@@ -677,16 +735,16 @@ You can use the command line below to generate a value which will avoid any conf
 #### **Create Github Action pipeline for Event Hubs with restricted public access Load Testing**
 
 By default, all the Github Action pipelines are stored under 'devops-pipelines/github-action'.
-The Load Testing Github Action pipeline is [github-action-load-testing-eventhub-restricted-public-access.yml](devops-pipelines/github-action/github-action-load-testing-eventhub-restricted-public-access.yml)
+The Load Testing Github Action pipeline is [github-action-load-testing.yml](projects/eventhub/devops-pipelines/github-action/github-action-load-testing.yml)
 
 In order to activate this pipeline, follow the steps below:
 
 1. Create a folder '.github/workflows' in your repository
-2. Copy the file github-action-load-testing-eventhub-restricted-public-access.yml in the folder '.github/workflows'
+2. Copy the file github-action-load-testing.yml in the folder '.github/workflows'
 3. Commit and push this modification in your "main" branch
 
     ```bash
-      git add  .github/workflows/github-action-load-testing-eventhub-restricted-public-access.yml
+      git add  .github/workflows/github-action-load-testing.yml
       git commit -m "Create Eventhub Load with restricted public access Testing Github Action"
       git push
     ```
@@ -706,581 +764,30 @@ In order to activate this pipeline, follow the steps below:
 
     ![github-action-eventhub-completed](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-eventhub-completed.png)
 
-## Under the hood
 
-### Defining load testing parameters
+## List of sample projects
 
-Currently you can create one Azure DevOps pipeline using the YAML file below:
+### Azure Event Hubs with public access restriction (Project Name: eventhub)
 
-- EventHubs with restricted public access Load Testing pipeline: [azure-pipelines-load-testing-eventhub-restricted-public-access.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml)
+This project consists in testing an architecture based on Azure Event Hubs with public access restriction.
+The Azure Event Hubs endpoint is accessible from the services whose source IP address is allowed (defined in the Azure Event Hubs firewall IP addresses list).  
+This service based on Azure Event Hubs could be for instance used to analyze events and metrics coming from different sources on Internet. Those sources are allowed in adding the source IP addresses in the Azure Event Hubs firewall IP address list.
+The events and metrics are analyzed using different possible Azure Resources like Azure Stream Analytics, Azure Data Factory, Synapse Analytics, Azure Machine Learning, containers running on Azure Kubernetes Service, ...
+Once the events and metrics are analyzed, an event could be raised and sent to the Azure Event Hub output.
 
-You can create one Github Actions using the YAML file below:
+  ![eventhub-architecture-restricted-public-access](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario.png)
 
-- EventHubs with restricted public access Load Testing GitHub action: [github-action-load-testing-eventhub-restricted-public-access.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub-restricted-public-access.yml)
+*Download a [SVG file](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario.svg) of this diagram.*
 
-Associated with each pipeline or GitHub action there are:
+Moreover, this project subfolder contains the code to run Azure Load Testing against Azure Event Hubs whose public network access is restricted. In that case, the load testing infrastructure is extended with an Azure Virtual Network and an Azure NAT Gateway to use the same source public IP address for the requests coming from the load testing infrastructure.
+This source public IP address is added in the Event Hub firewall configuration before running the tests and removed once the tests are completed.
+The infrastructure is also extended with an Azure Key Vault which is used to store the secrets like the EventHubs tokens.
 
-- a YAML file which defines the Azure Load Testing configuration. EventHubs with restricted public access Load Testing configuration file: [load-testing-eventhub-restricted-public-access.template.yaml](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.yaml)  
-- a JMX file which contains the JMeter project in XML format. EventHubs with restricted public access Load Testing JMX file: [load-testing-eventhub-restricted-public-access.jmx](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx)  
+  ![eventhub-architecture-restricted-public-access-load-testing](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing.png)
 
-For each load test you can define:
+*Download a [SVG file](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing.svg) of this diagram.*
 
-- the number of engine instances to use,  
-- the average response time in ms threshold which triggers an error and stop the pipeline, if the average response time is over this threshold,
-- the error percentage threshold which triggers an error and stop the pipeline, if the error percentage is over this threshold.
-
-For instance, if the average response time is over 100 ms or if the error percentage is over 5%, an error will be generated.
-
-You also need to define in the Load Testing Configuration file the subnetId of subnet the Load Testing service will be connected to. The pipeline or the GitHub action will automatically replace {subnetId} with the value of the subnetId.
-
-Moreover, you need to define the information related to the storage of Azure Event Hubs token in the Azure Key Vault. You need to define the secret name for the Event Hubs Token in the JMX file (currently 'eventhub_token'), the Azure Key Vault Name and the Key Vault secret name.
-
-All those input parameters are defined in the Load Testing configuration file in the following variables:
-
-- {engineInstances}
-- {responseTimeMs}
-- {errorPercentage}
-- {subnetId}
-- {loadTestSecretName}
-- {keyVaultName}
-- {keyVaultSecretName}
-
-```yml
-      engineInstances: "{engineInstances}"
-      subnetId: "{subnetId}"
-
-      failureCriteria:
-          - "avg(response_time_ms) > {responseTimeMs}"
-          - "percentage(error) > {errorPercentage}"
-
-      secrets:
-          - name: "{loadTestSecretName}"
-            value: "https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}/"
-```
-
-The Azure DevOps pipeline and the GitHub action automatically replaces the values in the configuration file.
-For instance, below the Azure DevOps step which updates the Load Testing configuration file to take into account the values of "engineInstances", "responseTimeMs", "errorPercentage", "loadTestSecretName", "keyVaultName", "keyVaultSecretName", "subnetId":  
-
-```yml
-          - task: AzureCLI@2
-            displayName: 'Configure and display Load Testing Configuration for Eventhub'
-            name: configureloadtest
-            inputs:
-              azureSubscription: $(SERVICE_CONNECTION)
-              scriptType: "bash"
-              addSpnToEnvironment: "true"
-              scriptLocation: "inlineScript"
-              inlineScript: |
-                # Read variables from configuration file
-                set -o allexport
-                source "$(CONFIGURATION_FILE)"
-                set +o allexport
-
-                echo "EVENTHUB_NAME_SPACE: $(EVENTHUB_NAME_SPACE)"
-                echo "EVENTHUB_INPUT_1_NAME: $(EVENTHUB_INPUT_1_NAME)"
-                echo "EVENTHUB_INPUT_2_NAME: $(EVENTHUB_INPUT_2_NAME)"
-                echo "DURATION: ${{ parameters.duration }}"
-                echo "THREADS: ${{ parameters.threads }}"
-                echo "ENGINE INSTANCES: ${{ parameters.engineInstances }}"
-                echo "ERROR PERCENTAGE: ${{ parameters.errorPercentage }}"
-                echo "RESPONSE TIME MS: ${{ parameters.responseTimeMs }}"
-                # Update Load Testing configuration file
-                TEMP_DIR=$(mktemp -d)
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.jmx"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhubevents1.csv" "$TEMP_DIR/load-testing-eventhubevents1.csv"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhubevents2.csv" "$TEMP_DIR/load-testing-eventhubevents2.csv"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.yaml" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-
-                echo "load-testing-eventhub-restricted-public-access.yaml content:"
-                cat "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-
-                # Store the temporary directory in output variable
-                echo "##vso[task.setvariable variable=TEMP_DIR;issecret=false]$TEMP_DIR"
-                echo "##vso[task.setvariable variable=LOAD_TESTING_RESOURCE_GROUP;issecret=false]$LOAD_TESTING_RESOURCE_GROUP"
-                echo "##vso[task.setvariable variable=LOAD_TESTING_NAME;issecret=false]$LOAD_TESTING_NAME"
-```
-
-### Opening access to Azure Event Hubs and Azure Key Vault
-
-Before running the Load Test, we need to ensure the Azure Event Hubs and the Azure Key Vault are accessible from Azure Load Testing.
-
-For instance, below the Azure DevOps pipeline step in [azure-pipelines-load-testing-eventhub-restricted-public-access.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml) which calls iactoo.sh bash with the option 'opentest'.
-
-```yml
-          - task: AzureCLI@2
-            displayName: 'Open access to EventHub and KeyVault for the test'
-            name: openloadtest
-            inputs:
-              azureSubscription: $(SERVICE_CONNECTION)
-              scriptType: "bash"
-              addSpnToEnvironment: "true"
-              scriptLocation: "inlineScript"
-              inlineScript: |
-                cmd="devops-pipelines/utils/load-testing-tool.sh -a opentest -c $(CONFIGURATION_FILE)"
-                echo "$cmd"
-                eval "$cmd"
-```
-
-The bash file:
-
-- reads the variables in the configuration file (./configuration/.default.env)
-- adds the public IP address in the list of IP addresses allowed to access the Azure Event Hubs.
-- allows the Access to the Azure Key Vault where the Event Hubs token will be stored
-
-```bash
-        readConfigurationFile "$CONFIGURATION_FILE"
-
-        printProgress "Open access to EventHubs '${EVENTHUB_NAME_SPACE}' access for the load testing resource with public ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
-        if [[ -n ${EVENTHUB_NAME_SPACE} ]]; then
-            if [[ -n $(az eventhubs namespace show --name "${EVENTHUB_NAME_SPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
-                if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
-                    cmd="az eventhubs namespace network-rule list  --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} | jq -r '.ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
-                    ALLOW=$(eval "${cmd}")
-                    if [ ! "${ALLOW}" == "Allow" ]  
-                    then
-                        cmd="az eventhubs namespace network-rule add --ip-address ${LOAD_TESTING_PUBLIC_IP_ADDRESS} --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} "
-                        echo "$cmd"
-                        eval "${cmd}" >/dev/null
-                        # Wait 30 seconds for the access to the eventhubs
-                        sleep 30
-                    fi
-                fi
-            fi
-        fi
-
-        printProgress "Open access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
-        cmd="az keyvault update --default-action Allow --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
-        echo "$cmd"
-        eval "${cmd}" >/dev/null
-        printMessage "Eventhub and Keyvault are now accessible from Azure Load Testing"
-
-```
-
-### Implementing the Azure Event Hubs authentication in the JMX files
-
-For the Azure Event Hubs Load Testing pipeline [azure-pipelines-load-testing-eventhub-restricted-public-access.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml), the authentication with Azure Event Hubs is required, the Load Testing platform sends the Event Hubs Shared Access Token in each http requests towards the endpoint for the authentication.
-
-In the step 'Get EventHub Token and store it in Key Vault', the pipeline create the Event Hubs Shared Access Token using the bash file [get-event-hub-token.sh](./devops-pipelines/load-testing/get-event-hub-token.sh) and then store the token in the Azure Key Vault using the Azure CLI command line 'az keyvault secret set '.
-
-```bash
-          - task: AzureCLI@2
-            displayName: 'Get EventHub Token and store it in Key Vault'
-            name: getandstoretoken
-            inputs:
-              azureSubscription: $(SERVICE_CONNECTION)
-              scriptType: "bash"
-              addSpnToEnvironment: "true"
-              scriptLocation: "inlineScript"
-              inlineScript: |
-                # Read variables from configuration file
-                set -o allexport
-                source "$(CONFIGURATION_FILE)"
-                set +o allexport
-
-                cat "$(CONFIGURATION_FILE)"
-
-                # Get Event Hub Token
-                KEY=$(az eventhubs namespace authorization-rule keys list --resource-group "$(RESOURCE_GROUP)" --namespace-name "$(EVENTHUB_NAME_SPACE)" --name RootManageSharedAccessKey | jq -r .primaryKey)
-                echo "KEY: $KEY"
-                EVENTHUB_TOKEN=$("$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/get-event-hub-token.sh" "$(EVENTHUB_NAME_SPACE)" RootManageSharedAccessKey "${KEY}")
-                echo "EVENTHUB_TOKEN: $EVENTHUB_TOKEN"
-
-                # store eventhub token into azure key vault secret
-                az keyvault secret set --vault-name "${LOAD_TESTING_KEY_VAULT_NAME}" --name "${LOAD_TESTING_SECRET_NAME}" --value "${EVENTHUB_TOKEN}" --output none
-
-```
-
-The information related to the token stored in the Azure Key Vault are already defined in the file [load-testing-eventhub-restricted-public-access.template.yaml](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.yaml)
-
-```yml
-      secrets:
-          - name: "{loadTestSecretName}"
-            value: "https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}/"
-```
-
-This configuration file is used to create the load test in the step: 'Step Run Load Testing EventHub'.
-This step shares the Event Hubs Shared Access Token with the load testing platform running the jmx file through the secret called 'eventhub_token':  
-
-```yaml
-    - task: AzureLoadTest@1
-      displayName: 'Step Run Load Testing EventHub'
-      inputs:
-        azureSubscription: $(SERVICE_CONNECTION)
-        loadTestConfigFile: '$(TEMP_DIR)/load-testing-eventhub-restricted-public-access.yaml'
-        resourceGroup: $(LOAD_TESTING_RESOURCE_GROUP)
-        loadTestResource: $(LOAD_TESTING_NAME)
-        secrets: |
-          [
-          ]
-        env: |
-          [
-            {
-            "name": "eventhub_name_space",
-            "value": "$(EVENTHUB_NAME_SPACE)"
-            },
-            {
-            "name": "eventhub_input_1",
-            "value": "$(EVENTHUB_INPUT_1_NAME)"
-            },
-            {
-            "name": "eventhub_input_2",
-            "value": "$(EVENTHUB_INPUT_2_NAME)"
-            },
-            {
-            "name": "duration",
-            "value": "${{ parameters.duration }}"
-            },
-            {
-            "name": "threads",
-            "value": "${{ parameters.threads }}"
-            }
-          ]
-
-```
-
-The load testing service reads the secret called 'eventhub_token'and initialize the variable 'udv_token' with the token value.
-
-```xml
-        <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
-          <collectionProp name="Arguments.arguments">
-            <elementProp name="udv_namespace" elementType="Argument">
-              <stringProp name="Argument.name">udv_namespace</stringProp>
-              <stringProp name="Argument.value">${__BeanShell( System.getenv("eventhub_name_space") )}</stringProp>
-              <stringProp name="Argument.desc">Event Hubs Name Space</stringProp>
-              <stringProp name="Argument.metadata">=</stringProp>
-            </elementProp>
-            <elementProp name="udv_evinput1" elementType="Argument">
-              <stringProp name="Argument.name">udv_evinput1</stringProp>
-              <stringProp name="Argument.value">${__BeanShell( System.getenv("eventhub_input_1") )}</stringProp>
-              <stringProp name="Argument.desc">Event Hub input 1</stringProp>
-              <stringProp name="Argument.metadata">=</stringProp>
-            </elementProp> 
-            <elementProp name="udv_evinput2" elementType="Argument">
-              <stringProp name="Argument.name">udv_evinput2</stringProp>
-              <stringProp name="Argument.value">${__BeanShell( System.getenv("eventhub_input_2") )}</stringProp>
-              <stringProp name="Argument.desc">Event Hub input 2</stringProp>
-              <stringProp name="Argument.metadata">=</stringProp>
-            </elementProp>             
-            <elementProp name="udv_token" elementType="Argument">
-              <stringProp name="Argument.name">udv_token</stringProp>
-              <stringProp name="Argument.value">${__GetSecret(eventhub_token)}</stringProp>
-              <stringProp name="Argument.desc">Event Hub Token</stringProp>
-              <stringProp name="Argument.metadata">=</stringProp>
-            </elementProp>
-            <elementProp name="udv_duration" elementType="Argument">
-              <stringProp name="Argument.name">udv_duration</stringProp>
-              <stringProp name="Argument.value">${__BeanShell( System.getenv("duration") )}</stringProp>
-              <stringProp name="Argument.desc">Test Duration</stringProp>
-              <stringProp name="Argument.metadata">=</stringProp>
-            </elementProp>
-            <elementProp name="udv_threads" elementType="Argument">
-              <stringProp name="Argument.name">udv_threads</stringProp>
-              <stringProp name="Argument.value">${__BeanShell( System.getenv("threads") )}</stringProp>
-              <stringProp name="Argument.desc">Test number of threads</stringProp>
-              <stringProp name="Argument.metadata">=</stringProp>
-            </elementProp>
-          </collectionProp>
-        </Arguments>
-```
-
-And finally, the http header 'Authorization' is initialized with the value of the 'udv_token' variable.
-
-```xml
-        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
-          <collectionProp name="HeaderManager.headers">
-            <elementProp name="" elementType="Header">
-              <stringProp name="Header.name">Content-Type</stringProp>
-              <stringProp name="Header.value">application/atom+xml;type=entry;charset=utf-8</stringProp>
-            </elementProp>
-            <elementProp name="" elementType="Header">
-              <stringProp name="Header.name">Authorization</stringProp>
-              <stringProp name="Header.value">${udv_token}</stringProp>
-            </elementProp>
-            <elementProp name="" elementType="Header">
-              <stringProp name="Header.name">Host</stringProp>
-              <stringProp name="Header.value">${udv_namespace}.servicebus.windows.net</stringProp>
-            </elementProp>
-            <elementProp name="" elementType="Header">
-              <stringProp name="Header.name">BrokerProperties</stringProp>
-              <stringProp name="Header.value">{"PartitionKey": "${appid}${hostname}"}</stringProp>
-            </elementProp>
-          </collectionProp>
-        </HeaderManager>
-```
-
-### Streaming events from two different CSV files simultaneously
-
-For this scenario, the infrastructure supports two input Event Hubs receiving different kind of events:
-
-The input 1 receives events generated from the content in file [load-testing-eventhubevents1.csv](./devops-pipelines/load-testing/load-testing-eventhubevents1.csv)
-
-```csv
-      index,appid,hostname,ts,severity,http_status,domain,application
-      0,loadtest0,evhasa,2022-05-13T15:04:35.7602665,W,204,com.some.logger,MAIN
-      1,loadtest1,evhasa,2022-05-13T15:04:35.6517124,W,200,com.some.logger,MAIN
-      2,loadtest2,evhasa,2022-05-13T15:06:35.4017622,W,200,com.some.logger,MAIN
-      3,loadtest3,evhasa,2022-05-13T15:08:35.2924317,W,202,com.some.logger,MAIN
-      4,loadtest4,evhasa,2022-05-13T15:10:35.2924317,W,202,com.some.logger,MAIN
-      .
-      .
-```
-
-The input 2 receives events generated from the content in file [load-testing-eventhubevents2.csv](./devops-pipelines/load-testing/load-testing-eventhubevents2.csv)
-
-```csv
-      index,appid,hostname,ts,time_ms,resp_time,failed_trans
-      0,loadtest0,evhasa,2022-05-13T15:00:35.6517124,395,160,134
-      1,loadtest1,evhasa,2022-05-13T15:01:35.4017622,216,386,32
-      2,loadtest2,evhasa,2022-05-13T15:02:35.2924317,168,163,24
-      3,loadtest3,evhasa,2022-05-13T15:03:34.8030526,91,121,52
-      .
-      .
-```
-
-These two CSV source files don't contain the same kind of data, the columns are different, the file [load-testing-eventhub-restricted-public-access.jmx](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx) has been updated to support the different models.
-
-Input 1 with the declaration of each variable associated with the columns in the first CSV file:
-
-```xml
-        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Logs" enabled="true">
-          <stringProp name="delimiter">,</stringProp>
-          <stringProp name="fileEncoding">UTF-8</stringProp>
-          <stringProp name="filename">load-testing-eventhubevents1.csv</stringProp>
-          <boolProp name="ignoreFirstLine">true</boolProp>
-          <boolProp name="quotedData">true</boolProp>
-          <boolProp name="recycle">true</boolProp>
-          <stringProp name="shareMode">shareMode.all</stringProp>
-          <boolProp name="stopThread">true</boolProp>
-          <stringProp name="variableNames">index,appid,hostname,ts,severity,http_status,domain,application</stringProp>
-        </CSVDataSet> 
-```
-
-Input 2 with the declaration of each variable associated with the columns in the second CSV file:
-
-```xml
-        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Metrics" enabled="true">
-          <stringProp name="delimiter">,</stringProp>
-          <stringProp name="fileEncoding">UTF-8</stringProp>
-          <stringProp name="filename">load-testing-eventhubevents2.csv</stringProp>
-          <boolProp name="ignoreFirstLine">true</boolProp>
-          <boolProp name="quotedData">true</boolProp>
-          <boolProp name="recycle">true</boolProp>
-          <stringProp name="shareMode">shareMode.all</stringProp>
-          <boolProp name="stopThread">true</boolProp>
-          <stringProp name="variableNames">index,appid,hostname,ts,time_ms,resp_time,failed_trans</stringProp>
-        </CSVDataSet>  
-```
-
-Once the format of the source files is defined, the file [load-testing-eventhub-restricted-public-access.jmx](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx) is updated to define the format of the HTTP request body towards the Event Hub.
-
-HTTP request for Input 1:
-
-```xml
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Logs Request" enabled="true">
-          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
-          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments">
-              <elementProp name="" elementType="HTTPArgument">
-                <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                <stringProp name="Argument.value">{&quot;ts&quot;: &quot;${__time(yyyy-MM-dd)}T${__time(HH:mm:ss:SSS)}&quot;, &quot;appid&quot;:&quot;${appid}&quot;,&quot;hostname&quot;: &quot;${hostname}&quot;,&quot;severity&quot;:&quot;${severity}&quot;,&quot;http_status&quot;:&quot;${http_status}&quot;,&quot;domain&quot;:&quot;${domain}&quot;,&quot;application&quot;:&quot;${application}&quot; }&#xd;</stringProp>
-                <stringProp name="Argument.metadata">=</stringProp>
-              </elementProp>
-            </collectionProp>
-          </elementProp>
-          <stringProp name="HTTPSampler.domain">${udv_namespace}.servicebus.windows.net</stringProp>
-          <stringProp name="HTTPSampler.port">443</stringProp>
-          <stringProp name="HTTPSampler.protocol">https</stringProp>
-          <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-          <stringProp name="HTTPSampler.path">${udv_evinput1}/messages?timeout=60&amp;api-version=2014-01</stringProp>
-          <stringProp name="HTTPSampler.method">POST</stringProp>
-          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
-          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
-          <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
-          <stringProp name="HTTPSampler.connect_timeout"></stringProp>
-          <stringProp name="HTTPSampler.response_timeout"></stringProp>
-        </HTTPSamplerProxy>
-```
-
-HTTP request for Input 2:
-
-```xml
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Metrics Request" enabled="true">
-          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
-          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-            <collectionProp name="Arguments.arguments">
-              <elementProp name="" elementType="HTTPArgument">
-                <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                <stringProp name="Argument.value">{&quot;ts&quot;: &quot;${__time(yyyy-MM-dd)}T${__time(HH:mm:ss:SSS)}&quot;, &quot;appid&quot;:&quot;${appid}&quot;,&quot;hostname&quot;: &quot;${hostname}&quot;,&quot;time_ms&quot;:&quot;${time_ms}&quot;,&quot;resp_time&quot;:&quot;${resp_time}&quot;,&quot;failed_trans&quot;:&quot;${failed_trans}&quot; }&#xd;</stringProp>
-                <stringProp name="Argument.metadata">=</stringProp>
-              </elementProp>
-            </collectionProp>
-          </elementProp>
-          <stringProp name="HTTPSampler.domain">${udv_namespace}.servicebus.windows.net</stringProp>
-          <stringProp name="HTTPSampler.port">443</stringProp>
-          <stringProp name="HTTPSampler.protocol">https</stringProp>
-          <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-          <stringProp name="HTTPSampler.path">${udv_evinput2}/messages?timeout=60&amp;api-version=2014-01</stringProp>
-          <stringProp name="HTTPSampler.method">POST</stringProp>
-          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
-          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
-          <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
-          <stringProp name="HTTPSampler.connect_timeout"></stringProp>
-          <stringProp name="HTTPSampler.response_timeout"></stringProp>
-        </HTTPSamplerProxy>
-```
-<!-- markdown-link-check-disable -->
-Moreover, the ts value (Timestamp) in the body of the POST HTTP request is updated with the current time.
-
-At least, when the test is completed, you can check in the result file whether both Event Hub inputs did receive the HTTP Request:
-
-| timeStamp  | elapsed | label | responseCode | responseMessage | threadName | dataType | URL | Latency | IdleTime | Connect|
-|:----------:|:-------:|:-----:|:-------------:|:----------------:|:-----------:|:---------:|:----|:-------:|:---------:|:-------:|
-|1.67395E+12 | 122   | Logs  Request | 201     | Created   | 10.1.1.4-Thread Group 1-1 | text | "https://evhevhubxxxx.servicebus.windows.net/evinput1/messages?timeout=60&api-version=2014-01" | 122 | 0 | 63|
-| 1.67395E+12 | 39 | Metrics Request | 201 | Created | 10.1.1.4-Thread Group 1-1 | text | "https://evhevhubxxxx.servicebus.windows.net/evinput2/messages?timeout=60&api-version=2014-01" | 39 | 0 | 0|
-| 1.67395E+12 | 44 | Logs Request | 201 | Created | 10.1.1.4-Thread Group 1-1 | text | "https://evhevhubxxxx.servicebus.windows.net/evinput1/messages?timeout=60&api-version=2014-01" | 44 | 0 | 0|
-| 1.67395E+12 | 40 | Metrics Request | 201 | Created | 10.1.1.4-Thread Group 1-1 | text | "https://evhevhubxxxx.servicebus.windows.net/evinput2/messages?timeout=60&api-version=2014-01"  | 40  | 0 | 0|
-<!-- markdown-link-check-enable -->
-
-### Using Data Plane Load Test Administration and Load Test Run REST API
-
-When you use load-testing-tool.sh bash file with the option 'runtest' to run the load tests, it uses Data Plane Load Test Administration and Load Test Run REST APIs to create the test, run the test and monitor the test.
-
-Before calling the REST API, you need to get the Load Testing Token. First you need to retrieve the Load Testing Hostname from the Load Testing Azure resource. Once you can get the hostname, you can get the token using the Azure CLI command 'az account get-access-token' see below:
-
-```bash
-    LOAD_TESTING_HOSTNAME=$(az load  show --name "${LOAD_TESTING_RESOURCE}" --resource-group "${LOAD_TESTING_RESOURCE_GROUP}" | jq -r ".dataPlaneURI")
-    LOAD_TESTING_TOKEN=$(az account get-access-token --resource "${LOAD_TESTING_HOSTNAME}" --scope "https://cnt-prod.loadtesting.azure.com/.default" | jq -r '.accessToken')
-```
-
-Once you get the token, you can call the load test administration REST API to create a new test filling the values in the template file [./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.json](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.json). This json file is used as the body of the REST API call. 
-
-Further information about the load test administration REST API on this page: [https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-administration](https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-administration)
-
-Below the code to create the load test:
-
-```bash
-    LOAD_TESTING_TEST_ID=$(cat /proc/sys/kernel/random/uuid)
-
-    TEMP_DIR=$(mktemp -d)
-    cp  "$SCRIPTS_DIRECTORY/../../devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.json"  "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubNameSpace}/${EVENTHUB_NAME_SPACE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubInput1}/${EVENTHUB_INPUT_1_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubInput2}/${EVENTHUB_INPUT_2_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-
-    cmd="curl -s -X PATCH \
-    \"https://$LOAD_TESTING_HOSTNAME/tests/$LOAD_TESTING_TEST_ID?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer $LOAD_TESTING_TOKEN' \
-     -d \"@$TEMP_DIR/load-testing-eventhub-restricted-public-access.json\" "
-    eval "$cmd" >/dev/null
-```
-
-Once the load test is created you need to upload the jmx and csv files associated with the load test using the code below:
-
-```bash
-    cmd="curl -s -X PUT \
-    \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/load-testing-eventhub-restricted-public-access.jmx?fileType=JMX_FILE&api-version=2022-11-01\" \
-     -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-     --data-binary  \"@$SCRIPTS_DIRECTORY/../../devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx\" "
-    eval "$cmd" >/dev/null
-```
-
-Once the jmx file and the 2 csv files are uploaded, you can run the load test using the load test run REST API. Further information about this REST API on this page:
-[https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-run](https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-run).
-
-You need to fill the values in the template file [./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access-run.template.json](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access-run.template.json) before calling the API to run the test. This json file is used as the body of the REST API call. 
-
-```bash
-    LOAD_TESTING_TEST_RUN_ID=$(cat /proc/sys/kernel/random/uuid)
-    printProgress "Launching test ${LOAD_TESTING_TEST_NAME} RunID:${LOAD_TESTING_TEST_RUN_ID}..."    
-    # Update Load Testing configuration file
-    LOAD_TESTING_DATE=$(date +"%y%m%d-%H%M%S")
-    TEMP_DIR=$(mktemp -d)
-    cp  "$SCRIPTS_DIRECTORY/../../devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access-run.template.json"  "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{id}/${LOAD_TESTING_TEST_ID}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{date}/${LOAD_TESTING_DATE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubNameSpace}/${EVENTHUB_NAME_SPACE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubInput1}/${EVENTHUB_INPUT_1_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubInput2}/${EVENTHUB_INPUT_2_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-
-    # Wait 10 seconds to be sure the JMX file is validated
-    sleep 10
-
-    cmd="curl -s -X PATCH  \
-    \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-     -d \"@$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json\" "
-    eval "$cmd"  >/dev/null
-```
-
-Once the load test is launched, you can monitor the status of the load test using the REST API below.
-
-```bash
-    statuscmd="curl -s -X GET \
-    \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
-    LOAD_TESTING_STATUS="unknown"
-    while [ "${LOAD_TESTING_STATUS}" != "DONE" ] && [ "${LOAD_TESTING_STATUS}" != "FAILED" ] && [ "${LOAD_TESTING_STATUS}" != "null" ]
-    do
-        sleep 10
-        LOAD_TESTING_STATUS=$(eval "$statuscmd" | jq -r '.status')
-        printProgress "Current status: ${LOAD_TESTING_STATUS}" 
-    done
-```
-
-This REST API returns the status of the load test:
-
-- ACCEPTED: The load testing configuration with the JMX file and CSV files has been accepted
-- PROVISIONING: The load testing service is provisioning the resources for the test
-- CONFIGURING: The load testing service is configuring the resources
-- EXECUTING: The load testing service is executing the test
-- DONE: the test is completed
-
-As soon as the status of the load test is 'DONE', you can check the status of testResult. When the value is 'PASSED' the load test results are available.
-
-```bash
-    LOAD_TESTING_RESULT="NOT_APPLICABLE"
-    while [ "${LOAD_TESTING_RESULT}" == "NOT_APPLICABLE" ] 
-    do
-        sleep 10
-        LOAD_TESTING_RESULT=$(eval "$statuscmd" | jq -r '.testResult')
-        printProgress "Current results status: ${LOAD_TESTING_RESULT}" 
-    done
-    LOAD_TESTING_STATISTICS=$(eval "$statuscmd" | jq -r '.testRunStatistics')
-    printMessage "Running load testing successful"
-    printMessage "Result: $LOAD_TESTING_RESULT"
-    printMessage "Statistics: $LOAD_TESTING_STATISTICS"  
-```
+Project documentation in this file: [README.md](./projects/eventhub/README.md) 
 
 ## Contribute
 

@@ -43,7 +43,7 @@ function usage() {
     infoMessage " -v  Sets the verbose mode (disable by default)"
     infoMessage
     infoMessage "Example:"
-    infoMessage " bash createrbacsp.sh -s b5c9fc83-fbd0-4368-9cb6-1b5823479b6a -a testazdosp "
+    infoMessage " bash  -s b5c9fc83-fbd0-4368-9cb6-1b5823479b6a -a testazdosp "
 }
 subscription=
 appName=
@@ -77,7 +77,7 @@ fi
 
 checkError() {
     if [ $? -ne 0 ]; then
-        echo -e "${RED}\nAn error occurred in createrbacsp.sh bash${NC}"
+        echo -e "${RED}\nAn error occurred in  bash${NC}"
         exit 1
     fi
 }
