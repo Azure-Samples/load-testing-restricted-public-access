@@ -5,9 +5,9 @@ trigger:
       - "main"
   paths:
     include:
-      - devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml
-      - devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.yaml
-      - devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx
+      - ./projects/eventhub/devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-restricted-public-access.yml
+      - ./projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.yaml
+      - ./projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.jmx
 
 pool:
   vmImage: ubuntu-latest
@@ -44,7 +44,7 @@ parameters:
 
 variables:
   - name: CONFIGURATION_FILE
-    value: './configuration/.default.env'
+    value: './projects/eventhub/configuration/.default.env'
   - group: load-testing-vg
 
 stages:
@@ -243,20 +243,20 @@ stages:
                 echo "RESPONSE TIME MS: ${{ parameters.responseTimeMs }}"
                 # Update Load Testing configuration file
                 TEMP_DIR=$(mktemp -d)
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.jmx"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhubevents1.csv" "$TEMP_DIR/load-testing-eventhubevents1.csv"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhubevents2.csv" "$TEMP_DIR/load-testing-eventhubevents2.csv"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.yaml" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
+                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.jmx" "$TEMP_DIR/load-testing.jmx"
+                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents1.csv" "$TEMP_DIR/load-testing-eventhubevents1.csv"
+                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents2.csv" "$TEMP_DIR/load-testing-eventhubevents2.csv"
+                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing.yaml"
 
-                echo "load-testing-eventhub-restricted-public-access.yaml content:"
-                cat "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
+                echo "load-testing.yaml content:"
+                cat "$TEMP_DIR/load-testing.yaml"
 
                 # Store the temporary directory in output variable
                 echo "##vso[task.setvariable variable=TEMP_DIR;issecret=false]$TEMP_DIR"
@@ -267,7 +267,7 @@ stages:
             displayName: 'Step Run Load Testing EventHub'
             inputs:
               azureSubscription: $(SERVICE_CONNECTION)
-              loadTestConfigFile: '$(TEMP_DIR)/load-testing-eventhub-restricted-public-access.yaml'
+              loadTestConfigFile: '$(TEMP_DIR)/load-testing.yaml'
               resourceGroup: $(LOAD_TESTING_RESOURCE_GROUP)
               loadTestResource: $(LOAD_TESTING_NAME)
               secrets: |
