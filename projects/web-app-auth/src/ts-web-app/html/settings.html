@@ -1,0 +1,86 @@
+<div id="settings" class="container">
+    <h3>Settings Page</h3>
+    <div class='row container'>
+        <label class='col-sm-2' >
+            <strong>Version: </strong></label>
+            <div class='col-sm-4'><button id="versionButton"  class="mini-button mini-button-version" ></button>
+            </div>
+        </div>
+    </div>
+
+    <div class='container'>
+        <ul class='nav nav-pills'>
+            <li class='active'>
+                <a data-toggle='pill' class='mini-tab-button' id='configurationtab'  href='#configuration'>Configuration</a>
+            </li>
+            <!--
+            <li>
+                <a data-toggle='pill'  class='mini-tab-button' id='cloudtab'   href='#cloud'>Cloud</a>
+            </li>
+            -->
+        </ul>
+        <div class='tab-content'>
+            <div id='configuration' class='tab-pane fade active show'>
+                <h3>Application Configuration</h3>
+                <div class='row'>
+                    <label class='col-sm-4' for="colorselection"><strong>Color:</strong></label>
+                    <div class='col-sm-8'> 
+                        <select id='colorselection' class='selectpicker'  > 
+                            <option value='red' class="mini-text-color-red">Red</option> 
+                            <option value='green' class="mini-text-color-green">Green</option> 
+                            <option value='blue' class="mini-text-color-blue">Blue</option> 
+                            <option value='yellow' class="mini-text-color-yellow">Yellow</option> 
+                            <option value='purple' class="mini-text-color-purple">Purple</option> 
+                            <option value='orange' class="mini-text-color-orange">Orange</option> 
+                        </select>
+                    </div>
+                </div>
+                <div class='row'>
+                    <label class='col-sm-4'  for="languageselection" ><strong>Language:</strong></label>
+                    <div class='col-sm-8'>
+                        <select id='languageselection'  class='selectpicker'  > 
+                            <option value='en' >English</option> 
+                            <option value='fr' >French</option> 
+                            <option value='de' >German</option> 
+                            <option value='it' >Italian</option> 
+                            <option value='pt' >Portuguese</option> 
+                            <option value='es' >Spanish</option> 
+                        </select>
+                    </div>
+                </div>
+                <div class='row'>
+                    <label class='col-sm-4' ><strong>Pagination size:</strong></label>
+                    <div class='col-sm-8'>
+                        <select id='paginationsizeselection'  > 
+                            <option value='2' >2</option> 
+                            <option value='5' >5</option> 
+                            <option value='10' >10</option> 
+                            <option value='25' >25</option> 
+                            <option value='50' >50</option> 
+                            <option value='100' >100</option> 
+                        </select>
+                    </div>
+                </div>
+
+                <div class='row'>
+                    <label class='col-sm-4' ><strong>Navigation Cache:</strong></label>
+                    <div class='col-sm-8'>
+                        <div class='custom-control custom-checkbox'>
+                            <input  type="checkbox" class="custom-control-input mini-background-checkbox" id="navigationcache"  >
+                            <label class="custom-control-label" for="navigationcache"></label>
+                        </div>
+                    </div>
+                </div>    
+                <div class="row">
+                    <button type="button" id="reinitialize" class="mini-button  mini-button-text mini-show"  >Reinitialize</button>
+                </div>
+            </div>
+<!--
+            <div id='cloud' class='tab-pane fade'><h3>Cloud Configuration</h3>
+                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+            </div>
+-->            
+        </div>
+    </div>
+</div>
+<script src="settings-bundle.js"></script>

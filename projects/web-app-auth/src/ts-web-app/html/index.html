@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Visit Service</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link rel="SHORTCUT ICON" href="./favicon.svg" type="image/x-icon; charset=utf-8"/>
+  <meta content="text/html; charset=UTF-8; X-Content-Type-Options=nosniff" http-equiv="Content-Type" />
+  <!--
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">    
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+-->  
+<!--
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">    
+  <link rel="stylesheet" href="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.css">
+  <link href="https://unpkg.com/bootstrap-table@1.19.1/dist/bootstrap-table.min.css" rel="stylesheet">
+-->  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css">    
+<link rel="stylesheet" href="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.css">
+<link href="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="dist/css/font-awesome.min.css">
+  <link href="navmanager.css" rel="stylesheet"/>
+  <link href="index.css" rel="stylesheet"/>
+</head>
+
+<body>
+  <header>
+  <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <button id="mediaburgerbutton" class="navbar-toggler mini-navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fa fa-align-justify fa-1x"></i>
+      </button>    
+      <a class="navbar-brand" href="#home" id="appName">Visit App</a>
+      <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+        <ul class="navbar-nav mr-auto nav-pills">
+          <li class="nav-item"><button type="button" class="mini-menu-button"  aria-current="page" href="#home">Home</button></li>
+          <li class="nav-item"><button type="button" class="mini-menu-button"  href="#visit">Visit</button></li>
+          <li class="nav-item"><button type="button" class="mini-menu-button"  href="#settings">Settings</button></li>
+          <li class="nav-item"><button type="button" class="mini-menu-button"  href="#signin" id="signIn">Login</button></li>
+          <li class="nav-item"><button type="button" class="mini-menu-button"  href="#signout"  id="signOut">Logout</button></li>
+        </ul>
+      </div>
+  </nav>
+  </header>
+
+    <!-- Dynamic content will be placed here by JavaScript. -->
+    <main role="main">
+    <div class="album px-2 bg-light">            
+      <div class="container">
+        <div class="row" id="content">
+        </div>
+      </div>
+    </div>
+    </main>
+
+  <footer class="text-muted">
+    <div class="container">
+      <p class="float-right"><a class="mini-text-background-color"  href="#home" href=# id="backHomePage">Back to Home page</a></p>
+      <div class="row" id="footerTitle">Visit Application &copy; </div>
+  </div>
+</footer>  
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<!--
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.min.js" integrity="sha384-VHvPCCyXqtD5DqJeNxl2dtTyhF78xXNXdkwX1CZeRusQfRKp+tA7hAShOK/B/fQ2" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/bootstrap-table@1.19.1/dist/bootstrap-table.min.js"></script>
+-->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.5/dist/umd/popper.min.js" integrity="sha384-Xe+8cL9oJa6tN/veChSP7q+mnSPaj5Bcu9mPX5F5xIGE0DVittaqT5lorf0EI7Vk" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.min.js" integrity="sha384-ODmDIVzN+pFdexxHEHFBQH3/9/vQ9uori45z4JjnFsRydbmQbmL5t1tQ0culUzyK" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.js"></script>
+
+<!-- Bootstrap table localization strings -->
+<script src="dist/js/bootstrap-table-en-US.min.js"></script>
+<script src="dist/js/bootstrap-table-de-DE.min.js"></script>
+<script src="dist/js/bootstrap-table-fr-FR.min.js"></script>
+<script src="dist/js/bootstrap-table-pt-PT.min.js"></script>
+<script src="dist/js/bootstrap-table-it-IT.min.js"></script>
+<script src="dist/js/bootstrap-table-es-SP.min.js"></script>
+
+<!--
+<script src="https://unpkg.com/bootstrap-table@1.19.1/dist/extensions/resizable/bootstrap-table-resizable.min.js"></script>
+-->
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/resizable/bootstrap-table-resizable.min.js"></script>
+
+<script src="https://unpkg.com/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.3.0/js/msal-browser.min.js" integrity="sha384-o+Sncs5XJ3NEAeriM/FV8YGZrh7mZk4GfNutRTbYjsDNJxb7caCLeqiDabistgwW" crossorigin="anonymous" type="text/javascript"></script>      
+
+
+<script src="main-bundle.js"></script>     
+<!-- UI localization strings -->
+<script src="stringsenUS-bundle.js"></script>
+<script src="stringsfrFR-bundle.js"></script>
+<script src="stringsitIT-bundle.js"></script>
+<script src="stringsptPT-bundle.js"></script>
+<script src="stringsdeDE-bundle.js"></script>
+<script src="stringsesSP-bundle.js"></script>
+
+</body>
+</html>

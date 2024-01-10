@@ -219,11 +219,12 @@ function isKeyVaultNameAvailable(){
 #- getNewSuffix
 ##############################################################################
 function getNewSuffix(){
-    subscription=$1
+    prefix=$1
+    subscription=$2
     checkname="false"
     while [ ${checkname} == "false" ]
     do
-        suffix="evhub$(shuf -i 1000-9999 -n 1)"
+        suffix="${prefix}$(shuf -i 1000-9999 -n 1)"
         RESOURCE_GROUP=$(getResourceGroupName "${suffix}")
         LOAD_TESTING_RESOURCE_GROUP=$(getLoadTestingResourceGroupName "${suffix}")
         AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(getStorageAccountResourceName "${suffix}")
@@ -546,4 +547,165 @@ function checkScenario(){
         printError "Load Testing JMX file ${FILE} doesn't exists."
         exit 1
     fi
+}
+##############################################################################
+#- buildWebAppContainer
+##############################################################################
+function buildWebAppContainer() {
+    ContainerRegistryName="${1}"
+    targetDirectory="$2"
+    imageName="$3"
+    imageTag="$4"
+    imageLatestTag="$5"
+    portHttp="$6"
+
+    if [ ! -d "$targetDirectory" ]; then
+            echo "Directory '$targetDirectory' does not exist."
+            exit 1
+    fi
+
+    echo "Building and uploading the docker image for '$targetDirectory'"
+
+    # Navigate to API module folder
+    # shellcheck disable=SC2164
+    pushd "$targetDirectory" > /dev/null
+
+    # Build the image
+    echo "Building the docker image for '$imageName:$imageTag'"
+    cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Production\" . --only-show-errors 2> /dev/null"
+    #cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Development\" . --only-show-errors 2> /dev/null"
+    printProgress "$cmd"
+    eval "$cmd"
+
+    # shellcheck disable=SC2164
+    popd > /dev/null
+
+}
+##############################################################################
+#- deployWebAppContainer
+##############################################################################
+function deployWebAppContainer(){
+    SUBSCRIPTION_ID="$1"
+    prefix="$2"
+    appType="$3"
+    webapp="$4"
+    ContainerRegistryUrl="$5"
+    ContainerRegistryName="$6"
+    imageName="$7"
+    imageTag="$8"
+    appVersion="$9"
+    portHTTP="${10}"
+
+    resourcegroup="rg${prefix}"
+
+    # When deployed, WebApps get automatically a managed identity. Ensuring this MSI has AcrPull rights
+    printProgress  "Ensure ${webapp} has AcrPull role assignment on ${ContainerRegistryName}..."
+    WebAppMsiPrincipalId=$(az "${appType}" show -n "$webapp" -g "$resourcegroup" -o json   2> /dev/null | jq -r .identity.principalId)
+    WebAppMsiAcrPullAssignmentCount=$(az role assignment list --assignee "$WebAppMsiPrincipalId" --scope /subscriptions/"${SUBSCRIPTION_ID}"/resourceGroups/"${resourcegroup}"/providers/Microsoft.ContainerRegistry/registries/"${ContainerRegistryName}" 2> /dev/null | jq -r 'select(.[].roleDefinitionName=="AcrPull") | length')
+
+    if [ "$WebAppMsiAcrPullAssignmentCount" != "1" ];
+    then
+        printProgress  "Assigning AcrPull role assignment on scope ${ContainerRegistryName}..."
+        az role assignment create --assignee-object-id "$WebAppMsiPrincipalId" --assignee-principal-type ServicePrincipal --scope /subscriptions/"${SUBSCRIPTION_ID}"/resourceGroups/"${resourcegroup}"/providers/Microsoft.ContainerRegistry/registries/"${ContainerRegistryName}" --role "AcrPull" 2> /dev/null
+    fi
+
+    printProgress  "Check if WebApp ${webapp} use Managed Identity for the access to ACR ${ContainerRegistryName}..."
+    WebAppAcrConfigAcrEnabled=$(az resource show --ids /subscriptions/"${SUBSCRIPTION_ID}"/resourceGroups/"${resourcegroup}"/providers/Microsoft.Web/sites/"${webapp}"/config/web 2> /dev/null | jq -r ".properties.acrUseManagedIdentityCreds")
+    if [ "$WebAppAcrConfigAcrEnabled" = false ];
+    then
+        printProgress "Enabling Acr on ${webapp}..."
+        az resource update --ids /subscriptions/"${SUBSCRIPTION_ID}"/resourceGroups/"${resourcegroup}"/providers/Microsoft.Web/sites/"${webapp}"/config/web --set properties.acrUseManagedIdentityCreds=True 2> /dev/null
+    fi
+
+
+    printProgress "Create Containers"
+    FX_Version="Docker|$ContainerRegistryUrl/$imageName:$imageTag"
+
+    #Configure the ACR, Image and Tag to pull
+    cmd="az resource update --ids /subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${resourcegroup}/providers/Microsoft.Web/sites/${webapp}/config/web --set properties.linuxFxVersion=\"$FX_Version\" -o none --force-string"
+    printProgress "$cmd"
+    eval "$cmd"
+
+    printProgress "Create Config"
+    if [ "${appType}" == "webapp" ];
+    then 
+    cmd="az ${appType} config appsettings set -g \"$resourcegroup\" -n \"$webapp\" \
+    --settings WEBSITES_PORT=8080 APP_VERSION=${appVersion} PORT_HTTP=${portHTTP} --output none"
+    else
+    cmd="az ${appType} config appsettings set -g \"$resourcegroup\" -n \"$webapp\" \
+    --settings APP_VERSION=${appVersion} PORT_HTTP=${portHTTP} --output none"
+    fi
+    printProgress "$cmd"
+    eval "$cmd"
+}
+##############################################################################
+#- getLatestImageVersion: get latest image version
+#  arg 1: ACR Name
+#  arg 2: image Name
+##############################################################################
+function getLatestImageVersion(){
+    acr="$1"
+    image="$2"
+    #cmd="az acr repository show-manifests --name ${acr} --repository ${image} --output json"
+    cmd="az acr manifest list-metadata -r ${acr} -n ${image} --output json 2> /dev/null"
+    #echo "$cmd"
+    result=$(eval "$cmd")
+    cmd="echo '$result' | jq -r 'length'"
+    count=$(eval "$cmd")
+    if [ -n "$count" ] ; then
+        #echo "COUNT: $count"
+        # shellcheck disable=SC2004
+        for ((index=0;index<=((${count}-1));index++ ))
+        do
+            cmd="echo '$result' | jq -r '.[${index}].tags' | jq -r 'length' "
+            count_tags=$(eval "$cmd")
+            #echo "count_tags: $count_tags"
+            # shellcheck disable=SC2004
+            for ((index_tag=0;index_tag<=((${count_tags}-1));index_tag++ ))
+            do
+                cmd="echo '$result' | jq -r '.[${index}].tags[${index_tag}]' "
+                tag=$(eval "$cmd")
+                if [ "$tag" == 'latest' ]; then
+                    if [ $index_tag -ge 1 ]; then
+                        cmd="echo '$result' | jq -r '.[${index}].tags[0]' "
+                        version=$(eval "$cmd")
+                        echo "${version}"
+                        return
+                    fi
+                fi
+            done
+        done
+    fi               
+}
+##############################################################################
+#- check is Url is ready returning 200
+##############################################################################
+function checkWebUrl() {
+    httpCode="404"
+    apiUrl="$1"
+    expectedResponse="$2"
+    timeOut="$3"
+    response=""
+    count=0
+    while [[ "$httpCode" != "200" ]] || [[ ! "${response}" =~ .*"${expectedResponse}".* ]] && [[ $count -lt ${timeOut} ]]
+    do
+        SECONDS=0
+        httpCode=$(curl -s -o /dev/null -L -w '%{http_code}' "$apiUrl") || true
+        if [[ $httpCode == "200" ]]; then
+            response=$(curl -s  "$apiUrl") || true
+            response=${response//\"/}
+        fi
+        #echo "count=${count} code: ${httpCode} response: ${response} "
+        sleep 10
+        ((count=count+SECONDS))
+    done
+    #echo "httpcode: ${httpCode}"
+    #echo "response: ${response}"
+    #echo "expectedResponse: ${expectedResponse}"
+    if [[ $httpCode == "200" ]] && [[ "${response}" =~ .*"${expectedResponse}".* ]]; then
+        echo "true"
+        return
+    fi
+    echo "false"
+    return
 }

@@ -39,11 +39,13 @@ function usage() {
 }
 
 ACTION=
-CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../../configuration/.default.env"
+CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../configuration/.default.env"
+AZURE_RESOURCE_PREFIX="waa"
 AZURE_RESOURCE_SKU="B1"
 AZURE_SUBSCRIPTION_ID=""
 AZURE_TENANT_ID=""   
 AZURE_REGION="eastus2"
+AZURE_APP_ID=""
 LOAD_TESTING_SECRET_NAME="EVENTHUB-TOKEN"
 LOAD_TESTING_DURATION="60"
 LOAD_TESTING_THREADS="1"
@@ -146,7 +148,7 @@ if [[ "${ACTION}" == "createconfig" ]] ; then
     AZURE_SUBSCRIPTION_ID=$(az account show --query id --output tsv 2> /dev/null) || true
     if [ -n "${AZURE_SUBSCRIPTION_ID}" ]
     then
-        AZURE_TEST_SUFFIX=$(getNewSuffix "${AZURE_SUBSCRIPTION_ID}")
+        AZURE_TEST_SUFFIX=$(getNewSuffix  "${AZURE_RESOURCE_PREFIX}" "${AZURE_SUBSCRIPTION_ID}")
         printMessage "Suffix found AZURE_TEST_SUFFIX: '${AZURE_TEST_SUFFIX}'"
         cat > "$CONFIGURATION_FILE" << EOF
 AZURE_REGION="${AZURE_REGION}"
@@ -166,7 +168,7 @@ if [[ "${ACTION}" == "getsuffix" ]] ; then
     AZURE_SUBSCRIPTION_ID=$(az account show --query id --output tsv 2> /dev/null) || true
     if [ -n "${AZURE_SUBSCRIPTION_ID}" ]
     then
-        SUFFIX=$(getNewSuffix "${AZURE_SUBSCRIPTION_ID}")
+        SUFFIX=$(getNewSuffix  "${AZURE_RESOURCE_PREFIX}" "${AZURE_SUBSCRIPTION_ID}")
         echo "${SUFFIX}"
     fi
     exit 0
@@ -190,6 +192,7 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
     checkError    
+    az config set extension.use_dynamic_install=yes_without_prompt 
     printMessage "Deploy infrastructure subscription: '$AZURE_SUBSCRIPTION_ID' region: '$AZURE_REGION' suffix: '$AZURE_TEST_SUFFIX'"
     printMessage "       Backend: 'Azure EventHubs with restricted public access'"
     # Get Agent IP address
@@ -200,73 +203,376 @@ if [[ "${ACTION}" == "deploy" ]] ; then
 
     deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_TEST_SUFFIX" "$RESOURCE_GROUP"  \
      "$AZURE_RESOURCE_SKU" "$ip" "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/infrastructure/infrastructure-to-test/arm/global.json" 
+    printMessage "Azure Container Registry DNS name: ${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
+    printMessage "Azure Web App Url: ${AZURE_RESOURCE_WEB_APP_SERVER}"
+    printMessage "Azure function Url: ${AZURE_RESOURCE_FUNCTION_SERVER}"
+    AZURE_RESOURCE_WEB_APP_DOMAIN=$(echo "${AZURE_RESOURCE_WEB_APP_SERVER}" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+    AZURE_RESOURCE_FUNCTION_DOMAIN=$(echo "${AZURE_RESOURCE_FUNCTION_SERVER}" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+
     updateConfigurationFile "${CONFIGURATION_FILE}" "RESOURCE_GROUP" "${RESOURCE_GROUP}"
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_EVENTHUBS_NAMESPACE" "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" 
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME" "${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}" 
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME" "${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}" 
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME" "${AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME}" 
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP" "${AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP}" 
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP" "${AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP}" 
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP" "${AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP}" 
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_ACR_LOGIN_SERVER" "${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_WEB_APP_SERVER" "${AZURE_RESOURCE_WEB_APP_SERVER}"
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_FUNCTION_SERVER" "${AZURE_RESOURCE_FUNCTION_SERVER}"
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_WEB_APP_DOMAIN" "${AZURE_RESOURCE_WEB_APP_DOMAIN}"
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_FUNCTION_DOMAIN" "${AZURE_RESOURCE_FUNCTION_DOMAIN}"  
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME" "${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"   
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_APP_INSIGHTS_NAME" "${AZURE_RESOURCE_APP_INSIGHTS_NAME}"   
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_APP_INSIGHTS_NAME" "${AZURE_RESOURCE_APP_INSIGHTS_NAME}"      
     echo "File: ${CONFIGURATION_FILE}"
-    cat "${CONFIGURATION_FILE}"
+    cat "${CONFIGURATION_FILE}"    
+    printMessage "Deploying the infrastructure done"
+
+    printMessage "Create Azure AD Application..."
+    # if AZURE_APP_ID is not defined in variable group 
+    # Create application
+    if [[ -z ${AZURE_APP_ID} || ${AZURE_APP_ID} == 'null' || ${AZURE_APP_ID} == '' ]] ; then
+        # Create or update application
+        printProgress "As AZURE_APP_ID is not set, check if Application 'sp-${AZURE_TEST_SUFFIX}-app' exists"
+        cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].appId"
+        printProgress "$cmd"
+        appId=$(eval "$cmd") || true    
+        if [[ -z ${appId} || ${appId} == 'null' ]] ; then
+            # Create application 
+            printProgress "Create Application 'sp-${AZURE_TEST_SUFFIX}-app' "        
+            cmd="az ad app create  --display-name \"sp-${AZURE_TEST_SUFFIX}-app\"  --required-resource-access \"[{\\\"resourceAppId\\\": \\\"00000003-0000-0000-c000-000000000000\\\",\\\"resourceAccess\\\": [{\\\"id\\\": \\\"e1fe6dd8-ba31-4d61-89e7-88639da4683d\\\",\\\"type\\\": \\\"Scope\\\"}]},{\\\"resourceAppId\\\": \\\"e406a681-f3d4-42a8-90b6-c2b029497af1\\\",\\\"resourceAccess\\\": [{\\\"id\\\": \\\"03e0da56-190b-40ad-a80c-ea378c433f7f\\\",\\\"type\\\": \\\"Scope\\\"}]}]\" --only-show-errors | jq -r \".appId\" "
+            printProgress "$cmd"
+            appId=$(eval "$cmd")
+            # wait 30 seconds
+            printProgress "Wait 30 seconds after app creation"
+            # Wait few seconds before updating the Application record in Azure AD
+            sleep 30
+            # Get application objectId  
+            cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].id"    
+            printProgress "$cmd"
+            objectId=$(eval "$cmd") || true    
+            if [[ -n ${objectId} && ${objectId} != 'null' ]] ; then
+                printProgress "Update Application 'sp-${AZURE_TEST_SUFFIX}-app' in Microsoft Graph "   
+                # Azure CLI Application Id : 04b07795-8ddb-461a-bbee-02f9e1bf7b46 
+                # Azure CLI will be authorized to get access token to the API using the commands below:
+                #  token=$(az account get-access-token --resource api://<WebAPIAppId> | jq -r .accessToken)
+                #  curl -i -X GET --header "Authorization: Bearer $token"  https://<<WebAPIDomain>/visit
+                cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
+                    --headers \"Content-Type=application/json\" \
+                    --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${AZURE_RESOURCE_WEB_APP_SERVER}\\\"]},\\\"identifierUris\\\":[\\\"api://${appId}\\\"]}\""
+                printProgress "$cmd"
+                eval "$cmd"
+                # Wait few seconds before updating the Application record in Azure AD 
+                sleep 10
+                cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
+                    --headers \"Content-Type=application/json\" \
+                    --body \"{\\\"api\\\":{\\\"preAuthorizedApplications\\\": [{\\\"appId\\\": \\\"04b07795-8ddb-461a-bbee-02f9e1bf7b46\\\",\\\"delegatedPermissionIds\\\": [\\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\"]}]}}\""
+                printProgress "$cmd"
+                eval "$cmd"            
+            else
+                printError "Error while creating application sp-${AZURE_TEST_SUFFIX}-app can't get objectId"
+                exit 1
+            fi
+            cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].appId"
+            printProgress "$cmd"
+            appId=$(eval "$cmd") || true    
+            if [[ -n ${appId} && ${appId} != 'null' ]] ; then
+                printProgress "Create Service principal associated with application 'sp-${AZURE_TEST_SUFFIX}-app' "        
+                cmd="az ad sp create-for-rbac --name 'sp-${AZURE_TEST_SUFFIX}-app'  --role contributor --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP} --only-show-errors"        
+                printProgress "$cmd"
+                eval "$cmd" || true
+            fi 
+            printProgress  "Application 'sp-${AZURE_TEST_SUFFIX}-app' with application Id: ${appId} and object Id: ${objectId} has been created"
+        else
+            printProgress  "Application 'sp-${AZURE_TEST_SUFFIX}-app' with application Id: ${appId} already exists"
+            printProgress  "Update application 'sp-${AZURE_TEST_SUFFIX}-app' with the new redirectUri ${AZURE_RESOURCE_WEB_APP_SERVER}"
+            # Get application objectId  
+            cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].id"    
+            printProgress "$cmd"
+            objectId=$(eval "$cmd") || true    
+            if [[ -n ${objectId} && ${objectId} != 'null' ]] ; then
+                printProgress "Update Application 'sp-${AZURE_TEST_SUFFIX}-app' in Microsoft Graph "   
+                # Azure CLI Application Id : 04b07795-8ddb-461a-bbee-02f9e1bf7b46 
+                # Azure CLI will be authorized to get access token to the API using the commands below:
+                #  token=$(az account get-access-token --resource api://<WebAPIAppId> | jq -r .accessToken)
+                #  curl -i -X GET --header "Authorization: Bearer $token"  https://<<WebAPIDomain>/visit
+                cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
+                    --headers \"Content-Type=application/json\" \
+                    --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${AZURE_RESOURCE_WEB_APP_SERVER}\\\"]},\\\"identifierUris\\\":[\\\"api://${appId}\\\"]}\""
+                printProgress "$cmd"
+                eval "$cmd"
+            fi
+        fi
+        printMessage "Azure AD Application creation done"
+    else
+        printProgress "As AZURE_APP_ID is set, it's not necessary to create the application 'sp-${AZURE_TEST_SUFFIX}-app'"
+        printProgress "AZURE_APP_ID: ${AZURE_APP_ID}"
+        appId=${AZURE_APP_ID}
+    fi
+    # set Azure DevOps variable AZURE_APP_ID if run from a pipeline
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_APP_ID" "${appId}"
     
+    # Get Application service principal appId  
+    if [[ -n ${appId} && ${appId} != 'null' ]] ; then
+        printProgress  "Check 'Storage Blob Data Contributor' role assignment on scope ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} for Application sp-${AZURE_TEST_SUFFIX}-app..."
+        cmd="az role assignment list --assignee \"${appId}\" --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Storage/storageAccounts/${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} --only-show-errors  | jq -r 'select(.[].roleDefinitionName==\"Storage Blob Data Contributor\") | length'"
+        printProgress "$cmd"
+        WebAppMsiAcrPullAssignmentCount=$(eval "$cmd") || true  
+        if [ "$WebAppMsiAcrPullAssignmentCount" != "1" ];
+        then
+            printProgress  "Assigning 'Storage Blob Data Contributor' role assignment on scope ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} for  appId..."
+            cmd="az role assignment create --assignee \"${appId}\"  --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Storage/storageAccounts/${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} --role \"Storage Blob Data Contributor\" --only-show-errors"        
+            printProgress "$cmd"
+            eval "$cmd"
+        fi
+    fi
+
+    printMessage "Building the backend hosting the Web API containers..."
+    # Create or update application
+    printProgress "Check if Application 'sp-${AZURE_TEST_SUFFIX}-app' appId exists"
+    if [[ -z ${AZURE_APP_ID} || ${AZURE_APP_ID} == 'null' || ${AZURE_APP_ID} == '' ]] ; then
+        cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json 2>/dev/null | jq -r .[0].appId"
+        printProgress "$cmd"
+        appId=$(eval "$cmd") || true    
+        if [[ -z ${appId} || ${appId} == 'null' ]] ; then
+            printError "Application sp-${AZURE_TEST_SUFFIX}-app appId not available"
+            exit 1
+        else
+            AZURE_APP_ID=${appId} 
+        fi
+    fi
+    printProgress  "Building Application 'sp-${AZURE_TEST_SUFFIX}-app' with application Id: ${AZURE_APP_ID} "
+    # Variables used to build the application or configure the application
+    APP_VERSION=$(date +"%y%m%d.%H%M%S")
+    APP_PORT=80  
+    APP_AUTHORIZATION_DISABLED=false
+
+    # Build dotnet-api docker image
+    TEMPDIR=$(mktemp -d)
+    printProgress  "Update file: $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json application Id: ${AZURE_APP_ID} name: 'sp-${AZURE_TEST_SUFFIX}-app'"
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.AzureAd.ClientId = \"${AZURE_APP_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.AzureAd.ClientId = \"${AZURE_APP_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.AzureAd.TenantId = \"${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.AzureAd.TenantId = \"${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+    eval "$cmd"    
+
+
+    printProgress "Check if connected as Service Principal"
+    UserSPMsiPrincipalId=$(az ad signed-in-user show --query id --output tsv 2>/dev/null) || true  
+    SPMsiPrincipalId=
+    if [[ -z $UserSPMsiPrincipalId ]]; then
+        printProgress "Connected as Service Principal"
+        # shellcheck disable=SC2154        
+        SPMsiPrincipalId=$(az ad sp show --id "$(az account show | jq -r .user.name)" --query appId --output tsv  2> /dev/null)
+    fi
+    if [[ -n $SPMsiPrincipalId ]]; then
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.AzureAd.AllowWebApiToBeAuthorizedByACL = true ' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+        eval "$cmd"    
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.AzureAd.AllowWebApiToBeAuthorizedByACL = true ' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+        eval "$cmd"
+
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.AzureAd.AccessControlList = [ \"${SPMsiPrincipalId}\" ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+        eval "$cmd"    
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.AzureAd.AccessControlList = [ \"${SPMsiPrincipalId}\" ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+        eval "$cmd"
+    else
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.AzureAd.AllowWebApiToBeAuthorizedByACL = false ' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+        eval "$cmd"    
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.AzureAd.AllowWebApiToBeAuthorizedByACL = false ' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+        eval "$cmd"
+
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.AzureAd.AccessControlList = [  ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+        eval "$cmd"    
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.AzureAd.AccessControlList = [  ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+        eval "$cmd"
+    fi    
+
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.ApplicationInsights.ConnectionString = \"${AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.ApplicationInsights.ConnectionString = \"${AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.Services.StorageVisit.Endpoint = \"https://${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}.table.core.windows.net\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.Services.StorageVisit.Endpoint = \"https://${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}.table.core.windows.net\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.Services.StorageAccount = \"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.Services.StorageAccount = \"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+    eval "$cmd"    
+
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.Services.AuthorizationDisabled = ${APP_AUTHORIZATION_DISABLED,,}' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.Services.AuthorizationDisabled = ${APP_AUTHORIZATION_DISABLED,,}' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
+    eval "$cmd"    
+ 
+
+    echo "Content of appsettings.json:"
+    cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json
+
+    # Build dotnet-api docker image
+  
+    printMessage "Building dotnet-rest-api container version:${APP_VERSION} port: ${APP_PORT}"
+    buildWebAppContainer "${AZURE_RESOURCE_ACR_LOGIN_SERVER}" "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api" "dotnet-web-api" "${APP_VERSION}" "latest" ${APP_PORT}
+
+    printMessage "Building the backend hosting the Web API containers done"
+
+    printMessage "Building the Front End hosting the Web UI..."
+    # Create or update application
+    printProgress "Check if Application 'sp-${AZURE_TEST_SUFFIX}-app' appId exists"
+    if [[ -z ${AZURE_APP_ID} || ${AZURE_APP_ID} == 'null' || ${AZURE_APP_ID} == '' ]] ; then
+        cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json 2> /dev/null | jq -r .[0].appId"
+        printProgress "$cmd"
+        appId=$(eval "$cmd") || true    
+        if [[ -z ${appId} || ${appId} == 'null' ]] ; then
+            printError "Application sp-${AZURE_TEST_SUFFIX}-app appId not available"
+            exit 1
+        else
+            AZURE_APP_ID=${appId} 
+        fi
+    fi
+    printProgress  "Building Application 'sp-${AZURE_TEST_SUFFIX}-app' with application Id: ${AZURE_APP_ID} "
+
+    printMessage "Building ts-web-app container version:${APP_VERSION} port: ${APP_PORT}"
+
+    # Update version in HTML package
+    TEMPDIR=$(mktemp -d)
+    printProgress  "Update file: $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json application Id: ${AZURE_APP_ID} name: 'sp-${AZURE_TEST_SUFFIX}-app'"
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.version = \"${APP_VERSION}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.clientId = \"${AZURE_APP_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"   
+
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tokenAPIRequest.scopes = [\"api://${AZURE_APP_ID}/user_impersonation\" ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"   
+
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tenantId = \"${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.redirectUri = \"${AZURE_RESOURCE_WEB_APP_SERVER}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.storageAccountName = \"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.storageInputContainerName = \"${AZURE_RESOURCE_INPUT_CONTAINER_NAME}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.storageOutputContainerName = \"${AZURE_RESOURCE_OUTPUT_CONTAINER_NAME}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.storageSASToken = \"\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.apiEndpoint = \"${AZURE_RESOURCE_FUNCTION_SERVER}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.appInsightsKey = \"${AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd"    
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authorizationDisabled = ${APP_AUTHORIZATION_DISABLED,,}' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    eval "$cmd" 
+    echo "Content of config.json:"
+    cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json
+
+    # build web app
+    pushd $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app
+
+    printProgress "NPM version:"
+    npm --version
+    printProgress "NPM Install..."
+    npm install -s    
+    npm audit fix -s
+    printProgress "Typescript build..."
+    tsc --build tsconfig.json
+    printProgress "Webpack..."
+    webpack --config webpack.config.min.js
+    popd    
+    buildWebAppContainer "${AZURE_RESOURCE_ACR_LOGIN_SERVER}" "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app" "ts-web-app" "${APP_VERSION}" "latest" ${APP_PORT}
+    checkError    
+    printMessage "Building the Front End containers done"
+
+
+    printMessage "Deploying the backend container hosting web api in the infrastructure..."
+    # get latest image version
+    latest_dotnet_version=$(getLatestImageVersion "${AZURE_RESOURCE_ACR_NAME}" "dotnet-web-api")
+    if [ -z "${latest_dotnet_version}" ]; then
+        latest_dotnet_version=$APP_VERSION
+    fi
+    printProgress "Latest version to deploy: '$latest_dotnet_version'"
+
+    # deploy dotnet-web-api
+    printProgress "Deploy image dotnet-web-api:${latest_dotnet_version} from Azure Container Registry ${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
+    deployWebAppContainer "$AZURE_SUBSCRIPTION_ID" "$AZURE_TEST_SUFFIX" "functionapp" "$AZURE_RESOURCE_FUNCTION_NAME" "${AZURE_RESOURCE_ACR_LOGIN_SERVER}" "${AZURE_RESOURCE_ACR_NAME}"  "dotnet-web-api" "latest" "${latest_dotnet_version}" "${APP_PORT}"
     
-    printMessage "Assigning Roles 'Azure Event Hubs Data Sender' and 'Azure Event Hubs Data Receiver' on scope Event Hub ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}"
+    printProgress "Checking role assignment 'Storage Table Data Contributor' between '${AZURE_RESOURCE_FUNCTION_NAME}' and Storage '${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}' "  
+
+    WebAppMsiPrincipalId=$(az functionapp show -n "${AZURE_RESOURCE_FUNCTION_NAME}" -g "${RESOURCE_GROUP}" -o json 2> /dev/null | jq -r .identity.principalId)
+    WebAppMsiAcrPullAssignmentCount=$(az role assignment list --assignee "${WebAppMsiPrincipalId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.Storage/storageAccounts/"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}" 2> /dev/null | jq -r 'select(.[].roleDefinitionName=="Storage Table Data Contributor") | length')
+
+    if [ "$WebAppMsiAcrPullAssignmentCount" != "1" ];
+    then
+        printProgress  "Assigning 'Storage Table Data Contributor' role assignment on scope ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}..."
+        az role assignment create --assignee-object-id "$WebAppMsiPrincipalId" --assignee-principal-type ServicePrincipal --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.Storage/storageAccounts/"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}" --role "Storage Table Data Contributor" 2> /dev/null
+    fi
+
     # Get current user objectId
     printProgress "Get current user objectId"
     UserType="User"
-    UserSPMsiPrincipalId=$(az ad signed-in-user show --query id --output tsv 2>/dev/null) || true  
-    if [[ -z $UserSPMsiPrincipalId ]]; then
+    WebAppMsiPrincipalId=$(az ad signed-in-user show --query id --output tsv 2>/dev/null ) || true  
+    if [[ -z $WebAppMsiPrincipalId ]]; then
         printProgress "Get current service principal objectId"
         UserType="ServicePrincipal"
-        # shellcheck disable=SC2154        
-        UserSPMsiPrincipalId=$(az ad sp show --id "$(az account show | jq -r .user.name)" --query id --output tsv  2> /dev/null) || true
+        WebAppMsiPrincipalId=$(az ad sp show --id "$(az account show | jq -r .user.name)" --query id --output tsv  2> /dev/null) || true
     fi
 
-    if [[ -n $UserSPMsiPrincipalId ]]; then
-        printProgress "Checking role assignment 'Azure Event Hubs Data Sender' between '${UserSPMsiPrincipalId}' and name space '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' '${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}'"
-        UserSPMsiRoleAssignmentCount=$(az role assignment list --assignee "${UserSPMsiPrincipalId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.EventHub/namespaces/"${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}"/eventhubs/"${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}"   2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Sender") | length')
-
-        if [ "$UserSPMsiRoleAssignmentCount" != "1" ];
+    if [[ -n $WebAppMsiPrincipalId ]]; then
+        printProgress  "Check 'Storage Blob Data Contributor' role assignment on scope ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}..."
+        WebAppMsiAcrPullAssignmentCount=$(az role assignment list --assignee "${WebAppMsiPrincipalId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.Storage/storageAccounts/"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}" 2> /dev/null | jq -r 'select(.[].roleDefinitionName=="Storage Blob Data Contributor") | length')
+        if [ "$WebAppMsiAcrPullAssignmentCount" != "1" ];
         then
-            printProgress  "Assigning 'Azure Event Hubs Data Sender' role assignment on scope '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' '${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}'..."
-            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}\"/eventhubs/\"${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}\" --role \"Azure Event Hubs Data Sender\"  "
-            printProgress "$cmd"
-            eval "$cmd" >/dev/null
-            checkError
-        fi
-
-
-        printProgress "Checking role assignment 'Azure Event Hubs Data Sender' between  '${UserSPMsiPrincipalId}' and name space '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' '${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}'"
-        UserSPMsiRoleAssignmentCount=$(az role assignment list --assignee "${UserSPMsiPrincipalId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.EventHub/namespaces/"${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}"/eventhubs/"${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}"   2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Sender") | length')
-
-        if [ "$UserSPMsiRoleAssignmentCount" != "1" ];
-        then
-            printProgress  "Assigning 'Azure Event Hubs Data Sender' role assignment on scope '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' '${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}'..."
-            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}\"/eventhubs/\"${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}\" --role \"Azure Event Hubs Data Sender\"  "
-            printProgress "$cmd"
-            eval "$cmd" >/dev/null
-            checkError
-        fi
-
-        printProgress "Checking role assignment 'Azure Event Hubs Data Receiver' between  '${UserSPMsiPrincipalId}' and name space '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' '${AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME}'"
-        UserSPMsiRoleAssignmentCount=$(az role assignment list --assignee "${UserSPMsiPrincipalId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.EventHub/namespaces/"${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}"/eventhubs/"${AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME}"  2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Receiver") | length')
-
-        if [ "$UserSPMsiRoleAssignmentCount" != "1" ];
-        then
-            printProgress  "Assigning 'Azure Event Hubs Data Receiver' role assignment on scope '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' '${AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME}'..."
-            cmd="az role assignment create --assignee-object-id \"$UserSPMsiPrincipalId\" --assignee-principal-type $UserType --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}\"/eventhubs/\"${AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME}\" --role \"Azure Event Hubs Data Receiver\"  "
-            printProgress "$cmd"
-            eval "$cmd" >/dev/null
-            checkError
+            printProgress  "Assigning 'Storage Blob Data Contributor' role assignment on scope ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}..."
+            az role assignment create --assignee-object-id "$WebAppMsiPrincipalId" --assignee-principal-type $UserType --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.Storage/storageAccounts/"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}" --role "Storage Blob Data Contributor" 2> /dev/null
         fi
     fi
-    printMessage "Assigning Roles 'Azure Event Hubs Data Sender' and 'Azure Event Hubs Data Receiver' on scope Event Hub done"
-    
-    printMessage "Deploying the infrastructure done"
+    # Test services
+    # Test dotnet-web-api
+    dotnet_rest_api_url="${AZURE_RESOURCE_FUNCTION_SERVER}version"
+    printProgress "Testing dotnet-web-api url: $dotnet_rest_api_url expected version: ${latest_dotnet_version}"
+    result=$(checkWebUrl "${dotnet_rest_api_url}" "${latest_dotnet_version}" 420)
+    if [[ $result != "true" ]]; then
+        printError "Error while testing dotnet-web-api"
+        exit 1
+    else
+        printMessage "Testing dotnet-web-api successful"
+    fi
+
+    printMessage "Deploying the backend container hosting web api in the infrastructure done"
+
+    printMessage "Deploying the frontend container hosting web ui in the infrastructure..."
+    # get latest image version
+    latest_webapp_version=$(getLatestImageVersion "${AZURE_RESOURCE_ACR_NAME}" "ts-web-app")
+    if [ -z "${latest_webapp_version}" ]; then
+        latest_webapp_version=$APP_VERSION
+    fi
+
+    # deploy ts-web-app
+    # if [ "$deploymentType" == 'web-storage-api-storage' ]; then
+
+        printProgress "Enable Static Web Page on Azure Storage: ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} "
+        cmd="az storage blob service-properties update --account-name ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} --static-website  --index-document index.html --only-show-errors"
+        printProgress "$cmd"
+        eval "$cmd"
+        printProgress "Deploy  ts-web-app:${latest_webapp_version} to Azure Storage \$web"
+        cmd="az storage azcopy blob upload -c \"\\\$web\" --account-name ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} -s \"$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/build/*\" --recursive --only-show-errors"
+        printProgress "$cmd"
+        eval "$cmd"
+    #else
+    #    printProgress "Deploy image ts-web-app:${latest_webapp_version} from Azure Container Registry ${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
+    #    deployWebAppContainer "$AZURE_SUBSCRIPTION_ID" "$AZURE_TEST_SUFFIX" "webapp" "$WEB_APP_NAME" "${AZURE_RESOURCE_ACR_LOGIN_SERVER}" "${AZURE_RESOURCE_ACR_NAME}"  "ts-web-app" "latest" "${latest_webapp_version}" "${APP_PORT}"
+    #fi
+    # Test web-app
+    node_web_app_url="${AZURE_RESOURCE_WEB_APP_SERVER}config.json"
+    printProgress "Testing node_web_app_url url: $node_web_app_url expected version: ${latest_webapp_version}"
+    result=$(checkWebUrl "${node_web_app_url}" "${latest_webapp_version}" 420)
+    if [[ $result != "true" ]]; then
+        printError "Error while testing node_web_app_url"
+        exit 1
+    else
+        printMessage "Testing node_web_app_url successful"
+    fi
+
+    printMessage "Deploying the frontend container hosting web ui in the infrastructure done"
+
     exit 0
 fi
 

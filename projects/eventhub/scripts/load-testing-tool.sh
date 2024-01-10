@@ -39,7 +39,8 @@ function usage() {
 }
 
 ACTION=
-CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../../configuration/.default.env"
+CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../configuration/.default.env"
+AZURE_RESOURCE_PREFIX="evh"
 AZURE_RESOURCE_SKU="Standard"
 AZURE_SUBSCRIPTION_ID=""
 AZURE_TENANT_ID=""   
@@ -146,13 +147,8 @@ if [[ "${ACTION}" == "createconfig" ]] ; then
     AZURE_SUBSCRIPTION_ID=$(az account show --query id --output tsv 2> /dev/null) || true
     if [ -n "${AZURE_SUBSCRIPTION_ID}" ]
     then
-        AZURE_TEST_SUFFIX=$(getNewSuffix "${AZURE_SUBSCRIPTION_ID}")
+        AZURE_TEST_SUFFIX=$(getNewSuffix "${AZURE_RESOURCE_PREFIX}" "${AZURE_SUBSCRIPTION_ID}")
         printMessage "Suffix found AZURE_TEST_SUFFIX: '${AZURE_TEST_SUFFIX}'"
-        RESOURCE_GROUP=$(getResourceGroupName "${AZURE_TEST_SUFFIX}")
-        LOAD_TESTING_RESOURCE_GROUP=$(getLoadTestingResourceGroupName "${AZURE_TEST_SUFFIX}")
-        AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(getStorageAccountResourceName "${AZURE_TEST_SUFFIX}")
-        AZURE_RESOURCE_EVENTHUBS_NAMESPACE=$(getEventHubsResourceName "${AZURE_TEST_SUFFIX}")
-        LOAD_TESTING_KEY_VAULT_NAME=$(getKeyVaultResourceName "${AZURE_TEST_SUFFIX}")
         cat > "$CONFIGURATION_FILE" << EOF
 AZURE_REGION="${AZURE_REGION}"
 AZURE_TEST_SUFFIX=${AZURE_TEST_SUFFIX}
@@ -171,7 +167,7 @@ if [[ "${ACTION}" == "getsuffix" ]] ; then
     AZURE_SUBSCRIPTION_ID=$(az account show --query id --output tsv 2> /dev/null) || true
     if [ -n "${AZURE_SUBSCRIPTION_ID}" ]
     then
-        SUFFIX=$(getNewSuffix "${AZURE_SUBSCRIPTION_ID}")
+        SUFFIX=$(getNewSuffix  "${AZURE_RESOURCE_PREFIX}" "${AZURE_SUBSCRIPTION_ID}")
         echo "${SUFFIX}"
     fi
     exit 0
