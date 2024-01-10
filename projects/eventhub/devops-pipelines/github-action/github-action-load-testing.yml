@@ -46,15 +46,15 @@ jobs:
   stage-deploy-infrastructure:
     runs-on: ubuntu-20.04
     outputs:
-      EVENTHUB_NAME_SPACE: ${{ steps.deploy.outputs.EVENTHUB_NAME_SPACE }}
-      EVENTHUB_INPUT_1_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_1_NAME }}
-      EVENTHUB_INPUT_2_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_2_NAME }}
-      EVENTHUB_OUTPUT_1_NAME: ${{ steps.deploy.outputs.EVENTHUB_OUTPUT_1_NAME }}
-      EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME }}
-      EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME }}
-      EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}
-      STORAGE_ACCOUNT_NAME: ${{ steps.deploy.outputs.STORAGE_ACCOUNT_NAME }}
-      APP_INSIGHTS_NAME: ${{ steps.deploy.outputs.APP_INSIGHTS_NAME }}
+      AZURE_RESOURCE_EVENTHUBS_NAMESPACE: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}
+      AZURE_RESOURCE_EVENTHUB_INPUT1_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME }}
+      AZURE_RESOURCE_EVENTHUB_INPUT2_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME }}
+      AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME }}
+      AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP }}
+      AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP }}
+      AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP }}
+      AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME }}
+      AZURE_RESOURCE_APP_INSIGHTS_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_APP_INSIGHTS_NAME }}
       RESOURCE_GROUP: ${{ steps.deploy.outputs.RESOURCE_GROUP }}
 
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -91,15 +91,15 @@ jobs:
           set +o allexport
           # Create the associated Github Action variables
           {
-            echo "EVENTHUB_NAME_SPACE=${EVENTHUB_NAME_SPACE}"
-            echo "EVENTHUB_INPUT_1_NAME=${EVENTHUB_INPUT_1_NAME}"
-            echo "EVENTHUB_INPUT_2_NAME=${EVENTHUB_INPUT_2_NAME}"
-            echo "EVENTHUB_OUTPUT_1_NAME=${EVENTHUB_OUTPUT_1_NAME}"
-            echo "EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME=${EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME}"
-            echo "EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME=${EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME}"
-            echo "EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME=${EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME}"
-            echo "STORAGE_ACCOUNT_NAME=${STORAGE_ACCOUNT_NAME}"
-            echo "APP_INSIGHTS_NAME=${APP_INSIGHTS_NAME}"
+            echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE=${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}"
+            echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME=${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}"
+            echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME=${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}"
+            echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME=${AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME}"
+            echo "AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP=${AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP}"
+            echo "AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP=${AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP}"
+            echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP=${AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP}"
+            echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
+            echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=${AZURE_RESOURCE_APP_INSIGHTS_NAME}"
             echo "RESOURCE_GROUP=${RESOURCE_GROUP}"
           } >> "$GITHUB_OUTPUT"
 
@@ -125,15 +125,15 @@ jobs:
             echo "AZURE_TEST_SUFFIX=${{ env.AZURE_TEST_SUFFIX }}"
             echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
             echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
-            echo "EVENTHUB_NAME_SPACE=${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
-            echo "EVENTHUB_INPUT_1_NAME=${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}"
-            echo "EVENTHUB_INPUT_2_NAME=${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}"
-            echo "EVENTHUB_OUTPUT_1_NAME=${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_OUTPUT_1_NAME }}"
-            echo "EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME=${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME }}"
-            echo "EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME=${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME }}"
-            echo "EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME=${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}"
-            echo "STORAGE_ACCOUNT_NAME=${{ needs.stage-deploy-infrastructure.outputs.STORAGE_ACCOUNT_NAME }}"
-            echo "APP_INSIGHTS_NAME=${{ needs.stage-deploy-infrastructure.outputs.APP_INSIGHTS_NAME }}"
+            echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}"
+            echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME }}"
+            echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME }}"
+            echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME }}"
+            echo "AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP }}"
+            echo "AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP }}"
+            echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP }}"
+            echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME }}"
+            echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_APP_INSIGHTS_NAME }}"
             echo "RESOURCE_GROUP=${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}"
           } >> "${{ env.CONFIGURATION_FILE }}"
 
@@ -170,8 +170,8 @@ jobs:
           set +o allexport
 
           # Get Event Hub Token
-          KEY=$(az eventhubs namespace authorization-rule keys list --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}" --namespace-name "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}" --name RootManageSharedAccessKey | jq -r .primaryKey)
-          EVENTHUB_TOKEN=$(./scripts/get-event-hub-token.sh "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}" RootManageSharedAccessKey "${KEY}")
+          KEY=$(az eventhubs namespace authorization-rule keys list --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}" --namespace-name "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}" --name RootManageSharedAccessKey | jq -r .primaryKey)
+          EVENTHUB_TOKEN=$(./scripts/get-event-hub-token.sh "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}" RootManageSharedAccessKey "${KEY}")
 
           # store eventhub token into azure key vault secret
           az keyvault secret set --vault-name "${LOAD_TESTING_KEY_VAULT_NAME}" --name "${LOAD_TESTING_SECRET_NAME}" --value "${EVENTHUB_TOKEN}" --output none
@@ -185,9 +185,9 @@ jobs:
           source "${{ env.CONFIGURATION_FILE }}"
           set +o allexport
 
-          echo "EVENTHUB_NAME_SPACE: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
-          echo "EVENTHUB_INPUT_1_NAME: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}"
-          echo "EVENTHUB_INPUT_2_NAME: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}"
+          echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}"
+          echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME }}"
+          echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME }}"
           echo "DURATION: ${{ github.event.inputs.duration }}"
           echo "THREADS: ${{ github.event.inputs.threads }}"
           echo "ENGINE INSTANCES: ${{ github.event.inputs.engineInstances }}"
@@ -227,15 +227,15 @@ jobs:
             [
               {
               "name": "eventhub_name_space",
-              "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
+              "value": "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}"
               },
               {
               "name": "eventhub_input_1",
-              "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}"
+              "value": "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME }}"
               },
               {
               "name": "eventhub_input_2",
-              "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}"
+              "value": "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME }}"
               },
               {
               "name": "duration",

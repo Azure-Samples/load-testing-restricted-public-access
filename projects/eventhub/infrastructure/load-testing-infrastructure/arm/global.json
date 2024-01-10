@@ -5,12 +5,6 @@
         "suffix": {
             "type": "string"
         },
-        "loadTestName": {
-            "type": "string"
-        },
-        "akvName": {
-            "type": "string"
-        },
         "location": {
             "type": "string"
         },
@@ -19,6 +13,8 @@
         }        
     },
     "variables": {
+        "loadTestName": "[concat('ldtest', parameters('suffix'))]",
+        "akvName": "[concat('kv', parameters('suffix'))]",  
         "loadTestingVNETName": "[concat('vnet',parameters('suffix'))]",  
         "loadTestingSubnetName": "[concat('subnet',parameters('suffix'))]",  
         "loadTestingNsgName": "[concat('nsg',parameters('suffix'))]",  
@@ -29,7 +25,7 @@
         {
             "type": "Microsoft.LoadTestService/loadTests",
             "apiVersion": "2022-12-01",
-            "name": "[parameters('loadTestName')]",
+            "name": "[variables('loadTestName')]",
             "location": "[parameters('location')]",
             "tags": "[parameters('tags')]",
             "identity": {
@@ -165,7 +161,7 @@
         {
             "type": "Microsoft.KeyVault/vaults",
             "apiVersion": "2022-07-01",
-            "name": "[parameters('akvName')]",
+            "name": "[variables('akvName')]",
             "location": "[parameters('location')]",
             "properties": {
                 "accessPolicies": [],
@@ -213,11 +209,11 @@
       },
       "LOAD_TESTING_KEY_VAULT_NAME": {
         "type": "string",
-        "value": "[parameters('akvName')]"
+        "value": "[variables('akvName')]"
       }, 
       "LOAD_TESTING_NAME": {
         "type": "string",
-        "value": "[parameters('loadTestName')]"
+        "value": "[variables('loadTestName')]"
       }       
     }    
 }

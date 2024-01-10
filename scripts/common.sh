@@ -226,19 +226,19 @@ function getNewSuffix(){
         suffix="evhub$(shuf -i 1000-9999 -n 1)"
         RESOURCE_GROUP=$(getResourceGroupName "${suffix}")
         LOAD_TESTING_RESOURCE_GROUP=$(getLoadTestingResourceGroupName "${suffix}")
-        STORAGE_ACCOUNT_NAME=$(getStorageAccountResourceName "${suffix}")
-        EVENT_HUB_NAME=$(getEventHubsResourceName "${suffix}")
-        KEY_VAULT_NAME=$(getKeyVaultResourceName "${suffix}")
+        AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(getStorageAccountResourceName "${suffix}")
+        AZURE_RESOURCE_EVENTHUBS_NAMESPACE=$(getEventHubsResourceName "${suffix}")
+        LOAD_TESTING_KEY_VAULT_NAME=$(getKeyVaultResourceName "${suffix}")
         checkname="false"
-        if [ "$(isStorageAccountNameAvailable "${RESOURCE_GROUP}" "${STORAGE_ACCOUNT_NAME}" )" == "false" ]
+        if [ "$(isStorageAccountNameAvailable "${RESOURCE_GROUP}" "${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}" )" == "false" ]
         then
             continue
         fi
-        if [ "$(isEventHubsNameAvailable "${RESOURCE_GROUP}" "${EVENT_HUB_NAME}" )" == "false" ]
+        if [ "$(isEventHubsNameAvailable "${RESOURCE_GROUP}" "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" )" == "false" ]
         then
             continue
         fi
-        if [ "$(isKeyVaultNameAvailable "${subscription}" "${LOAD_TESTING_RESOURCE_GROUP}" "${KEY_VAULT_NAME}" )" == "false" ]
+        if [ "$(isKeyVaultNameAvailable "${subscription}" "${LOAD_TESTING_RESOURCE_GROUP}" "${LOAD_TESTING_KEY_VAULT_NAME}" )" == "false" ]
         then
             continue
         fi
@@ -313,36 +313,36 @@ function getDeploymentVariables(){
         done;
 
         # printProgress "Getting variables from deployment Name: ${datadep} from resource group ${resourcegroup}"
-        # APP_INSIGHTS_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsName.value')
+        # AZURE_RESOURCE_APP_INSIGHTS_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsName.value')
         # APP_INSIGHTS_CONNECTION_STRING=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsConnectionString.value')    
         # APP_INSIGHTS_INSTRUMENTATION_KEY=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsInstrumentationKey.value')    
 
-        # STORAGE_ACCOUNT_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.storageAccountName.value')
+        # AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.storageAccountName.value')
         # STORAGE_ACCOUNT_TOKEN=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.storageAccountToken.value')
         # STORAGE_ACCOUNT_INPUT_CONTAINER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.inputContainerName.value')
         # STORAGE_ACCOUNT_OUTPUT_CONTAINER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputContainerName.value')
 
-        # EVENTHUB_NAME_SPACE=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.namespaceName.value')
-        # EVENTHUB_INPUT_1_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput1Name.value')
-        # EVENTHUB_INPUT_2_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput2Name.value')
-        # EVENTHUB_OUTPUT_1_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubOutput1Name.value')
-        # EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubOutput1ConsumerGroup.value')
-        # EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput1ConsumerGroup.value')
-        # EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput2ConsumerGroup.value')
+        # AZURE_RESOURCE_EVENTHUBS_NAMESPACE=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.namespaceName.value')
+        # AZURE_RESOURCE_EVENTHUB_INPUT1_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput1Name.value')
+        # AZURE_RESOURCE_EVENTHUB_INPUT2_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput2Name.value')
+        # AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubOutput1Name.value')
+        # AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubOutput1ConsumerGroup.value')
+        # AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput1ConsumerGroup.value')
+        # AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput2ConsumerGroup.value')
 
         RESOURCE_GROUP=$resourcegroup
     else
         printProgress "Getting variables from deployment, Resource group ${resourcegroup} doesn't exist"
-        # APP_INSIGHTS_NAME=""
+        # AZURE_RESOURCE_APP_INSIGHTS_NAME=""
         # APP_INSIGHTS_CONNECTION_STRING=""
         # APP_INSIGHTS_INSTRUMENTATION_KEY=""
-        # EVENTHUB_NAME_SPACE=""
-        # EVENTHUB_INPUT_1_NAME=""
-        # EVENTHUB_INPUT_2_NAME=""
-        # EVENTHUB_OUTPUT_1_NAME=""
-        # EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME=""
-        # EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME=""
-        # EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME=""
+        # AZURE_RESOURCE_EVENTHUBS_NAMESPACE=""
+        # AZURE_RESOURCE_EVENTHUB_INPUT1_NAME=""
+        # AZURE_RESOURCE_EVENTHUB_INPUT2_NAME=""
+        # AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME=""
+        # AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP=""
+        # AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP=""
+        # AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP=""
 
         RESOURCE_GROUP=$resourcegroup
     fi
@@ -379,9 +379,7 @@ function deployAzureTestInfrastructure(){
     region=$2
     suffix=$3
     resourcegroup=$4
-    loadtestname=$5
-    akvname=$6
-    template=$7
+    template=$5
 
     datadep=$(date +"%y%m%d-%H%M%S")
     
@@ -397,7 +395,7 @@ function deployAzureTestInfrastructure(){
         --template-file $template \
         --output none \
         --parameters \
-        suffix=$suffix loadTestName=$loadtestname akvName=$akvname location=$region tags='{\"Environment\":\"Dev\",\"Project\":\"load-testing-eventhub-restricted-public-access\"}' "
+        suffix=$suffix location=$region tags='{\"Environment\":\"Dev\",\"Project\":\"load-testing\"}' "
 
     printProgress "$cmd"
     eval "$cmd"
@@ -426,7 +424,7 @@ function getTestDeploymentVariables(){
         printProgress "Getting variables from deployment Name: ${datadep} from resource group ${resourcegroup}"
         for i in $(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq  '.properties.outputs' | jq -r 'keys' | jq -r '.[]'); 
         do 
-            if [[ "${i^^}" == AZURE_RESOURCE_* ]]; 
+            if [[ "${i^^}" == LOAD_TESTING_* ]]; 
             then 
                 VARIABLE=$(echo "${i}" | tr a-z A-Z)
                 cmd="az deployment group show --resource-group \"${resourcegroup}\" -n \"${datadep}\" | jq -r '.properties.outputs.\"${i}\".value'"

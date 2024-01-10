@@ -776,9 +776,9 @@ For instance, below the Azure DevOps step which updates the Load Testing configu
                 source "$(CONFIGURATION_FILE)"
                 set +o allexport
 
-                echo "EVENTHUB_NAME_SPACE: $(EVENTHUB_NAME_SPACE)"
-                echo "EVENTHUB_INPUT_1_NAME: $(EVENTHUB_INPUT_1_NAME)"
-                echo "EVENTHUB_INPUT_2_NAME: $(EVENTHUB_INPUT_2_NAME)"
+                echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE: $(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
+                echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME: $(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
+                echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME: $(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
                 echo "DURATION: ${{ parameters.duration }}"
                 echo "THREADS: ${{ parameters.threads }}"
                 echo "ENGINE INSTANCES: ${{ parameters.engineInstances }}"
@@ -837,15 +837,15 @@ The bash file:
 ```bash
         readConfigurationFile "$CONFIGURATION_FILE"
 
-        printProgress "Open access to EventHubs '${EVENTHUB_NAME_SPACE}' access for the load testing resource with public ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
-        if [[ -n ${EVENTHUB_NAME_SPACE} ]]; then
-            if [[ -n $(az eventhubs namespace show --name "${EVENTHUB_NAME_SPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
+        printProgress "Open access to EventHubs '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' access for the load testing resource with public ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
+        if [[ -n ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} ]]; then
+            if [[ -n $(az eventhubs namespace show --name "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
                 if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
-                    cmd="az eventhubs namespace network-rule list  --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} | jq -r '.ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
+                    cmd="az eventhubs namespace network-rule list  --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} | jq -r '.ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
                     ALLOW=$(eval "${cmd}")
                     if [ ! "${ALLOW}" == "Allow" ]  
                     then
-                        cmd="az eventhubs namespace network-rule add --ip-address ${LOAD_TESTING_PUBLIC_IP_ADDRESS} --namespace-name ${EVENTHUB_NAME_SPACE} -g ${RESOURCE_GROUP} "
+                        cmd="az eventhubs namespace network-rule add --ip-address ${LOAD_TESTING_PUBLIC_IP_ADDRESS} --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} "
                         echo "$cmd"
                         eval "${cmd}" >/dev/null
                         # Wait 30 seconds for the access to the eventhubs
@@ -887,9 +887,9 @@ In the step 'Get EventHub Token and store it in Key Vault', the pipeline create 
                 cat "$(CONFIGURATION_FILE)"
 
                 # Get Event Hub Token
-                KEY=$(az eventhubs namespace authorization-rule keys list --resource-group "$(RESOURCE_GROUP)" --namespace-name "$(EVENTHUB_NAME_SPACE)" --name RootManageSharedAccessKey | jq -r .primaryKey)
+                KEY=$(az eventhubs namespace authorization-rule keys list --resource-group "$(RESOURCE_GROUP)" --namespace-name "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)" --name RootManageSharedAccessKey | jq -r .primaryKey)
                 echo "KEY: $KEY"
-                EVENTHUB_TOKEN=$("$(System.DefaultWorkingDirectory)/scripts/get-event-hub-token.sh" "$(EVENTHUB_NAME_SPACE)" RootManageSharedAccessKey "${KEY}")
+                EVENTHUB_TOKEN=$("$(System.DefaultWorkingDirectory)/scripts/get-event-hub-token.sh" "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)" RootManageSharedAccessKey "${KEY}")
                 echo "EVENTHUB_TOKEN: $EVENTHUB_TOKEN"
 
                 # store eventhub token into azure key vault secret
@@ -923,15 +923,15 @@ This step shares the Event Hubs Shared Access Token with the load testing platfo
           [
             {
             "name": "eventhub_name_space",
-            "value": "$(EVENTHUB_NAME_SPACE)"
+            "value": "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
             },
             {
             "name": "eventhub_input_1",
-            "value": "$(EVENTHUB_INPUT_1_NAME)"
+            "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
             },
             {
             "name": "eventhub_input_2",
-            "value": "$(EVENTHUB_INPUT_2_NAME)"
+            "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
             },
             {
             "name": "duration",
@@ -1159,7 +1159,7 @@ When you use load-testing-tool.sh bash file with the option 'runtest' to run the
 Before calling the REST API, you need to get the Load Testing Token. First you need to retrieve the Load Testing Hostname from the Load Testing Azure resource. Once you can get the hostname, you can get the token using the Azure CLI command 'az account get-access-token' see below:
 
 ```bash
-    LOAD_TESTING_HOSTNAME=$(az load  show --name "${LOAD_TESTING_RESOURCE}" --resource-group "${LOAD_TESTING_RESOURCE_GROUP}" | jq -r ".dataPlaneURI")
+    LOAD_TESTING_HOSTNAME=$(az load  show --name "${LOAD_TESTING_RESOURCE_NAME}" --resource-group "${LOAD_TESTING_RESOURCE_GROUP}" | jq -r ".dataPlaneURI")
     LOAD_TESTING_TOKEN=$(az account get-access-token --resource "${LOAD_TESTING_HOSTNAME}" --scope "https://cnt-prod.loadtesting.azure.com/.default" | jq -r '.accessToken')
 ```
 
@@ -1181,9 +1181,9 @@ Below the code to create the load test:
     sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
     sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
     sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubNameSpace}/${EVENTHUB_NAME_SPACE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubInput1}/${EVENTHUB_INPUT_1_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubInput2}/${EVENTHUB_INPUT_2_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
+    sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
+    sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
+    sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
     sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
     sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
     sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
@@ -1226,9 +1226,9 @@ You need to fill the values in the template file [./devops-pipelines/load-testin
     sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
     sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
     sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubNameSpace}/${EVENTHUB_NAME_SPACE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubInput1}/${EVENTHUB_INPUT_1_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubInput2}/${EVENTHUB_INPUT_2_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
+    sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
+    sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
+    sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
     sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
     sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
     sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
