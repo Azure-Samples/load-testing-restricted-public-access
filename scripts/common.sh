@@ -508,7 +508,9 @@ function updateConfigurationFile(){
 
     count=$(grep "${variable}=.*" -c < "$configFile") || true
     if [ "${count}" == 1 ]; then
-        sed -i "s/${variable}=.*/${variable}=${value////\\/}/g" "${configFile}" 
+        # escape backslash before sed
+        value=${value//\\/\\\\}
+        sed -i "s/${variable}=.*/${variable}=${value////\\/}/g" "${configFile}"         
     elif [ "${count}" == 0 ]; then
         echo "${variable}=${value}" >> "${configFile}"
     fi

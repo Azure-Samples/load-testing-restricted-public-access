@@ -8,11 +8,11 @@ using Azure.Identity;
 using dotnet_web_api.Options;
 using Microsoft.Extensions.Options;
 using Azure.Data.Tables;
-using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
 using dotnet_web_api.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,133 +24,48 @@ using var loggerFactory = LoggerFactory.Create(loggingBuilder => loggingBuilder
 ILogger logger = loggerFactory.CreateLogger<Program>();
 
 logger.LogInformation("Reading configuration");
-// Read Cosmos DB configuration 
-string? subscriptionId = builder.Configuration["Services:CosmosDBSubcriptionId"];
-string? resourceGroupName = builder.Configuration["Services:CosmosDBResourceGroupName"];
-string? accountName = builder.Configuration["Services:CosmosDBAccount"];
-string? databaseName = builder.Configuration["Services:CosmosDBDatabaseName"];
-string? externalDatabaseName = builder.Configuration["Services:ExternalCosmosDBDatabaseName"];
 
-logger.LogInformation($"CosmosDB subscriptionId: {subscriptionId}");
-logger.LogInformation($"CosmosDB resourceGroupName: {resourceGroupName}");
-logger.LogInformation($"CosmosDB accountName: {accountName}");
-logger.LogInformation($"CosmosDB databaseName: {databaseName}");
-
-if ((string.IsNullOrEmpty(subscriptionId)) ||
-    (string.IsNullOrEmpty(resourceGroupName)) ||
-    (string.IsNullOrEmpty(accountName)) ||
-    (string.IsNullOrEmpty(databaseName))
-    )
-{
-    logger.LogInformation("Loading Storage Table configuration");
-    // Add Storage Table configuration 
-    // Add a custom scoped service for Table using Azure Storage Table API.
-    builder.Services
-        .AddOptions<TableStorageOptions<ITableStorageVisitService>>()
-            .Configure<IConfiguration>((settings, configuration) =>
-            {
-                configuration.GetSection("Services:StorageVisit").Bind(settings);
-            }).Services
-        .AddTransient((Func<IServiceProvider, TokenCredential>)(sp =>
+logger.LogInformation("Loading Storage Table configuration");
+// Add Storage Table configuration 
+// Add a custom scoped service for Table using Azure Storage Table API.
+builder.Services
+    .AddOptions<TableStorageOptions<ITableStorageVisitService>>()
+        .Configure<IConfiguration>((settings, configuration) =>
         {
-            return new DefaultAzureCredential
-            (
-                new DefaultAzureCredentialOptions
-                {
-                    // Linux platform
-                    ExcludeSharedTokenCacheCredential = true,
-                }
-            );
-        }))
-        .AddSingleton((Func<IServiceProvider, ITableClientFactory>)((sp) =>
-        {
-            var optionsTableClientVisit =
-                sp.GetRequiredService<IOptions<TableStorageOptions<ITableStorageVisitService>>>();
-
-            var tokenCredential = sp.GetRequiredService<TokenCredential>();
-
-            var factory = new TableClientFactory();
-            if ((optionsTableClientVisit.Value.Endpoint != null) &&
-                (optionsTableClientVisit.Value.TableName != null))
-                factory.AddClient(
-                    name: nameof(ITableStorageVisitService),
-                    instance: CreateTableClient(
-                        new Uri(optionsTableClientVisit.Value.Endpoint),
-                        optionsTableClientVisit.Value.TableName,
-                        tokenCredential));
-
-            return factory;
-        }))
-        .AddScoped<ITableStorageVisitService, TableStorageVisitService>();
-}
-else
-{
-    logger.LogInformation("Loading CosmosDB configuration");
-    // Add a custom scoped service for CosmosDB.
-    builder.Services
-        //.AddOptions<CosmosDBOptions>()
-        //    .Configure<IConfiguration>((settings, configuration) =>
-        //    {
-        //        configuration.GetSection("Services").Bind(settings);
-        //    }).Services
-
-        .AddOptions<TableStorageOptions<ITableStorageVisitService>>()
-            .Configure<IConfiguration>((settings, configuration) =>
+            configuration.GetSection("Services:StorageVisit").Bind(settings);
+        }).Services
+    .AddTransient((Func<IServiceProvider, TokenCredential>)(sp =>
+    {
+        return new DefaultAzureCredential
+        (
+            new DefaultAzureCredentialOptions
             {
-                configuration.GetSection("Services:CosmosDBVisit").Bind(settings);
-            }).Services
-        .AddSingleton((Func<IServiceProvider, ICosmosClientFactory>)((sp) =>
-        {
-            //var optionsCosmos =
-            //    sp.GetRequiredService<IOptions<CosmosDBOptions>>();
-            var optionsTableClientVisit =
-                sp.GetRequiredService<IOptions<TableStorageOptions<ITableStorageVisitService>>>();
-
-            var factory = new CosmosClientFactory();
-
-            //string? subscriptionId = optionsCosmos.Value.CosmosDBSubscriptionId;
-            //string? resourceGroupName = optionsCosmos.Value.CosmosDBResourceGroupName;
-            //string? accountName = optionsCosmos.Value.CosmosDBAccountName;
-            //string? databaseName = optionsCosmos.Value.CosmosDBDatabaseName;
-
-            // If the CosmosDB configuration is not set
-            // returns empty factory
-            if ((string.IsNullOrEmpty(subscriptionId)) ||
-            (string.IsNullOrEmpty(resourceGroupName)) ||
-            (string.IsNullOrEmpty(accountName)) ||
-            (string.IsNullOrEmpty(databaseName))
-            )
-            {
-                logger.LogError("CosmosDB configuration error: a parameter is missing");
-                return factory;
+                // Linux platform
+                ExcludeSharedTokenCacheCredential = true,
             }
-            logger.LogInformation("Getting CosmosDB Keys");
-            string key = GetCosmosDBKey(subscriptionId, resourceGroupName, accountName).ConfigureAwait(false).GetAwaiter().GetResult();
-            if (string.IsNullOrEmpty(key))
-            {
-                logger.LogError("Error while getting CosmosDB Key");
-                return factory;
-            }
-            logger.LogInformation("Adding CosmosClient...");
-            if ((optionsTableClientVisit.Value.Endpoint != null) &&
-                (optionsTableClientVisit.Value.TableName != null))
-            {
+        );
+    }))
+    .AddSingleton((Func<IServiceProvider, ITableClientFactory>)((sp) =>
+    {
+        var optionsTableClientVisit =
+            sp.GetRequiredService<IOptions<TableStorageOptions<ITableStorageVisitService>>>();
 
-                var container = CreateCosmosClient(
-                        new Uri(optionsTableClientVisit.Value.Endpoint),
-                        key, databaseName,
-                        optionsTableClientVisit.Value.TableName
-                        ).ConfigureAwait(false).GetAwaiter().GetResult();
-                if (container != null)
-                    factory.AddClient(
-                            name: nameof(ITableStorageVisitService),
-                            instance: container);
-            }
+        var tokenCredential = sp.GetRequiredService<TokenCredential>();
 
-            return factory;
-        }))
-        .AddScoped<ITableStorageVisitService, CosmosStorageVisitService>();
-}
+        var factory = new TableClientFactory();
+        if ((optionsTableClientVisit.Value.Endpoint != null) &&
+            (optionsTableClientVisit.Value.TableName != null))
+            factory.AddClient(
+                name: nameof(ITableStorageVisitService),
+                instance: CreateTableClient(
+                    new Uri(optionsTableClientVisit.Value.Endpoint),
+                    optionsTableClientVisit.Value.TableName,
+                    tokenCredential));
+
+        return factory;
+    }))
+    .AddScoped<ITableStorageVisitService, TableStorageVisitService>();
+
 
 
 builder.Services.AddScoped<IAuthorizationDisabledService, AuthorizationDisabledService>();
@@ -172,8 +87,48 @@ builder.Services.AddScoped<IAuthorizationHandler, AuthorizationDisabledOrAuthent
 
 
 // Add services to the container.
+//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+    //.AddAzureAD(options => Configuration.Bind("AzureAD", options));
+//builder.Services.Configure<OpenIdConnectOptions>(
+//    AzureADDefaults.OpenIdScheme,
+//    options =>{
+//        options.Authority = options.Authority + "/v2.0/";
+//        options.TokenValidationParameters.ValidateIssuer = true;
+//    }
+//);
+// Remove default claim mapping. We want to use the claim names as they are returned by the Microsoft Identity Platform endpoint.
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+    .AddMicrosoftIdentityWebApi(
+        jwtOptions => {
+            jwtOptions.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                //ValidAudiences = validAudiencesArray,
+                IssuerValidator = (issuer, securityToken, validationParameters) =>
+                {
+                    // when no app_uri_id is configured will come from "https://sts.windows.net/"
+                    // when a multitenant app is configured will come from "https://login.microsoftonline.com/ or "https://sts.windows.net/" depending on the tenant configuration" and target APPLICATION_URI_ID
+                    if (issuer.StartsWith("https://sts.windows.net/") || issuer.StartsWith("https://login.microsoftonline.com/"))
+                    {
+                        return issuer; // The issuer is valid
+                    }
+                    else
+                    {
+                        throw new SecurityTokenInvalidIssuerException($"Invalid issuer {issuer}");
+                    }
+                }
+            };
+        },
+        identityOptions => {
+            identityOptions.Domain = "common";
+            identityOptions.ClientId = "common";
+            identityOptions.Instance = "https://login.microsoftonline.com/";
+            identityOptions.TenantId = "common";
+        },
+        subscribeToJwtBearerMiddlewareDiagnosticsEvents: true);
 
 // Add services HttpClient to call gridwich endpoint.
 builder.Services.AddHttpClient();
@@ -249,59 +204,3 @@ static TableClient CreateTableClient(Uri endpoint, string tableName, TokenCreden
     return client;
 }
 
-/// <summary>
-/// Get CosmosDB Account Key
-/// </summary>
-static async Task<string> GetCosmosDBKey(string subscriptionId, string resourceGroupName, string accountName)
-{
-    try
-    {
-        HttpClient httpClient = new HttpClient();
-        // AzureServiceTokenProvider will help us to get the Service Managed token.
-        var azureServiceTokenProvider = new AzureServiceTokenProvider();
-
-        // Authenticate to the Azure Resource Manager to get the Service Managed token.
-        string accessToken = await azureServiceTokenProvider.GetAccessTokenAsync("https://management.azure.com/");
-
-        // Setup the List Keys API to get the Azure Cosmos DB keys.
-        string endpoint = $"https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/{accountName}/listKeys?api-version=2019-12-12";
-
-        // Add the access token to request headers.
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        // Post to the endpoint to get the keys result.
-        var result = await httpClient.PostAsync(endpoint, new StringContent(""));
-
-        // Get the result back as a DatabaseAccountListKeysResult.
-        DatabaseAccountListKeysResult? keys = await result.Content.ReadFromJsonAsync<DatabaseAccountListKeysResult>();
-        if ((keys != null) && (keys.primaryMasterKey != null))
-            return keys.primaryMasterKey;
-    }
-    catch (Exception)
-    {
-
-    }
-    return "";
-}
-
-/// <summary>
-/// Create a new Container
-/// </summary>
-static async Task<Container?> CreateCosmosClient(Uri endpoint, string key, string databaseName, string tableName, string partitionKey = "/PartitionKey")
-{
-    CosmosClient client = new CosmosClient(endpoint.ToString(), key);
-    if (client != null)
-    {
-        await client.CreateDatabaseIfNotExistsAsync(databaseName);
-        var database = client.GetDatabase(databaseName);
-        if (database != null)
-        {
-            var container = await database.CreateContainerIfNotExistsAsync(tableName, partitionKey);
-            if (container != null)
-            {
-                return container;
-            }
-        }
-    }
-    return null;
-}

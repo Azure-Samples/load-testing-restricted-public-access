@@ -1,6 +1,7 @@
 {
-  "description": "{name} Test",
-  "displayName": "{name}",
+  "description": "{name}-{date} Run",
+  "testId": "{id}",
+  "displayName": "{name}-{date}",
   "loadTestConfiguration": {
     "engineInstances": "{engineInstances}",
     "splitAllCSVs": false
@@ -24,19 +25,15 @@
     }
   },
   "secrets": {
-    "{loadTestSecretName}": {
-      "value": "https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}/",
-      "type": "AKV_SECRET_URI"
-    }
+    {azureADTokens}
   },
   "environmentVariables": {
-    "eventhub_name_space": "{eventhubNameSpace}",
-    "eventhub_input_1": "{eventhubInput1}",
-    "eventhub_input_2": "{eventhubInput2}",
+    {users},    
+    "hostname": "{hostname}",
+    "path": "{path}",
     "duration": "{duration}",
     "threads": "{threads}"
   },
-  "subnetId": "{subnetId}",
   "keyvaultReferenceIdentityType": "SystemAssigned"
 }
 

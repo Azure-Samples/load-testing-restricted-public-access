@@ -361,7 +361,6 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
         checkError
     fi
 
-    #LOAD_TESTING_PRINCIPAL_ID=$(az resource list -n  "${LOAD_TESTING_NAME}" -g "${LOAD_TESTING_RESOURCE_GROUP}" | jq '.[0].identity.principalId' | tr -d '"')
     LOAD_TESTING_PRINCIPAL_ID=$(az load show  --name  "${LOAD_TESTING_NAME}" --resource-group "${LOAD_TESTING_RESOURCE_GROUP}" | jq '.identity.principalId' | tr -d '"')
     if [ -z "${LOAD_TESTING_PRINCIPAL_ID}" ] || [ "${LOAD_TESTING_PRINCIPAL_ID}" == "null" ];
     then
@@ -627,7 +626,15 @@ if [[ "${ACTION}" == "runtest" ]] ; then
                 echo "LOAD_TESTING_RESULT: ${LOAD_TESTING_RESULT}"
             fi
             
-            printMessage "Running load testing successful"
+            if [ "${LOAD_TESTING_RESULT}" == "FAILED" ]; then
+                printError "Load testing result failed"
+            else
+                if [ "${LOAD_TESTING_RESULT}" == "PASSED" ]; then
+                    printMessage "Load testing result successful"
+                else
+                    printMessage "Load testing result unknown"
+                fi
+            fi            
             #printMessage "Result: $LOAD_TESTING_RESULT"
             printMessage "Statistics: $LOAD_TESTING_STATISTICS"  
             exit 0

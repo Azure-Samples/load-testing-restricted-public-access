@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Test Plan">
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+    </TestPlan>
+    <hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Thread Group">
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">${udv_threads}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${udv_duration}</stringProp>
+        <stringProp name="ThreadGroup.delay">5</stringProp>
+      </ThreadGroup>
+      <hashTree>
+        <LoopController guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </LoopController>
+        <hashTree>
+          <CounterConfig guiclass="CounterConfigGui" testclass="CounterConfig" testname="Counter">
+            <stringProp name="CounterConfig.start">1</stringProp>
+            <stringProp name="CounterConfig.end">{count}</stringProp>
+            <stringProp name="CounterConfig.incr">1</stringProp>
+            <stringProp name="CounterConfig.name">counter</stringProp>
+            <stringProp name="CounterConfig.format"></stringProp>
+            <boolProp name="CounterConfig.per_user">true</boolProp>
+          </CounterConfig>
+          <hashTree/>        
+          <BeanShellSampler guiclass="BeanShellSamplerGui" testclass="BeanShellSampler" testname="BeanShellReadCurrentIndexSampler">
+            <stringProp name="BeanShellSampler.query">log.info(&quot;Setting loop variables...&quot;);
+var index = Integer.parseInt(vars.get(&quot;counter&quot;));
+
+String token = vars.get(&quot;udv_token_&quot; + index);
+vars.put(&quot;udv_token&quot;,token);
+log.info(&quot;Var udv_token created&quot;);
+
+String user = vars.get(&quot;udv_user_&quot; + index);
+vars.put(&quot;udv_user&quot;,user);
+log.info(&quot;Var udv_user created&quot;);
+
+String value = &quot;user_&quot; + index;
+vars.put(&quot;udv_index&quot;,value);
+log.info(&quot;Var udv_index created&quot;);
+
+
+log.info(&quot;Setting loop variables done&quot;);
+</stringProp>
+          </BeanShellSampler>
+          <hashTree>
+            <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="JSR223 PostProcessor">
+              <stringProp name="scriptLanguage">groovy</stringProp>
+              <stringProp name="parameters"></stringProp>
+              <stringProp name="filename"></stringProp>
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="script">prev.setIgnore()</stringProp>
+            </JSR223PostProcessor>
+            <hashTree/>
+          </hashTree>
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="" elementType="Header">
+                <stringProp name="Header.name">Content-Type</stringProp>
+                <stringProp name="Header.value">application/json</stringProp>
+              </elementProp>
+              <elementProp name="" elementType="Header">
+                <stringProp name="Header.name">Authorization</stringProp>
+                <stringProp name="Header.value">${udv_token}</stringProp>
+              </elementProp>     
+            </collectionProp>
+          </HeaderManager>
+          <hashTree/>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Request for user ${udv_index}  ">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">{&quot;user&quot;:&quot;${udv_user}&quot;,&quot;information&quot;:&quot;Information_Thread_${__threadNum}_Time_${__time(yyyy/MM/dd HH:mm:ss.SSS'Z')}&quot;}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.domain">${udv_hostname}</stringProp>
+            <stringProp name="HTTPSampler.port">443</stringProp>
+            <stringProp name="HTTPSampler.protocol">https</stringProp>
+            <stringProp name="HTTPSampler.path">${udv_path}</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          </HTTPSamplerProxy>
+          <hashTree/>
+        </hashTree>
+        <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+          <collectionProp name="Arguments.arguments">
+            <elementProp name="udv_hostname" elementType="Argument">
+              <stringProp name="Argument.name">udv_hostname</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("hostname") )}</stringProp>
+              <stringProp name="Argument.desc">API hostname</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="udv_path" elementType="Argument">
+              <stringProp name="Argument.name">udv_path</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("path") )}</stringProp>
+              <stringProp name="Argument.desc">API request path</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>                        
+            <elementProp name="udv_duration" elementType="Argument">
+              <stringProp name="Argument.name">udv_duration</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("duration") )}</stringProp>
+              <stringProp name="Argument.desc">Test Duration</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="udv_threads" elementType="Argument">
+              <stringProp name="Argument.name">udv_threads</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("threads") )}</stringProp>
+              <stringProp name="Argument.desc">Test number of threads</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>                         
+            {users}
+            {tokens}                                                                                 
+          </collectionProp>
+        </Arguments>
+        <hashTree/>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

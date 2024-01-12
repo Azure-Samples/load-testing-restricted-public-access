@@ -46,6 +46,7 @@ namespace dotnet_web_api.Services
                             id = ent.RowKey,
                             user = ent.user,
                             information = ent.information,
+                            tenantId = ent.tenantId,
                             localIp = ent.localIp,
                             localPort = ent.localPort,
                             remoteIp = ent.remoteIp,
@@ -87,6 +88,7 @@ namespace dotnet_web_api.Services
                             id = ent.RowKey,
                             user = ent.user,
                             information = ent.information,
+                            tenantId = ent.tenantId,
                             localIp = ent.localIp,
                             localPort = ent.localPort,
                             remoteIp = ent.remoteIp,
@@ -120,6 +122,7 @@ namespace dotnet_web_api.Services
             {
                 user = entity.user,
                 information = entity.information,
+                tenantId = entity.tenantId,
                 localIp = entity.localIp,
                 localPort = entity.localPort,
                 remoteIp = entity.remoteIp,
@@ -157,6 +160,7 @@ namespace dotnet_web_api.Services
             {
                 user = entity.user,
                 information = entity.information,
+                tenantId = entity.tenantId,
                 localIp = entity.localIp,
                 localPort = entity.localPort,
                 remoteIp = entity.remoteIp,

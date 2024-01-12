@@ -14,6 +14,7 @@ namespace dotnet_web_api.Models
         public string id { get; set; } = default!;
         public string user { get; set; } = default!;
         public string information { get; set; } = default!;
+        public string tenantId { get; set; } = default!;
         public string localIp { get; set; } = "";
         public int localPort { get; set; } = 0;
         public string remoteIp { get; set; } = "";

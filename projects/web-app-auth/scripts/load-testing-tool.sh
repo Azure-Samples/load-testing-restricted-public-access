@@ -46,13 +46,17 @@ AZURE_SUBSCRIPTION_ID=""
 AZURE_TENANT_ID=""   
 AZURE_REGION="eastus2"
 AZURE_APP_ID=""
-LOAD_TESTING_SECRET_NAME="EVENTHUB-TOKEN"
+LOAD_TESTING_SECRET_NAME="AD-TOKEN"
 LOAD_TESTING_DURATION="60"
 LOAD_TESTING_THREADS="1"
 LOAD_TESTING_ENGINE_INSTANCES="1"
 LOAD_TESTING_ERROR_PERCENTAGE="5"
 LOAD_TESTING_RESPONSE_TIME="100"
-LOAD_TESTING_TEST_NAME="eventhub-restricted-public-access"
+LOAD_TESTING_TEST_NAME="web-app-auth-multi-users"
+LOAD_TESTING_USERS_CONFIGURATION=""
+LOAD_TESTING_TARGET_HOSTNAME=""
+LOAD_TESTING_TARGET_PATH=""
+
 # shellcheck disable=SC2034
 while getopts "a:c:h:r:" opt; do
     case $opt in
@@ -248,11 +252,12 @@ if [[ "${ACTION}" == "deploy" ]] ; then
                 printProgress "Update Application 'sp-${AZURE_TEST_SUFFIX}-app' in Microsoft Graph "   
                 # Azure CLI Application Id : 04b07795-8ddb-461a-bbee-02f9e1bf7b46 
                 # Azure CLI will be authorized to get access token to the API using the commands below:
-                #  token=$(az account get-access-token --resource api://<WebAPIAppId> | jq -r .accessToken)
+                #  token=$(az account get-access-token --resource https://<TenantDNSName>/<WebAPIAppId> | jq -r .accessToken)
                 #  curl -i -X GET --header "Authorization: Bearer $token"  https://<<WebAPIDomain>/visit
+                TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
                 cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
                     --headers \"Content-Type=application/json\" \
-                    --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${AZURE_RESOURCE_WEB_APP_SERVER}\\\"]},\\\"identifierUris\\\":[\\\"api://${appId}\\\"]}\""
+                    --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${AZURE_RESOURCE_WEB_APP_SERVER}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
                 printProgress "$cmd"
                 eval "$cmd"
                 # Wait few seconds before updating the Application record in Azure AD 
@@ -287,11 +292,12 @@ if [[ "${ACTION}" == "deploy" ]] ; then
                 printProgress "Update Application 'sp-${AZURE_TEST_SUFFIX}-app' in Microsoft Graph "   
                 # Azure CLI Application Id : 04b07795-8ddb-461a-bbee-02f9e1bf7b46 
                 # Azure CLI will be authorized to get access token to the API using the commands below:
-                #  token=$(az account get-access-token --resource api://<WebAPIAppId> | jq -r .accessToken)
+                #  token=$(az account get-access-token --resource https://<TenantDNSName>/<WebAPIAppId> | jq -r .accessToken)
                 #  curl -i -X GET --header "Authorization: Bearer $token"  https://<<WebAPIDomain>/visit
+                TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
                 cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
                     --headers \"Content-Type=application/json\" \
-                    --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${AZURE_RESOURCE_WEB_APP_SERVER}\\\"]},\\\"identifierUris\\\":[\\\"api://${appId}\\\"]}\""
+                    --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${AZURE_RESOURCE_WEB_APP_SERVER}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
                 printProgress "$cmd"
                 eval "$cmd"
             fi
@@ -431,6 +437,7 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     printMessage "Building ts-web-app container version:${APP_VERSION} port: ${APP_PORT}"
 
     # Update version in HTML package
+    TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
     TEMPDIR=$(mktemp -d)
     printProgress  "Update file: $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json application Id: ${AZURE_APP_ID} name: 'sp-${AZURE_TEST_SUFFIX}-app'"
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.version = \"${APP_VERSION}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
@@ -438,10 +445,11 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.clientId = \"${AZURE_APP_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"   
 
-    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tokenAPIRequest.scopes = [\"api://${AZURE_APP_ID}/user_impersonation\" ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tokenAPIRequest.scopes = [\"https://${TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation\" ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"   
 
-    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    #cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/common\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"    
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tenantId = \"${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"    
@@ -626,7 +634,7 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
     printMessage "Waiting 30 seconds before assigning Roles..."
     sleep 30 
 
-    printMessage "Assigning Roles 'Network Contributor' for current user or service principal on scope Virtual Network ${LOAD_TESTING_VNET_NAME}"
+    printMessage "Assigning Roles 'Load Test Contributor' for current user or service principal on scope Load Test ${LOAD_TESTING_NAME}"
     # Get current user objectId
     printProgress "Get current user objectId"
     UserType="User"
@@ -638,19 +646,6 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
         PRINCIPAL_ID=$(az ad sp show --id "$(az account show | jq -r .user.name)" --query id --output tsv  2> /dev/null) || true
     fi
 
-    printProgress "Checking role assignment 'Network Contributor' between '${PRINCIPAL_ID}' and VNET '${LOAD_TESTING_VNET_NAME}'"
-    RoleAssignmentCount=$(az role assignment list --assignee "${PRINCIPAL_ID}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${LOAD_TESTING_RESOURCE_GROUP}"/providers/Microsoft.Network/virtualNetworks/"${LOAD_TESTING_VNET_NAME}"   2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Network Contributor") | length')
-    if [ "$RoleAssignmentCount" != "1" ];
-    then
-        printProgress "Assigning 'Network Contributor' role assignment on scope VNET '${LOAD_TESTING_VNET_NAME}'..."
-        #cmd="az role assignment create --assignee-object-id \"${PRINCIPAL_ID}\" --assignee-principal-type '${UserType}' --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${LOAD_TESTING_RESOURCE_GROUP}\"/providers/Microsoft.Network/virtualNetworks/\"${LOAD_TESTING_VNET_NAME}\" --role \"Network Contributor\"  2>/dev/null"
-        cmd="az role assignment create --assignee-object-id \"${PRINCIPAL_ID}\" --assignee-principal-type '${UserType}' --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${LOAD_TESTING_RESOURCE_GROUP}\"/providers/Microsoft.Network/virtualNetworks/\"${LOAD_TESTING_VNET_NAME}\" --role \"Network Contributor\"  "
-        printProgress "$cmd"
-        eval "$cmd" >/dev/null
-        checkError
-    fi
-
-    printMessage "Assigning Roles 'Load Test Contributor' for current user or service principal on scope Load Test ${LOAD_TESTING_NAME}"
     printProgress "Checking role assignment 'Load Test Contributor' between '${PRINCIPAL_ID}' and LOAD TEST '${LOAD_TESTING_NAME}'"
     RoleAssignmentCount=$(az role assignment list --assignee "${PRINCIPAL_ID}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${LOAD_TESTING_RESOURCE_GROUP}"/providers/Microsoft.LoadTestService/loadTests/"${LOAD_TESTING_NAME}"   2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Load Test Contributor") | length')
     if [ "$RoleAssignmentCount" != "1" ];
@@ -662,7 +657,7 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
         checkError
     fi
 
-    LOAD_TESTING_PRINCIPAL_ID=$(az resource list -n  "${LOAD_TESTING_NAME}" -g "${LOAD_TESTING_RESOURCE_GROUP}" | jq '.[0].identity.principalId' | tr -d '"')
+    LOAD_TESTING_PRINCIPAL_ID=$(az load show  --name  "${LOAD_TESTING_NAME}" --resource-group "${LOAD_TESTING_RESOURCE_GROUP}" | jq '.identity.principalId' | tr -d '"')
     if [ -z "${LOAD_TESTING_PRINCIPAL_ID}" ] || [ "${LOAD_TESTING_PRINCIPAL_ID}" == "null" ];
     then
         echo "Principal Id not found for Load Test resource: '${LOAD_TESTING_NAME}'"
@@ -692,7 +687,6 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
         checkError
     fi
 
-    printMessage "Assigning Roles 'Network Contributor'  on scope VNET done"
     printMessage "Assigning Roles 'Load Test Contributor' on scope load testing done"
     printMessage "Assigning Roles 'Key Vault Secrets User' and 'Key Vault Secrets Officer' on scope key vault done"
     printMessage "Deploying the load testing infrastructure done"
@@ -718,6 +712,22 @@ if [[ "${ACTION}" == "runtest" ]] ; then
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
     checkError
+
+    if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ];
+    then
+        echo "Variable LOAD_TESTING_USERS_CONFIGURATION not defined."
+        echo "Format:"
+        echo "LOAD_TESTING_USERS_CONFIGURATION='[{"
+        echo "\"adu\": \"{AD_USERNAME}\","
+        echo "\"pw\": \"{AD_PASSWORD}\","
+        echo "\"sco\": \"{SCOPE}\","
+        echo "\"clid\": \"{CLIENT_ID}\","
+        echo "\"tid\":\"{TENANT_ID}\""
+        echo "}]'"            
+        exit 1
+    else
+        updateConfigurationFile "${CONFIGURATION_FILE}" "LOAD_TESTING_USERS_CONFIGURATION" "'${LOAD_TESTING_USERS_CONFIGURATION}'"
+    fi    
     for i in $(ls -d ./projects/web-app-auth/scenarios/*/); 
     do 
         LOAD_TESTING_SCENARIO=$(basename ${i%%/})
@@ -738,6 +748,15 @@ if [[ "${ACTION}" == "runtest" ]] ; then
 
         printProgress ""
         printProgress "Creating/Updating test ${LOAD_TESTING_TEST_NAME} ID:${LOAD_TESTING_TEST_ID}..."    
+        if [ -z ${LOAD_TESTING_TARGET_HOSTNAME} ]; then
+            LOAD_TESTING_TARGET_HOSTNAME=${AZURE_RESOURCE_FUNCTION_DOMAIN}
+            updateConfigurationFile "${CONFIGURATION_FILE}" "LOAD_TESTING_TARGET_HOSTNAME" "${LOAD_TESTING_TARGET_HOSTNAME}"
+        fi
+        if [ -z ${LOAD_TESTING_TARGET_PATH} ]; then
+            LOAD_TESTING_TARGET_PATH="visit"
+            updateConfigurationFile "${CONFIGURATION_FILE}" "LOAD_TESTING_TARGET_PATH" "${LOAD_TESTING_TARGET_PATH}"
+        fi
+
         # Update Load Testing configuration file
         TEMP_DIR=$(mktemp -d)
         cp  "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.template.json"  "$TEMP_DIR/load-testing.json"
@@ -745,15 +764,44 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing.json"
         sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing.json"
         sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing.json"
-        sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.json"
-        sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.json"
-        sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.json"
-        sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing.json"
-        sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing.json"
-        sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{hostname}/$(echo ${LOAD_TESTING_TARGET_HOSTNAME} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{path}/$(echo ${LOAD_TESTING_TARGET_PATH} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.json"
         sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing.json"
         sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing.json"
-        sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing.json"
+        
+        COUNTER=1
+        AZURE_AD_TOKENS=""
+        while read item; do     
+            ITEM="\"token_${COUNTER}\":{\"value\":\"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultAzureADTokenSecretName}-${COUNTER}/\",\"type\":\"AKV_SECRET_URI\"}"
+            # echo "ITEM: ${ITEM}"
+            if [[ COUNTER -eq 1 ]]; then
+                AZURE_AD_TOKENS="${ITEM}"
+            else
+                AZURE_AD_TOKENS="${AZURE_AD_TOKENS},${ITEM}"
+            fi
+            (( COUNTER++ ))
+        done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+        # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
+        sed -i "s/{azureADTokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.json"
+
+        COUNTER=1
+        USERS=""
+        while read item; do 
+            VALUE=$(jq -r '.adu' <<< "$item");
+            ITEM="\"user_${COUNTER}\":\"${VALUE}\""
+            # echo "ITEM: ${ITEM}"
+            if [[ COUNTER -eq 1 ]]; then
+                USERS="${ITEM}"
+            else
+                USERS="${USERS},${ITEM}"
+            fi
+            (( COUNTER++ ))
+        done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+        # echo "USERS: ${USERS}"
+        sed -i "s/{users}/$(echo ${USERS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.json"
+
+        sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{keyVaultAzureADTokenSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.json"
 
         #echo "$TEMP_DIR/load-testing.json content:"
         #cat "$TEMP_DIR/load-testing.json"
@@ -766,28 +814,54 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         eval "$cmd" >/dev/null
     
         printProgress ""
+        printProgress "Preparing load-testing.jmx for test ${LOAD_TESTING_TEST_NAME}..." 
+        cp  "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.template.jmx"  "$TEMP_DIR/load-testing.jmx"
+        COUNTER=1
+        AZURE_AD_TOKENS=""
+        while read item; do     
+            ITEM="<elementProp name=\"udv_token_${COUNTER}\" elementType=\"Argument\"><stringProp name=\"Argument.name\">udv_token_${COUNTER}</stringProp><stringProp name=\"Argument.value\">\${__GetSecret(token_${COUNTER})}</stringProp><stringProp name=\"Argument.desc\">Azure AD or SAS Token Token ${COUNTER}</stringProp><stringProp name=\"Argument.metadata\">=</stringProp></elementProp>"
+            # echo "ITEM: ${ITEM}"
+            if [[ COUNTER -eq 1 ]]; then
+                AZURE_AD_TOKENS="${ITEM}"
+            else
+                AZURE_AD_TOKENS="${AZURE_AD_TOKENS},${ITEM}"
+            fi
+            (( COUNTER++ ))
+        done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+        # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
+        sed -i "s/{tokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
+
+        COUNTER=1
+        USERS=""
+        while read item; do 
+            VALUE=$(jq -r '.adu' <<< "$item");
+            ITEM="<elementProp name=\"udv_user_${COUNTER}\" elementType=\"Argument\"><stringProp name=\"Argument.name\">udv_user_${COUNTER}</stringProp><stringProp name=\"Argument.value\">\${__BeanShell( System.getenv(\"user_${COUNTER}\") )}</stringProp><stringProp name=\"Argument.desc\">User ${COUNTER}</stringProp><stringProp name=\"Argument.metadata\">=</stringProp></elementProp>"
+            # echo "ITEM: ${ITEM}"
+            if [[ COUNTER -eq 1 ]]; then
+                USERS="${ITEM}"
+            else
+                USERS="${USERS},${ITEM}"
+            fi
+            (( COUNTER++ ))
+        done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+        # echo "USERS: ${USERS}"
+        sed -i "s/{users}/$(echo ${USERS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
+        (( COUNTER-- ))
+        # echo "COUNTER: ${COUNTER}"
+        sed -i "s/{count}/${COUNTER}/g" "$TEMP_DIR/load-testing.jmx"
+
+
+        #echo "$TEMP_DIR/load-testing.jmx content:"
+        #cat "$TEMP_DIR/load-testing.jmx"
+
         printProgress "Uploading load-testing.jmx for test ${LOAD_TESTING_TEST_NAME}..."    
         cmd="curl -s -X PUT \
         \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/load-testing.jmx?fileType=JMX_FILE&api-version=2022-11-01\" \
         -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-        --data-binary  \"@$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.jmx\" "
+        --data-binary  \"@$TEMP_DIR/load-testing.jmx\" "
         # echo "$cmd"
         eval "$cmd" >/dev/null
-
-
-        for i in $(ls -d ./projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/*.csv);
-        do 
-            LOAD_TESTING_DATA_FILE=$(basename ${i%%/})
-            printProgress "Uploading ${LOAD_TESTING_DATA_FILE} for test ${LOAD_TESTING_TEST_NAME}..."    
-            cmd="curl -s -X PUT \
-            \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/${LOAD_TESTING_DATA_FILE}?fileType=ADDITIONAL_ARTIFACTS&api-version=2022-11-01\" \
-            -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-            --data-binary  \"@$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/${LOAD_TESTING_DATA_FILE}\" "
-            # echo "$cmd"
-            eval "$cmd" >/dev/null
-        done 
-
-
+        checkError
 
         printProgress "Waiting the validation of the jmx file for test  ${LOAD_TESTING_TEST_NAME}..."    
         statuscmd="curl -s -X GET \
@@ -808,13 +882,36 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         fi
 
 
-        printProgress "Store the EventHub token in the Azure Key Vault for test ${LOAD_TESTING_RESOURCE_NAME}..."    
-        key=$(az eventhubs namespace authorization-rule keys list --resource-group "${RESOURCE_GROUP}" --namespace-name "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" --name RootManageSharedAccessKey | jq -r .primaryKey)
-        EVENTHUB_TOKEN=$("$SCRIPTS_DIRECTORY/../../../scripts/get-event-hub-token.sh" "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" RootManageSharedAccessKey "$key")
-        cmd="az keyvault secret set --vault-name \"${LOAD_TESTING_KEY_VAULT_NAME}\" --name \"${LOAD_TESTING_SECRET_NAME}\" --value \"${EVENTHUB_TOKEN}\" --output none"
-        # echo "$cmd"
-        eval "${cmd}"
-        checkError
+        if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ];
+        then
+            echo "Variable LOAD_TESTING_USERS_CONFIGURATION not defined."
+            exit 1  
+        else
+            COUNTER=1
+            while read item; do 
+                AD_USER=$(jq -r '.adu' <<< "$item");
+                PASSWORD=$(jq -r '.pw' <<< "$item");
+                CLIENT_ID=$(jq -r '.clid' <<< "$item");
+                SCOPE=$(jq -r '.sco' <<< "$item");
+                TENANT_ID=$(jq -r '.tid' <<< "$item");
+
+
+                printProgress "Getting Azure AD Token for user ${COUNTER}..."     
+                cmd="curl -s -X POST https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token  \
+                -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' \
+                -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${PASSWORD}&grant_type=password' | jq -r '.access_token' "
+                # echo "${cmd}"
+                AZURE_AD_TOKEN="Bearer $(eval "${cmd}")"
+                # echo "${AZURE_AD_TOKEN}"
+
+                printProgress "Store the token in the Azure Key Vault for test ${LOAD_TESTING_RESOURCE_NAME} for user ${COUNTER}..."   
+                cmd="az keyvault secret set --vault-name \"${LOAD_TESTING_KEY_VAULT_NAME}\" --name \"${LOAD_TESTING_SECRET_NAME}-${COUNTER}\" --value \"${AZURE_AD_TOKEN}\" --output none"
+                # echo "$cmd"
+                eval "${cmd}"  
+                checkError
+                (( COUNTER++ ))
+            done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+        fi
 
         printProgress ""
         LOAD_TESTING_TEST_RUN_ID=$(cat /proc/sys/kernel/random/uuid)
@@ -829,15 +926,43 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing-run.json"
         sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing-run.json"
         sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing-run.json"
-        sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-run.json"
-        sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-run.json"
-        sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-run.json"
-        sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing-run.json"
-        sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing-run.json"
-        sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing-run.json"
         sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-run.json"
         sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-run.json"
-        sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{hostname}/$(echo ${LOAD_TESTING_TARGET_HOSTNAME} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{path}/$(echo ${LOAD_TESTING_TARGET_PATH} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing-run.json"
+
+        COUNTER=1
+        AZURE_AD_TOKENS=""
+        while read item; do     
+            ITEM="\"token_${COUNTER}\":{\"value\":\"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultAzureADTokenSecretName}-${COUNTER}/\",\"type\":\"AKV_SECRET_URI\"}"
+            # echo "ITEM: ${ITEM}"
+            if [[ COUNTER -eq 1 ]]; then
+                AZURE_AD_TOKENS="${ITEM}"
+            else
+                AZURE_AD_TOKENS="${AZURE_AD_TOKENS},${ITEM}"
+            fi
+            (( COUNTER++ ))
+        done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+        # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
+        sed -i "s/{azureADTokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing-run.json"
+
+        COUNTER=1
+        USERS=""
+        while read item; do 
+            VALUE=$(jq -r '.tcu' <<< "$item");
+            ITEM="\"user_${COUNTER}\":\"${VALUE}\""
+            # echo "ITEM: ${ITEM}"
+            if [[ COUNTER -eq 1 ]]; then
+                USERS="${ITEM}"
+            else
+                USERS="${USERS},${ITEM}"
+            fi
+            (( COUNTER++ ))
+        done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+        # echo "USERS: ${USERS}"
+        sed -i "s/{users}/$(echo ${USERS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{keyVaultAzureADTokenSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-run.json"
 
         # Wait 10 seconds to be sure the JMX file is validated
         sleep 10
@@ -846,15 +971,15 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
         -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
         -d \"@$TEMP_DIR/load-testing-run.json\" "
-        # echo "$cmd"
+        #echo "$cmd"
         eval "$cmd"  >/dev/null
-
+        checkError
 
         printProgress "Waiting the end of the test run ${LOAD_TESTING_TEST_RUN_ID}..."    
         statuscmd="curl -s -X GET \
         \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
         -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
-        # echo "$statuscmd"
+        #echo "$statuscmd"
         LOAD_TESTING_STATUS="unknown"
         while [ "${LOAD_TESTING_STATUS}" != "DONE" ] && [ "${LOAD_TESTING_STATUS}" != "FAILED" ] && [ "${LOAD_TESTING_STATUS}" != "null" ]
         do
@@ -926,8 +1051,15 @@ if [[ "${ACTION}" == "runtest" ]] ; then
                 echo "statuscmd: ${statuscmd}"
                 echo "LOAD_TESTING_RESULT: ${LOAD_TESTING_RESULT}"
             fi
-            
-            printMessage "Running load testing successful"
+            if [ "${LOAD_TESTING_RESULT}" == "FAILED" ]; then
+                printError "Load testing result failed"
+            else
+                if [ "${LOAD_TESTING_RESULT}" == "PASSED" ]; then
+                    printMessage "Load testing result successful"
+                else
+                    printMessage "Load testing result unknown"
+                fi
+            fi
             #printMessage "Result: $LOAD_TESTING_RESULT"
             printMessage "Statistics: $LOAD_TESTING_STATISTICS"  
             exit 0
@@ -936,48 +1068,25 @@ if [[ "${ACTION}" == "runtest" ]] ; then
 fi
 
 if [[ "${ACTION}" == "opentest" ]] ; then
-    printMessage "Opening access to Eventhub and Keyvault..."
+    printMessage "Opening access to Keyvault..."
     # Check Azure connection
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
     checkError
     readConfigurationFile "$CONFIGURATION_FILE"
 
-    printProgress "Open access to EventHubs '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' access for the load testing resource with public ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
-    if [[ -n ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} ]]; then
-        if [[ -n $(az eventhubs namespace show --name "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
-            if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
-                cmd="az eventhubs namespace network-rule-set list  --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} | jq -r '.[].ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
-                # echo "cmd=${cmd}"
-                ALLOW=$(eval "${cmd}")
-                if [ ! "${ALLOW}" == "Allow" ]  
-                then
-                    # Get Agent IP address
-                    ip=$(curl -s https://ifconfig.me/ip) || true
-                    #cmd="az eventhubs namespace network-rule-set create --ip-rules '[{\"action\":\"Allow\",\"ipMask\":\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\"}]' --public-network-access 'SecuredByPerimeter' --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} "
-                    cmd="az eventhubs namespace network-rule-set update --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} --default-action Deny --public-network Enabled --ip-rules \"[{ip-mask:${ip},action:Allow},{ip-mask:${LOAD_TESTING_PUBLIC_IP_ADDRESS},action:Allow}]\"  "
-                    # echo "$cmd"
-                    eval "${cmd}" >/dev/null
-                    checkError
-                    # Wait 30 seconds for the access to the eventhubs
-                    sleep 30
-                fi
-            fi
-        fi
-    fi
-
     printProgress "Open access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
     cmd="az keyvault update --default-action Allow --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
     # echo "$cmd"
     eval "${cmd}" >/dev/null
     checkError
-    printMessage "Eventhub and Keyvault are now accessible from Azure Load Testing"
+    printMessage "Keyvault is now accessible from Azure Load Testing"
 
     exit 0
 fi
 
 if [[ "${ACTION}" == "closetest" ]] ; then
-    printMessage "Closing access to Eventhub and Keyvault..."
+    printMessage "Closing access to Keyvault..."
     # Check Azure connection
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
@@ -990,20 +1099,8 @@ if [[ "${ACTION}" == "closetest" ]] ; then
     eval "${cmd}" >/dev/null
     checkError
 
-    printProgress "Close access to EventHubs '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' access for the load testing resource with pubic ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
-    if [[ -n ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} ]]; then
-        if [[ -n $(az eventhubs namespace show --name "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
-            if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
-                # Get Agent IP address
-                ip=$(curl -s https://ifconfig.me/ip) || true
-                cmd="az eventhubs namespace network-rule-set update --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} --default-action Deny --public-network Enabled --ip-rules '[{ip-mask:${ip},action:Allow}]'  "
-                # echo "$cmd"
-                eval "${cmd}" >/dev/null
-                checkError
-            fi
-        fi
-    fi
-    printMessage "Eventhub and Keyvault are no more accessible from Azure Load Testing"
+
+    printMessage "Keyvault is no more accessible from Azure Load Testing"
 
     exit 0
 fi

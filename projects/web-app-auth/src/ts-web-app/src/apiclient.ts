@@ -32,6 +32,7 @@ export class Visit {
   id = "";
   user = "";
   information = "";
+  tenantId = "";
   localIp = "";
   localPort = 0;
   remoteIp = "";

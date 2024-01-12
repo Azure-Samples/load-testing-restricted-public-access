@@ -146,6 +146,7 @@ export class UpdateVisitDialog extends Dialog {
       { id: "updateVisitId", value: this.selectedRecord.id, readonly: false },
       { id: "updateVisitUser", value: this.selectedRecord.user, readonly: false },
       { id: "updateVisitInformation", value: this.selectedRecord.information, readonly: false },
+      { id: "updateVisitTenantId", value: this.selectedRecord.tenantId, readonly: true },
       { id: "updateVisitLocalIp", value: this.selectedRecord.localIp, readonly: true },
       { id: "updateVisitLocalPort", value: this.selectedRecord.localPort, readonly: true },
       { id: "updateVisitRemoteIp", value: this.selectedRecord.remoteIp, readonly: true },
@@ -172,6 +173,7 @@ export class UpdateVisitDialog extends Dialog {
     this.visitRecord.id = this.getHTMLValue("updateVisitId").value.toString();
     this.visitRecord.user = this.getHTMLValue("updateVisitUser").value.toString();
     this.visitRecord.information = this.getHTMLValue("updateVisitInformation").value.toString();
+    this.visitRecord.tenantId = this.selectedRecord.tenantId;
     this.visitRecord.localIp = this.selectedRecord.localIp;
     this.visitRecord.localPort = this.selectedRecord.localPort;
     this.visitRecord.remoteIp = this.selectedRecord.remoteIp;
@@ -211,6 +213,7 @@ export class UpdateVisitDialog extends Dialog {
               id: this.visitId,
               user: this.visitRecord.user,
               information: this.visitRecord.information,
+              tenantId: this.visitRecord.tenantId,
               locapIp: this.visitRecord.localIp,
               locapPort: this.visitRecord.localPort,
               remoteIp: this.visitRecord.remoteIp,
