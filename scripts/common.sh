@@ -545,8 +545,9 @@ function checkScenario(){
         exit 1
     fi
     FILE="${DIRECTORY}/load-testing.jmx"
-    if [ ! -f "${FILE}" ]; then
-        printError "Load Testing JMX file ${FILE} doesn't exists."
+    FILE_TEMPLATE="${DIRECTORY}/load-testing.template.jmx"
+    if [ ! -f "${FILE}" && ! -f "${FILE_TEMPLATE}" ]; then
+        printError "Load Testing JMX file ${FILE} nor Load Testing Template JMX file ${FILE} don't exists."
         exit 1
     fi
 }

@@ -593,6 +593,29 @@ if [[ "${ACTION}" == "undeploy" ]] ; then
     RESOURCE_GROUP=$(getResourceGroupName "${AZURE_TEST_SUFFIX}")
     undeployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$RESOURCE_GROUP"
 
+    printProgress "Check if Application 'sp-${AZURE_TEST_SUFFIX}-app' still exists..."        
+    cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].id"
+    printProgress "$cmd"
+    id=$(eval "$cmd") || true    
+    if [[ -n ${id} && ${id} != 'null' ]] ; then
+        printProgress "Delete Application 'sp-${AZURE_TEST_SUFFIX}-app' "        
+        cmd="az ad app delete --id '${id}'"        
+        printProgress "$cmd"
+        eval "$cmd" || true
+        checkError
+    fi 
+    printProgress "Check if Service Principal 'sp-${AZURE_TEST_SUFFIX}-app' still exists..."        
+    cmd="az ad sp list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].id"
+    printProgress "$cmd"
+    id=$(eval "$cmd") || true    
+    if [[ -n ${id} && ${id} != 'null' ]] ; then
+        printProgress "Delete Service Principal 'sp-${AZURE_TEST_SUFFIX}-app' "        
+        cmd="az ad sp delete --id '${id}'"        
+        printProgress "$cmd"
+        eval "$cmd" || true
+        checkError
+    fi 
+
     printMessage "Undeploying the infrastructure done"
     exit 0
 fi
@@ -1012,13 +1035,13 @@ if [[ "${ACTION}" == "runtest" ]] ; then
             statuscmd="curl -s -X GET \
             \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
             -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
-            LOAD_TESTING_RESULT=$(eval "$statuscmd")
-            # printMessage "Result: $LOAD_TESTING_RESULT"
-            LOAD_TESTING_STATISTICS=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testRunStatistics')
-            LOAD_TESTING_RESULTS_CSV_URL=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.url')
-            LOAD_TESTING_RESULTS_CSV_FILE=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.fileName')
-            LOAD_TESTING_RESULTS_LOGS_URL=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.url')
-            LOAD_TESTING_RESULTS_LOGS_FILE=$(echo "${LOAD_TESTING_RESULT}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.fileName')
+            LOAD_TESTING_RESULTS=$(eval "$statuscmd")
+            # printMessage "Result: $LOAD_TESTING_RESULTS"
+            LOAD_TESTING_STATISTICS=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testRunStatistics')
+            LOAD_TESTING_RESULTS_CSV_URL=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.url')
+            LOAD_TESTING_RESULTS_CSV_FILE=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.fileName')
+            LOAD_TESTING_RESULTS_LOGS_URL=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.url')
+            LOAD_TESTING_RESULTS_LOGS_FILE=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.fileName')
 
             if [[ ! -z "${LOAD_TESTING_RESULTS_CSV_FILE}"  && "${LOAD_TESTING_RESULTS_CSV_FILE}" != "null" ]]
             then
@@ -1037,7 +1060,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
             else
                 printWarning "Result zip file not available through the Azure Load Testing REST API" 
                 echo "statuscmd: ${statuscmd}"
-                echo "LOAD_TESTING_RESULT: ${LOAD_TESTING_RESULT}"
+                echo "LOAD_TESTING_RESULTS: ${LOAD_TESTING_RESULTS}"
             fi
 
             if [[ ! -z "${LOAD_TESTING_RESULTS_LOGS_FILE}"  && "${LOAD_TESTING_RESULTS_LOGS_FILE}" != "null" ]]
@@ -1049,7 +1072,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
             else
                 printWarning "Logs zip file not available through the Azure Load Testing REST API" 
                 echo "statuscmd: ${statuscmd}"
-                echo "LOAD_TESTING_RESULT: ${LOAD_TESTING_RESULT}"
+                echo "LOAD_TESTING_RESULTS: ${LOAD_TESTING_RESULTS}"
             fi
             if [ "${LOAD_TESTING_RESULT}" == "FAILED" ]; then
                 printError "Load testing result failed"
