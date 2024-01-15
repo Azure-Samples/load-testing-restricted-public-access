@@ -1,4 +1,4 @@
-# Using Azure Load Testing to test services based on Azure Event Hubs with restricted public access  
+# Using Azure Load Testing to test Multi-Tenant services   
 
 ## Table of Contents
 
@@ -11,18 +11,19 @@
 
 ## Introduction
 
-This Azure Load Testing sample describes how to test an architecture based an Azure Event Hubs with public access restrictions. Access to the Azure Event Hubs endpoint is restricted to specific client IP addresses. For example, the Azure Event Hubs service is only accessible from on-premises Event sources.
+This Azure Load Testing sample describes how to test a Multi-Tenant Application based on an frontend hosted on Azure Static Web App, a backend (REST API) hosted on Azure Function and a Database hosted in a table on Azure Storage. This sample will run load testing for several users hosted in different Microsoft Entra ID, the Microsoft Entra ID token associated witheach user will be stored in the Azure Key Vault associated with the Azure Load Testing infrastructure. 
 
 This repository contains:
 
 - bash files and ARM templates to:
   - deploy/undeploy the infrastructure to test,
   - deploy/undeploy the load testing infrastructure
-  - open/close the access to Azure EventHubs from Azure Load Testing
+  - open/close the access to Azure Key Vault from Azure Load Testing
   - run the load test
+- bash file to create the users used for the tests in a Microsoft Entra ID tenant
 - an Azure DevOps pipeline and a Github Action to automate the load testing scenario.
 
-The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load testing includes the following steps:
+The pipelines (Azure DevOps pipelines and Github Actions) running multi-tenant load testing includes the following steps:
 
 - deploy the infrastructure to test
 - deploy the load testing infrastructure
@@ -31,30 +32,27 @@ The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load
 - update the infrastructure after the load test
 - publish the load testing results  
 
-This scenario uses a [new feature](https://learn.microsoft.com/en-us/azure/load-testing/concept-azure-load-testing-vnet-injection#scenario-load-test-a-public-endpoint-with-access-restrictions) of Azure Load Testing to support VNET integration, for this scenario the Azure Event Hubs is deployed with restricted public access.
-In that case, the load testing infrastructure is extended with an Azure Virtual Network and an Azure NAT Gateway to use the same source public IP address for the requests coming from the load testing infrastructure.
-This source public IP address is added in the Event Hub firewall configuration before running the tests and removed once the tests are completed.
-
 ## Features and architectures
 
-This chapter describes the architecture based on Azure Event Hubs with public access restriction to load test.
-The Azure Event Hubs endpoint is accessible from the services whose source IP address is allowed (defined in the Azure Event Hubs firewall IP addresses list).  
-This service based on Azure Event Hubs could be for instance used to analyze events and metrics coming from different sources on Internet. Those sources are allowed in adding the source IP addresses in the Azure Event Hubs firewall IP address list.
-The events and metrics are analyzed using different possible Azure Resources like Azure Stream Analytics, Azure Data Factory, Synapse Analytics, Azure Machine Learning, containers running on Azure Kubernetes Service, ...
-Once the events and metrics are analyzed, an event could be raised and sent to the Azure Event Hub output.
+This chapter describes the architecture based on Azure Static Web App, Azure Function and Azure Storage to host the multi-tenant service.
+As the backend (REST API) is running in a container, an Azure Container Registry is used to store the container images.
+  
+This service based on Azure Static Web App, Azure Function and Azure Storage could be for instance a Teams Application.
 
-  ![eventhub-architecture-restricted-public-access](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario.png)
+  ![eventhub-architecture-restricted-public-access](./docs/img/load-testing-web-app-auth/architecture-scenario.png)
 
-*Download a [SVG file](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario.svg) of this diagram.*
+*Download a [SVG file](./docs/img/load-testing-web-app-auth/architecture-scenario.svg) of this diagram.*
 
-This repository doesn't contain the code used to deploy the Events Analyzer resources. This repository contains the code to deploy an Azure Event Hubs service with 2 input Event Hubs and 1 output Event Hub.
-Moreover, it contains the code to run Azure Load Testing against Azure Event Hubs whose public network access is restricted. In that case, the load testing infrastructure is extended with an Azure Virtual Network and an Azure NAT Gateway to use the same source public IP address for the requests coming from the load testing infrastructure.
-This source public IP address is added in the Event Hub firewall configuration before running the tests and removed once the tests are completed.
-The infrastructure is also extended with an Azure Key Vault which is used to store the secrets like the EventHubs tokens.
+This repository contains the code associated with:
+- the frontend: a basic HTML/Javascript application calling the backend REST API once the user is authentified, 
+- the backend: a REST API which record the visit in an Azure Storage table. Each record inn the table contains the user's Tenant Id and the user's mail address.
 
-  ![eventhub-architecture-restricted-public-access-load-testing](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing.png)
+Moreover, it contains the code to run Azure Load Testing against the REST API which required a user authentication. 
+The Azure Load Testing infrastructure is extended with an Azure Key Vault which is used to store the user's Microsoft Entra Id tokens.
 
-*Download a [SVG file](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing.svg) of this diagram.*
+  ![eventhub-architecture-restricted-public-access-load-testing](./docs/img/load-testing-web-app-auth/architecture-scenario-load-testing.png)
+
+*Download a [SVG file](./docs/img/load-testing-web-app-auth/architecture-scenario-load-testing.svg) of this diagram.*
 
 ## Getting started
 
@@ -76,7 +74,7 @@ In order to test the solution, you need first an Azure Subscription, you can get
 
 You also need to install Git client and Visual Studio Code on your machine, below the links.
 
-|[![Windows](./docs/img/load-testing-event-hubs-restricted-public-access/windows_logo.png)](https://git-scm.com/download/win) |[![Linux](./docs/img/load-testing-event-hubs-restricted-public-access/linux_logo.png)](https://git-scm.com/download/linux)|[![MacOS](./docs/img/load-testing-event-hubs-restricted-public-access/macos_logo.png)](https://git-scm.com/download/mac)|
+|[![Windows](./docs/img/load-testing-web-app-auth/windows_logo.png)](https://git-scm.com/download/win) |[![Linux](./docs/img/load-testing-web-app-auth/linux_logo.png)](https://git-scm.com/download/linux)|[![MacOS](./docs/img/load-testing-web-app-auth/macos_logo.png)](https://git-scm.com/download/mac)|
 |:---|:---|:---|
 | [Git Client for Windows](https://git-scm.com/download/win) | [Git client for Linux](https://git-scm.com/download/linux)| [Git Client for MacOs](https://git-scm.com/download/mac) |
 [Visual Studio Code for Windows](https://code.visualstudio.com/Download)  | [Visual Studio Code for Linux](https://code.visualstudio.com/Download)  &nbsp;| [Visual Studio Code for MacOS](https://code.visualstudio.com/Download) &nbsp; &nbsp;|
@@ -138,7 +136,7 @@ You need to install the following pre-requisite on your machine
 
 2. Once Visual Studio Code is launched, you should see the following dialog box:
 
-    ![Visual Studio Code](./docs/img/load-testing-event-hubs-restricted-public-access/reopen-in-container.png)
+    ![Visual Studio Code](./docs/img/load-testing-web-app-auth/reopen-in-container.png)
 
 3. Click on the button 'Reopen in Container'
 4. Visual Studio Code opens the Dev Container. If it's the first time you open the project in container mode, it first builds the container, it can take several minutes to build the new container.
@@ -153,7 +151,7 @@ You need to install the following pre-requisite on your machine
 
 The Dev Container is now running, you can use the bash file [./scripts/load-testing-tool.sh](./scripts/load-testing-tool.sh) to:
 
-- deploy the infrastructure with Azure Event Hubs
+- deploy the infrastructure with Azure Static Web App, Azure Function and Azure Storage
 - deploy the Load Testing infrastructure
 - prepare the network configuration for the tests
 - launch the Load Tests
@@ -167,7 +165,7 @@ Below the list of arguments associated with 'load-testing-tool.sh':
 
 - -a  Sets iactool action {login, install, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
 - -c  Sets the iactool configuration file
-- -h  Event Hub Sku - Azure Event Hub Sku - by default Standard (Basic, Standard, Premium)
+- -h  Azure Function Sku - by default B1 (B1, B2, B3, S1, S2, S3)
 - -r  Sets the Azure Region for the deployment
 
 #### Installing the pre-requisites on the host machine
@@ -177,14 +175,14 @@ Follow the steps below to install the pre-requisites on your host machine which 
 1. You can launch the installation of the pre-requisites using the command below with the action "install"
 
     ```bash
-        vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a install
+        vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a install
     ```
 
 2. Once the pre-requisites are installed, launch the Azure login process using 'load-testing-tool.sh -a login'.  
 Usually this step is not required in a pipeline as the connection with Azure is already established.
 
     ```bash
-        vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a login
+        vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a login
     ```
     
     After this step the default Azure subscription has been selected. You can still change the Azure subscription, using Azure CLI command below:
@@ -196,15 +194,15 @@ Usually this step is not required in a pipeline as the connection with Azure is 
 3. Once you are connected to your Azure subscription, you can create the configuration file which is used to deploy the infrastructure.
 
     ```bash
-        vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a createconfig -c ./projects/eventhub/configuration/.default.env -r 'eastus2' 
+        vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a createconfig -c ./projects/web-app-auth/configuration/.default.env -r 'eastus2' 
     ```
 
     After this step, the variables AZURE_REGION, AZURE_TEST_SUFFIX, AZURE_SUBSCRIPTION_ID and AZURE_TENANT_ID used for the deployment are stored in the file ./configuration/.default.env.
 
     ```bash
-        vscode ➜ /workspace $ cat ./projects/eventhub/configuration/.default.env
+        vscode ➜ /workspace $ cat ./projects/web-app-auth/configuration/.default.env
         AZURE_REGION="eastus2"
-        AZURE_TEST_SUFFIX=evhub5039
+        AZURE_TEST_SUFFIX=waa2821
         AZURE_SUBSCRIPTION_ID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
         AZURE_TENANT_ID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
     ```
@@ -219,70 +217,155 @@ Usually this step is not required in a pipeline as the connection with Azure is 
 Once the pre-requisites are installed and the configuration ready, you can deploy the infrastructure you want to test, using the following arguments:
 
 ```bash
-    vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a deploy -c ./projects/eventhub/configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a deploy -c ./projects/web-app-auth/configuration/.default.env 
 ```
 
-As the bash file deploys an Event Hubs infrastructure, you can also select the following options:
-    -h : Event Hubs Sku.  
-         Below the list of SKUs ("Standard" by default):
-          "Basic","Standard","Premium"
+As the bash file deploys an Azure Function infrastructure, you can also select the following options:
+    -h : Azure Function Sku.  
+         Below the list of SKUs ("B1" by default):
+          "B1", "B2", "B3", "S1", "S2", "S3",...
 
-For instance run the following command to deploy Event Hubs with Standard SKU:
+For instance run the following command to deploy an Azure Function with Standard SKU:
 
 ```bash
-    vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a deploy -c ./projects/eventhub/configuration/.default.env -h 'Standard' 
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a deploy -c ./projects/web-app-auth/configuration/.default.env -h 'S1' 
 ```
 
 After few minutes, the resources are visible on the Azure Portal.
-The infrastructure has been deployed with 2 inputs eventhub and one output eventhub and one consumer group for each event hub.
-Moreover, during this step the Roles "Azure Event Hubs Data Sender" and "Azure Event Hubs Data Receiver" on Azure Event Hubs Scope have been assigned to the current user or a service principal if running in a pipeline. Once those roles are assigned the user or the service principal can send and receive events to Azure Event Hubs.
-After this step, the Event Hubs based infrastructure is ready and we can deploy and run the load testing.
+The infrastructure has been deployed with one Azure Static Web App, one Azure Function, one Azure Storage and one Azure Container Registry.
+Moreover, during this step the multi-tenant application has been created in the Microsoft Entra ID tenant associated with the infrastructure. The name of this application is 'sp-${AZURE_TEST_SUFFIX}-app'. This application has the following permissions:  
+- https://storage.azure.com/user_impersonation: used to allow the backend to access the table in Azure Storage  
+- https://graph.microsoft.com/User.Read: used to read user information through the Graph API  
+Morever, the application is associated with the following scope https://${TENANT_DNS_NAME}/${appId}.
+At least, the client application Azure CLI (ClientId: 04b07795-8ddb-461a-bbee-02f9e1bf7b46) is authorized to access the service. With this authorization it will be possible to get the Microsoft Entra ID token of each user with the following curl command:  
+
+```bash
+    curl -s -X POST https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token  \
+                    -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' \
+                    -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${PASSWORD}&grant_type=password' | jq -r '.access_token'
+```
+
+Once the application has been created, the role "Storage Blob Data Contributor"  on Azure Storage Scope have been assigned to the new application. 
+After this step, the infrastructure to test is ready and we can deploy and run the load testing.
+
+#### Creating users in a Microsoft Entra ID test tenant 
+
+As the REST API ( HTTPS POST/GET/PUT/DELETE visit, HTTPS GET time) hosted on the backend requires and authenticated calls, we need to create temporary users in a Microsoft Entra ID test tenant.
+
+You can get a test tenant in joining the Microsoft 365 Developer Program:
+https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment#get-a-test-tenant
+
+Once you get the test tenant, if you are connected to the tenant using the Tenant Administrator account, you can create manually users which will be used for the load testing scenarios:
+https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment#populate-your-tenant-with-users
+
+You need to disable the MFA (Multi Factor Authentication) for each new user. If the MFA is not disabled, the script or the pipeline running the load testing scenario won't be able to get the Microsoft Entry ID token for the user.
+
+The load testing script and the pipeline will use the envrionment variable LOAD_TESTING_USERS_CONFIGURATION to get the list of users for the load testing scenario.
+
+The value of the variable LOAD_TESTING_USERS_CONFIGURATION is a json string with the following format:
+
+```json
+    [
+      { "adu":"automationtest1@******.onmicrosoft.com",
+        "pw":"*******",
+        "sco":"https://******.onmicrosoft.com/d3c5dde6-2a9e-****-****-***********/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+        "tid":"a007455c-dcb3-****-****-***********"
+      },
+      {...},
+      {...}
+    ]
+```
+
+where each user is defined with:  
+- 'adu' is the user's mail adress with the following format: {TEST_USER}@{TEST_TENANT_DNS_NAME}  
+- 'pw' is the user's password  
+- 'sco' is the scope of the application with the following format 'https://{INFRASTRUCTURE_TENANT_DNS_NAME}/{APP_ID}/user_impersonation'  
+- 'clid' is the Azure CLI client id, the value is '04b07795-8ddb-461a-bbee-02f9e1bf7b46'  
+- 'tid' is the tenant Id of the test tenant  
+
+Once the json string is fully defined, you can set the variable LOAD_TESTING_USERS_CONFIGURATION in the environment file. For instance, in the file ./projects/web-app-auth/configuration/.default.env:
+
+```env
+  LOAD_TESTING_USERS_CONFIGURATION='[{"adu":"automationtest@******.onmicrosoft.com","pw":"**************","sco":"https://********.onmicrosoft.com/786e637c-11c6-4b14-9f62-***********/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46","tid":"a007455c-dcb3-4067-8a33-***********"}]'
+```
+
+You can also use the script ./scripts/create-users.sh to automatically create the automation test users.
+
+1. From the devcontainer terminal, you can call the script create-users.sh with the following parameters:  
+- '-a': action either 'create' or 'delete'  
+- '-t': test tenant id  
+- '-s': scope of the application with the following format 'https://{INFRASTRUCTURE_TENANT_DNS_NAME}/{APP_ID}/user_impersonation'  
+- '-p': user name prefix, the user's email address will be {PREFIX}{INDEX}@{TEST_TENANT_DNS_NAME}   
+- '-c': the number of users to create or delete  
+
+If you are not connected to the test tenant with Azure CLI, you'll be asked to enter the login/password of the tenant Administrator.
+
+For instance:
+
+    ```bash
+        vscode ➜ /workspace $ ./scripts/create-users.sh -a create -t a007455c-dcb3-4067-8a33-************ -s https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation -p automationtest -c 2 
+    ```
+
+2. When the users are created, the script will show the value of the variable LOAD_TESTING_USERS_CONFIGURATION.
+For instance:
+
+```text
+Value of the variable LOAD_TESTING_USERS_CONFIGURATION: 
+'[{"adu":"automationtest1@63whhf.onmicrosoft.com","pw":"******","sco":"https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46","tid":"a007455c-dcb3-4067-8a33-************"},{"adu":"automationtest2@63whhf.onmicrosoft.com","pw":"******","sco":"https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46","tid":"a007455c-dcb3-4067-8a33-************"}]'
+Creation done
+```
+
+**Note:**
+When all the tests are completed, using the same script you can also automatically delete the user accounts created for the tests. You can call the script create-users.sh with the following parameters:  
+- '-a': action 'delete'  
+- '-t': test tenant id   
+- '-p': user name prefix, the user's email address will be {PREFIX}{INDEX}@{TEST_TENANT_DNS_NAME}   
+- '-c': the number of users to delete  
+
+For instance:
+    ```bash
+        vscode ➜ /workspace $ ./scripts/create-users.sh -a delete -t a007455c-dcb3-4067-8a33-************ -p automationtest -c 2 
+    ```
 
 #### Deploying the load testing infrastructure
 
 Once the infrastructure is deployed, you can deploy the load testing infrastructure, using the following arguments:
 
 ```bash
-    vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a deploytest -c ./projects/eventhub/configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a deploytest -c ./projects/web-app-auth/configuration/.default.env 
 ```
 
 This step deploys the following resources:
 
 - Azure Load Testing
-- Virtual network
-- Key vault
-- NAT gateway
-- Network security group
-- Public IP address
+- Azure Key vault
 
 It assigns the following roles:
 
-- 'Network Contributor' for the current user on the Virtual Network scope
 - 'Load Test Contributor' for the current user on the Load Testing scope
 - 'Key Vault Secrets Officer' for the current user on the Key Vault scope
 - 'Key Vault Secrets User' for the Load Testing identity on the Key Vault scope
 
-#### Opening the access to Azure Event Hubs and Azure Key Vault
+#### Opening the access to Azure Key Vault
 
 Once the load testing infrastructure is deployed, you need to open the access to :
 
-- the Azure Event Hubs for the Azure Load Testing
 - Azure Key Vault for the current user or current service principal and Azure Load Testing.
 
 The command line below configures the network access to Azure Event Hubs and Azure Key Vault:
 
 ```bash
-    vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a opentest -c ./projects/eventhub/configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a opentest -c ./projects/web-app-auth/configuration/.default.env 
 ```
 
-This step adds the public IP address associated with the Load Testing infrastructure in the list of IP addresses allowed to access Azure Event Hubs. It also opens the access to Azure Key Vault.
+This step opens the access to Azure Key Vault.
 
 #### Running the load test scenario
 
 Once the Azure Event Hubs and Azure Key Vault are configured, you can launch the load test scenario with the following command line.
 
 ```bash
-    vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a runtest -c ./projects/eventhub/configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a runtest -c ./projects/web-app-auth/configuration/.default.env 
 ```
 
 By default, the load test scenario runs with the following parameters:
@@ -293,7 +376,7 @@ By default, the load test scenario runs with the following parameters:
 - Error trigger: 5%
 - Average Response Time trigger: 100ms
 
-You can change those parameters in editing the variables below in the configuration file, for instance: ./projects/eventhub/configuration/.default.env
+You can change those parameters in editing the variables below in the configuration file, for instance: ./projects/web-app-auth/configuration/.default.env
 
 ```bash
 LOAD_TESTING_DURATION=60
@@ -311,55 +394,56 @@ This step is a journey between the different status of the Azure Load Testing Te
 - EXECUTING: The load testing service is executing the test
 - DONE: the test is completed
 
-Once the test is completed, when the result status is "PASSED", the results of the test are available, and the bash file displays the results:
+Once the test is completed, when the result status is "PASSED", the results of the test are available, and the bash file displays the results:  
+For instance:  
 
 ```json
     {
-      "Metrics Request": {
-        "transaction": "Metrics Request",
-        "sampleCount": 1309,
+      "Request for user user_1  ": {
+        "transaction": "Request for user user_1  ",
+        "sampleCount": 280,
         "errorCount": 0,
         "errorPct": 0,
-        "meanResTime": 21.255156608097785,
-        "medianResTime": 19,
-        "maxResTime": 107,
-        "minResTime": 16,
-        "pct1ResTime": 25,
-        "pct2ResTime": 31,
-        "pct3ResTime": 73,
-        "throughput": 22.19,
+        "meanResTime": 38.371428571428574,
+        "medianResTime": 34,
+        "maxResTime": 281,
+        "minResTime": 22,
+        "pct1ResTime": 52,
+        "pct2ResTime": 58,
+        "pct3ResTime": 85,
+        "throughput": 4.67,
         "receivedKBytesPerSec": 0,
         "sentKBytesPerSec": 0
       },
-      "Logs Request": {
-        "transaction": "Logs Request",
-        "sampleCount": 1309,
+      "Request for user user_2  ": {
+        "transaction": "Request for user user_2  ",
+        "sampleCount": 279,
         "errorCount": 0,
         "errorPct": 0,
-        "meanResTime": 23.804430863254392,
-        "medianResTime": 19,
-        "maxResTime": 371,
-        "minResTime": 16,
-        "pct1ResTime": 41,
-        "pct2ResTime": 49,
-        "pct3ResTime": 79,
-        "throughput": 22.19,
+        "meanResTime": 42.06810035842294,
+        "medianResTime": 35,
+        "maxResTime": 991,
+        "minResTime": 23,
+        "pct1ResTime": 54,
+        "pct2ResTime": 61,
+        "pct3ResTime": 103,
+        "throughput": 4.73,
         "receivedKBytesPerSec": 0,
         "sentKBytesPerSec": 0
       },
       "Total": {
         "transaction": "Total",
-        "sampleCount": 2618,
+        "sampleCount": 1396,
         "errorCount": 0,
         "errorPct": 0,
-        "meanResTime": 22.529793735676087,
-        "medianResTime": 19,
-        "maxResTime": 371,
-        "minResTime": 16,
-        "pct1ResTime": 28,
-        "pct2ResTime": 48,
-        "pct3ResTime": 76,
-        "throughput": 44.37,
+        "meanResTime": 41.00787965616046,
+        "medianResTime": 35,
+        "maxResTime": 991,
+        "minResTime": 22,
+        "pct1ResTime": 54,
+        "pct2ResTime": 63,
+        "pct3ResTime": 151,
+        "throughput": 23.27,
         "receivedKBytesPerSec": 0,
         "sentKBytesPerSec": 0
       }
@@ -368,12 +452,12 @@ Once the test is completed, when the result status is "PASSED", the results of t
 
 For this step, the bash file uses curl commands to call the Azure Load Testing Data Plane REST API defined [here](https://learn.microsoft.com/en-us/rest/api/loadtesting/) to create, configure, run and monitor the load test.
 
-#### Closing the access to Azure Event Hubs and Azure Key Vault
+#### Closing the access to Azure Key Vault
 
-If you don't want to run any new load test, you can close the access to the Azure Event Hubs and Azure Key Vault, with the following command line:
+If you don't want to run any new load test, you can close the access to Azure Key Vault, with the following command line:
 
 ```bash
-    vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a closetest -c ./projects/eventhub/configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a closetest -c ./projects/web-app-auth/configuration/.default.env 
 ```
 
 #### Undeploying the load testing infrastructure
@@ -381,7 +465,7 @@ If you don't want to run any new load test, you can close the access to the Azur
 You can also undeploy the load testing infrastructure with the following command:
 
 ```bash
-    vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a undeploytest -c ./projects/eventhub/configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a undeploytest -c ./projects/web-app-auth/configuration/.default.env 
 ```
 
 #### Undeploying the infrastructure
@@ -390,7 +474,7 @@ Once the load testing infrastructure is undeployed, you can undeploy the infrast
 For instance the following command:
 
 ```bash
-    vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a undeploy -c ./projects/eventhub/configuration/.default.env 
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a undeploy -c ./projects/web-app-auth/configuration/.default.env 
 ```
 
 ## Using Azure DevOps pipelines and Github Actions
@@ -466,54 +550,54 @@ The diagram below describes the architecture for this test with with Azure DevOp
 - a resource group associated with the load testing infrastructure and the VNET
 - the Azure DevOps resources repository, pipeline and artifact
 
-  ![eventhub-architecture-restricted-public-access-load-testing-azdo](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing-azdo.png)
+  ![eventhub-architecture-restricted-public-access-load-testing-azdo](./docs/img/load-testing-web-app-auth/architecture-scenario-load-testing-azdo.png)
 
-*Download a [SVG file](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing-azdo.svg) of this diagram.*
+*Download a [SVG file](./docs/img/load-testing-web-app-auth/architecture-scenario-load-testing-azdo.svg) of this diagram.*
 
 #### **Link your Azure DevOps project with the GitHub repository**
 <!-- markdown-link-check-disable -->
 1. Navigate on your Azure DevOps organization "https://dev.azure.com/YOUR_ORG"
 
-    ![azure-devops-org](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-org.png)
+    ![azure-devops-org](./docs/img/load-testing-web-app-auth/azure-devops-org.png)
 <!-- markdown-link-check-enable -->
 2. Click on the button '+ New project'
 
 3. On the 'Create new project' page enter the name of your project and click on the button 'Create'
 
-    ![azure-devops-newproject](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-newproject.png)
+    ![azure-devops-newproject](./docs/img/load-testing-web-app-auth/azure-devops-newproject.png)
 
 4. On the main page of your project on Azure DevOps portal, select 'Repos' -> 'Files' page.
 
-    ![azure-devops-project-repo](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-project-repo.png)
+    ![azure-devops-project-repo](./docs/img/load-testing-web-app-auth/azure-devops-project-repo.png)
 
 5. On this page, click on the 'import' button in the'Import a repository' section.
 
 6. On the Import a Git repository page, enter the url of the git repository where you stored the source code of this project.
 
-    ![azure-devops-project-git](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-project-git.png)
+    ![azure-devops-project-git](./docs/img/load-testing-web-app-auth/azure-devops-project-git.png)
 
 7. Click on the button 'Import', after few seconds the repository is imported.
 
-    ![azure-devops-project-git-imported](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-project-git-imported.png)
+    ![azure-devops-project-git-imported](./docs/img/load-testing-web-app-auth/azure-devops-project-git-imported.png)
 
 #### **Install Azure Load Testing from the Azure DevOps Market Place**
 
 As the new pipeline runs Azure Load Testing, you need to install the Azure Load Testing for Azure DevOps.
 
 1. Click on the Market Place icon to browse the market place  
-![azure-devops-market-1](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-market-1.png)
+![azure-devops-market-1](./docs/img/load-testing-web-app-auth/azure-devops-market-1.png)
 
 2. Search for the Azure Load Testing component  
-![azure-devops-market-2](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-market-2.png)
+![azure-devops-market-2](./docs/img/load-testing-web-app-auth/azure-devops-market-2.png)
 
 3. On the Azure Load Testing page click on the button "Get it Free"  
-![azure-devops-market-3](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-market-3.png)
+![azure-devops-market-3](./docs/img/load-testing-web-app-auth/azure-devops-market-3.png)
 
 4. On the Market Place page click on the button "Install"  
-![azure-devops-market-4](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-market-4.png)
+![azure-devops-market-4](./docs/img/load-testing-web-app-auth/azure-devops-market-4.png)
 
 5. After few seconds the component is installed, Go back to Azure DevOps portal clicking on button "Proceed to organization"  
-![azure-devops-market-5](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-market-5.png)
+![azure-devops-market-5](./docs/img/load-testing-web-app-auth/azure-devops-market-5.png)
 
 You can now create the service connection for the authentication with your Azure Account, the Variable Group and the Azure DevOps pipeline.
 
@@ -579,15 +663,15 @@ You can now check whether the service connection, the variable group and pipelin
 
 1. On the main page of your project on Azure DevOps portal, select 'Project Settings' -> 'Service Connections' page. You should see the new service  connection with the prefix "sc-".  
 
-    ![azure-devops-service-connection](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-service-connection.png)
+    ![azure-devops-service-connection](./docs/img/load-testing-web-app-auth/azure-devops-service-connection.png)
 
 2. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Library' page. You should see the new variable group "load-testing-vg".  
 
-    ![azure-devops-service-variable-group](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-variable-group.png)
+    ![azure-devops-service-variable-group](./docs/img/load-testing-web-app-auth/azure-devops-variable-group.png)
 
 3. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Pipelines' page. You should see the new pipeline "Load-Testing-EventHubs".  
 
-    ![azure-devops-service-pipeline](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-pipeline.png)
+    ![azure-devops-service-pipeline](./docs/img/load-testing-web-app-auth/azure-devops-pipeline.png)
 
 4. You can now click on the "Run pipeline" button to run manually the pipeline.
 5. On the dialog box 'Run pipeline',  
@@ -600,22 +684,22 @@ You can now check whether the service connection, the variable group and pipelin
     - enter the average response time in milliseconds threshold for the load testing (100 by default),  
   Then click on the button "Run"
 
-    ![azure-devops-pipeline-eventhub-02](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-pipeline-eventhub-02.png)
+    ![azure-devops-pipeline-eventhub-02](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-02.png)
 
 6. After few minutes, the pipeline is completed and you can download and visualize the results on the Azure Portal.
 
-    ![azure-devops-pipeline-eventhub-03](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-pipeline-eventhub-03.png)
+    ![azure-devops-pipeline-eventhub-03](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-03.png)
 
 7. On the Azure Load Testing result page, you can see the requests/sec and the response time for the Event Hubs REST API requests towards both Event Hub inputs.
 
-    ![azure-devops-pipeline-eventhub-04](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-pipeline-eventhub-04.png)
+    ![azure-devops-pipeline-eventhub-04](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-04.png)
 
     **Note:**
     As the Azure Load Testing resource has been created in the pipeline, by default, you don't have access to this resource.
     The Azure Load Testing resource is present in the resource group whose name starts with "rgldtestevhub".  
     You will probably see the message below:  
 
-    ![azure-devops-pipeline-eventhub-05](./docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-pipeline-eventhub-05.png)
+    ![azure-devops-pipeline-eventhub-05](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-05.png)
 
     You need to assign the role "Load Test Contributor" to your Azure AD Account for the Azure Load Testing scope.  
     After few minutes you should have access to the page which displays the test results.
@@ -630,9 +714,9 @@ The diagram below describes the architecture for this test with Github Action:
 - a resource group associated with the load testing infrastructure and the Virtual Network  
 - the Github resources repository, Github Action and artifact  
   
-  ![eventhub-architecture-restricted-public-access-load-testing-github-action](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing-github-action.png)
+  ![eventhub-architecture-restricted-public-access-load-testing-github-action](./docs/img/load-testing-web-app-auth/architecture-scenario-load-testing-github-action.png)
 
-*Download a [SVG file](./docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing-github-action.svg) of this diagram.*
+*Download a [SVG file](./docs/img/load-testing-web-app-auth/architecture-scenario-load-testing-github-action.svg) of this diagram.*
 
 First, you need to create the Github Action Secret AZURE_CREDENTIALS for the authentication with Azure.
 
@@ -640,15 +724,15 @@ First, you need to create the Github Action Secret AZURE_CREDENTIALS for the aut
 
 1. On the GitHub portal where you store your project, navigate on the the page 'Settings' and select the submenu 'Actions' in the menu 'Secrets and variables' and select the tab 'Secrets' on the page 'Actions secrets and variables'.
 
-    ![github-action-secrets](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-secrets.png)
+    ![github-action-secrets](./docs/img/load-testing-web-app-auth/github-action-secrets.png)
 
 2. Click on 'New repository secret' button, enter 'AZURE_CREDENTIALS' in the Name field and copy/paste the JSON value associated with the service principal created with create-rbac-sp.sh.
 
-    ![github-action-add-secret](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-add-secret.png)
+    ![github-action-add-secret](./docs/img/load-testing-web-app-auth/github-action-add-secret.png)
 
 3. Click on 'Add secret' button. The new secret will be accessible on the Secret page.  
 
-    ![github-action-added-secret](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-added-secret.png)
+    ![github-action-added-secret](./docs/img/load-testing-web-app-auth/github-action-added-secret.png)
 
 #### **Create Github Action configuration variables**
 
@@ -661,18 +745,18 @@ When you enter the value of AZURE_TEST_SUFFIX, select a value which will not gen
 You can use the command line below to generate a value which will avoid any conflict with existing Azure Storage, Azure Key Vault and Azure Events Hubs:
 
 ```bash
-  vscode ➜ /workspace $ ./projects/eventhub/scripts/load-testing-tool.sh  -a getsuffix 
+  vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a getsuffix 
 ```
 
 1. On the GitHub portal page associated with your project, navigate on the the page 'Settings' and select the submenu 'Actions' in the menu 'Secrets and variables' and select the tab 'Variables' on the page 'Actions secrets and variables'.
 
-    ![github-action-variables](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-variables.png)
+    ![github-action-variables](./docs/img/load-testing-web-app-auth/github-action-variables.png)
 
 2. Click on 'New repository variable' button, enter 'AZURE_REGION' in the 'Name' field and the Azure region in the 'Value' field and click on the 'Add variable' button.
 
 3. Click on 'New repository variable' button, enter 'AZURE_TEST_SUFFIX' in the 'Name' field and enter the suffix in the 'Value' field and click on the 'Add variable'
 
-    ![github-action-added-variable](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-added-variable.png)
+    ![github-action-added-variable](./docs/img/load-testing-web-app-auth/github-action-added-variable.png)
 
 #### **Create Github Action pipeline for Event Hubs with restricted public access Load Testing**
 
@@ -700,11 +784,11 @@ In order to activate this pipeline, follow the steps below:
    - Load Testing number of engine instances: 1 by default  
    - Load Testing error percentage threshold: 5% by default  
    - Load Testing average response time in milliseconds threshold: 100 ms by default  
-   ![github-action-eventhub-start](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-eventhub-start.png)
+   ![github-action-eventhub-start](./docs/img/load-testing-web-app-auth/github-action-eventhub-start.png)
 
 5. After few minutes, the pipeline has been completed and you can download the load testing artifacts.  
 
-    ![github-action-eventhub-completed](./docs/img/load-testing-event-hubs-restricted-public-access/github-action-eventhub-completed.png)
+    ![github-action-eventhub-completed](./docs/img/load-testing-web-app-auth/github-action-eventhub-completed.png)
 
 ## Under the hood
 
@@ -830,7 +914,7 @@ For instance, below the Azure DevOps pipeline step in [azure-pipelines-load-test
 
 The bash file:
 
-- reads the variables in the configuration file (./projects/eventhub/configuration/.default.env)
+- reads the variables in the configuration file (./projects/web-app-auth/configuration/.default.env)
 - adds the public IP address in the list of IP addresses allowed to access the Azure Event Hubs.
 - allows the Access to the Azure Key Vault where the Event Hubs token will be stored
 

@@ -29,7 +29,7 @@ function usage() {
     echo "Arguments:"
     echo -e " -a  Sets iactool ACTION {login, install, getsuffix, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}"
     echo -e " -c  Sets the iactool configuration file"
-    echo -e " -h  Event Hub Sku - Azure Event Hub Sku - by default Standard (Basic, Standard, Premium)"
+    echo -e " -h  Azure Function Sku - Azure Function Sku - by default B1 (B1, B2, B3, S1, S2, S3)"
 
     echo
     echo "Example:"

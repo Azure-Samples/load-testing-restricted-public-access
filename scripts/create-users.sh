@@ -38,7 +38,7 @@ function usage() {
     infoMessage " -c  Sets the users count (maximum value 10): by default: '5'  "
     infoMessage
     infoMessage "Example:"
-    infoMessage " bash  -t b5c9fc83-fbd0-4368-9cb6-1b5823479b6a -s https://fdpo.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-9340bbcbcadf/user_impersonation "
+    infoMessage " create-users.sh -a create -t b5c9fc83-fbd0-4368-9cb6-1b5823479b6a -s https://fdpo.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-9340bbcbcadf/user_impersonation -p automationtest -c 8"
 }
 AZURE_AUTOMATION_USER_PREFIX="automationtest"
 AZURE_USERS_COUNT=5
@@ -102,7 +102,6 @@ AZURE_TENANT_ID=$(az account show --query tenantId -o tsv 2> /dev/null) || true
 # check if configuration file is set 
 if [[ -z ${AZURE_SUBSCRIPTION_ID} || -z ${AZURE_TENANT_ID} || ${AZURE_TENANT_ID} != ${AZURE_TENANT} ]]; then
     az login --allow-no-subscriptions -t ${AZURE_TENANT}
-    checkLoginAndSubscription    
     AZURE_SUBSCRIPTION_ID=$(az account show --query id --output tsv 2> /dev/null) || true
     AZURE_TENANT_ID=$(az account show --query tenantId -o tsv 2> /dev/null) || true
 fi
@@ -116,7 +115,7 @@ if [[ "${ACTION}" == "create" ]] ; then
     while (( COUNTER <= AZURE_USERS_COUNT ))
     do     
         infoMessage "Creating user ${COUNTER} ${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}"
-        PASSWORD=$(tr -dc 'A-Za-z0-9!#$%&()*+,-.:;<=>?@[\]^_{|}~' </dev/urandom | head -c 13; echo)
+        PASSWORD=$(tr -dc 'A-Za-z0-9!#%&()*+,-.:;<=>?@[\]^_{}~' </dev/urandom | head -c 13; echo)
         cmd="az ad user create --display-name \"${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}\" --password \"${PASSWORD}\" --user-principal-name \"${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}\""
         eval "${cmd}" || true
         if [ $? -ne 0 ]; then
