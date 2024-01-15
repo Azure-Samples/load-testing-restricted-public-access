@@ -1,10 +1,9 @@
 #!/bin/bash
 ##########################################################################################################################################################################################
-#- Purpose: Script is used to deploy the Lorentz service
+#- Purpose: Script is used to create users in the Test Tenant. You need to be connected as Tenant Admin to run this script 
 #- Parameters are:
-#- [-s] subscription - The subscription where the resources will reside.
-#- [-a] serviceprincipalName - The service principal name to create.
-#- [-v] verbose - Verbose mode will display details while creating the service principal.
+#- [-t] tenant - The subscription where the resources will reside.
+#- [-s] scope - The scope associated with the multi-tenant application.
 ###########################################################################################################################################################################################
 set -eu
 parent_path=$(
@@ -17,13 +16,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[1;34m'
 NC='\033[0m' # No Color
-verboseMessage()
-{
-    if [ ${verbose} -eq 1 ]
-    then
-        printf "${YELLOW}%s${NC}\n" "$*" >&2;
-    fi
-}
+
 errorMessage()
 {
     printf "${RED}%s${NC}\n" "$*" >&2;
@@ -38,21 +31,27 @@ infoMessage()
 function usage() {
     infoMessage
     infoMessage "Arguments:"
-    infoMessage " -s  Sets the subscription"
-    infoMessage " -a  Sets the service principal name (required)"
-    infoMessage " -v  Sets the verbose mode (disable by default)"
+    infoMessage " -a  Sets the action 'create' or 'delete'"
+    infoMessage " -t  Sets the tenant id of the test tenant"
+    infoMessage " -s  Sets the scope of the multi-tenant application"
+    infoMessage " -p  Sets the user name prefix: by default: 'automationtest' "
+    infoMessage " -c  Sets the users count (maximum value 10): by default: '5'  "
     infoMessage
     infoMessage "Example:"
-    infoMessage " bash  -s b5c9fc83-fbd0-4368-9cb6-1b5823479b6a -a testazdosp "
+    infoMessage " bash  -t b5c9fc83-fbd0-4368-9cb6-1b5823479b6a -s https://fdpo.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-9340bbcbcadf/user_impersonation "
 }
-subscription=
-appName=
-verbose=0
-while getopts ":s:a:v" opt; do
+AZURE_AUTOMATION_USER_PREFIX="automationtest"
+AZURE_USERS_COUNT=5
+AZURE_TENANT=
+AZURE_SCOPE=
+ACTION=
+while getopts ":a:t:s:p:c:" opt; do
     case $opt in
-    s) subscription=$OPTARG ;;
-    a) appName=$OPTARG ;;
-    v) verbose=1 ;;
+    a) ACTION=$OPTARG ;;
+    t) AZURE_TENANT=$OPTARG ;;
+    s) AZURE_SCOPE=$OPTARG ;;
+    c) AZURE_USERS_COUNT=$OPTARG ;;    
+    p) AZURE_AUTOMATION_USER_PREFIX=$OPTARG ;;    
     :)
         errorMessage "Error: -${OPTARG} requires a value"
         exit 1
@@ -63,17 +62,32 @@ while getopts ":s:a:v" opt; do
         ;;
     esac
 done
-# Make sure we are connected using a user principal that has Azure AD Admin permissions.
-# az logout
-# az login
 
 # Validation
-if [[ $# -eq 0 || -z $subscription || -z $appName ]]; then
+if [[ $# -eq 0 || -z $ACTION || -z $AZURE_TENANT || ( -z $AZURE_SCOPE && $ACTION == "create" ) ]]; then
     errorMessage "Required parameters are missing"
     usage
     exit 1
 fi
 
+if [[ ! "${ACTION}" == "create" && ! "${ACTION}" == "delete"  ]]; then
+    errorMessage "ACTION '${ACTION}' not supported, possible values: create, delete"
+    usage
+    exit 1
+fi
+
+re='^[0-9]+$'
+if ! [[ ${AZURE_USERS_COUNT} =~ ${re} ]] ; then
+    errorMessage "Users count value '${AZURE_USERS_COUNT}' is not a number"
+    usage
+    exit 1
+fi
+
+if (( AZURE_USERS_COUNT > 10 )) ; then
+    errorMessage "Users count value '${AZURE_USERS_COUNT}' is over 10"
+    usage
+    exit 1
+fi
 
 checkError() {
     if [ $? -ne 0 ]; then
@@ -86,33 +100,56 @@ AZURE_SUBSCRIPTION_ID=$(az account show --query id --output tsv 2> /dev/null) ||
 AZURE_TENANT_ID=$(az account show --query tenantId -o tsv 2> /dev/null) || true
 
 # check if configuration file is set 
-if [[ -z ${AZURE_SUBSCRIPTION_ID} || -z ${AZURE_TENANT_ID}  ]]; then
-    errorMessage "Connection to Azure required, launch 'az login'"
-    exit 1
+if [[ -z ${AZURE_SUBSCRIPTION_ID} || -z ${AZURE_TENANT_ID} || ${AZURE_TENANT_ID} != ${AZURE_TENANT} ]]; then
+    az login --allow-no-subscriptions -t ${AZURE_TENANT}
+    checkLoginAndSubscription    
+    AZURE_SUBSCRIPTION_ID=$(az account show --query id --output tsv 2> /dev/null) || true
+    AZURE_TENANT_ID=$(az account show --query tenantId -o tsv 2> /dev/null) || true
 fi
+AZURE_TENANT_DNS=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
 
-verboseMessage "Creating Service Principal for:" 
-verboseMessage "Service Principal Name: $appName" 
-verboseMessage "Subscription: $subscription" 
-az account set --subscription "$subscription" >/dev/null
-checkError
-
-tenantId=$(az account show --query tenantId -o tsv)
-verboseMessage "TenantId : $tenantId" >&2
-spjson=$(az ad sp create-for-rbac --sdk-auth true --skip-assignment true --name "https://$appName"  -o json --only-show-errors )
-
-appId=$(echo "$spjson" | jq -r .clientId)
-# appSecret=$(echo "$spjson" | jq -r .clientSecret)
-# principalId=$(az ad sp show --id "$appId" --query "id" --output tsv --only-show-errors)
-
-verboseMessage "Assign role \"Owner\" to service principal"
-az role assignment create --assignee "$appId"  --role "Owner"  --only-show-errors 1> /dev/null 
-checkError
-
-verboseMessage "Assign role \"Load Test Contributor\" to service principal"   
-az role assignment create --assignee "$appId"  --role "Load Test Contributor"  --only-show-errors 1> /dev/null 
-checkError
-
-verboseMessage "Information for the creation of Github Action Secret AZURE_CREDENTIALS:"  >&2
-echo "$spjson"
-
+if [[ "${ACTION}" == "create" ]] ; then
+    infoMessage "Creating ${AZURE_USERS_COUNT} users with prefix '${AZURE_AUTOMATION_USER_PREFIX}' in Microsoft Entra ID Tenant: ${AZURE_TENANT_DNS} " 
+    COUNTER=1
+    AZURE_AD_TOKENS=""
+    LOAD_TESTING_USERS_CONFIGURATION_VALUE="'["
+    while (( COUNTER <= AZURE_USERS_COUNT ))
+    do     
+        infoMessage "Creating user ${COUNTER} ${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}"
+        PASSWORD=$(tr -dc 'A-Za-z0-9!#$%&()*+,-.:;<=>?@[\]^_{|}~' </dev/urandom | head -c 13; echo)
+        cmd="az ad user create --display-name \"${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}\" --password \"${PASSWORD}\" --user-principal-name \"${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}\""
+        eval "${cmd}" || true
+        if [ $? -ne 0 ]; then
+            errorMessage "The creation of user '${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}' failed. Command: ${cmd}"
+        fi
+        ITEM="{\"adu\":\"${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}\",\"pw\":\"${PASSWORD}\",\"sco\":\"${AZURE_SCOPE}\",\"clid\":\"04b07795-8ddb-461a-bbee-02f9e1bf7b46\",\"tid\":\"${AZURE_TENANT}\"}"
+        # echo "ITEM: ${ITEM}"
+        if [[ COUNTER -eq 1 ]]; then
+            LOAD_TESTING_USERS_CONFIGURATION_VALUE="${LOAD_TESTING_USERS_CONFIGURATION_VALUE}${ITEM}"
+        else
+            LOAD_TESTING_USERS_CONFIGURATION_VALUE="${LOAD_TESTING_USERS_CONFIGURATION_VALUE},${ITEM}"
+        fi    
+        (( COUNTER++ ))
+    done  
+    LOAD_TESTING_USERS_CONFIGURATION_VALUE="${LOAD_TESTING_USERS_CONFIGURATION_VALUE}]'"
+    infoMessage "Value of the variable LOAD_TESTING_USERS_CONFIGURATION: "  
+    echo "${LOAD_TESTING_USERS_CONFIGURATION_VALUE}"
+    infoMessage "Creation done"
+fi
+if [[ "${ACTION}" == "delete" ]] ; then
+    infoMessage "Deleting ${AZURE_USERS_COUNT} users with prefix '${AZURE_AUTOMATION_USER_PREFIX}' from Microsoft Entra ID Tenant: ${AZURE_TENANT_DNS} " 
+    COUNTER=1
+    AZURE_AD_TOKENS=""
+    LOAD_TESTING_USERS_CONFIGURATION_VALUE="'["
+    while (( COUNTER <= AZURE_USERS_COUNT ))
+    do     
+        infoMessage "Deleting user ${COUNTER} ${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}"
+        cmd="az ad user delete --id  \"${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}\""
+        eval "${cmd}" || true
+        if [ $? -ne 0 ]; then
+            errorMessage "The creation of user '${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}' failed. Command: ${cmd}"
+        fi
+        (( COUNTER++ ))
+    done  
+    infoMessage "Deletion done"
+fi
