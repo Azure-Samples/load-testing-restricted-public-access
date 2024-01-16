@@ -272,8 +272,6 @@ The value of the variable LOAD_TESTING_USERS_CONFIGURATION is a json string with
     [
       { "adu":"automationtest1@******.onmicrosoft.com",
         "pw":"*******",
-        "sco":"https://******.onmicrosoft.com/d3c5dde6-2a9e-****-****-***********/user_impersonation",
-        "clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46",
         "tid":"a007455c-dcb3-****-****-***********"
       },
       {},
@@ -284,14 +282,12 @@ The value of the variable LOAD_TESTING_USERS_CONFIGURATION is a json string with
 where each user is defined with:  
 - 'adu' is the user's mail adress with the following format: {TEST_USER}@{TEST_TENANT_DNS_NAME}  
 - 'pw' is the user's password  
-- 'sco' is the scope of the application with the following format 'https://{INFRASTRUCTURE_TENANT_DNS_NAME}/{APP_ID}/user_impersonation'  
-- 'clid' is the Azure CLI client id, the value is '04b07795-8ddb-461a-bbee-02f9e1bf7b46'  
 - 'tid' is the tenant Id of the test tenant  
 
 Once the json string is fully defined, you can set the variable LOAD_TESTING_USERS_CONFIGURATION in the environment file. For instance, in the file ./projects/web-app-auth/configuration/.default.env:
 
 ```env
-  LOAD_TESTING_USERS_CONFIGURATION='[{"adu":"automationtest@******.onmicrosoft.com","pw":"**************","sco":"https://********.onmicrosoft.com/786e637c-11c6-4b14-9f62-***********/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46","tid":"a007455c-dcb3-4067-8a33-***********"}]'
+  LOAD_TESTING_USERS_CONFIGURATION='[{"adu":"automationtest@******.onmicrosoft.com","pw":"**************","tid":"a007455c-dcb3-4067-8a33-***********"}]'
 ```
 
 ##### Creating users automatically
@@ -301,7 +297,6 @@ You can also use the script ./scripts/create-users.sh to automatically create th
 1. From the devcontainer terminal, you can call the script create-users.sh with the following parameters:  
 - '-a': action either 'create' or 'delete'  
 - '-t': test tenant id  
-- '-s': scope of the application with the following format 'https://{INFRASTRUCTURE_TENANT_DNS_NAME}/{APP_ID}/user_impersonation'  
 - '-p': user name prefix, the user's email address will be {PREFIX}{INDEX}@{TEST_TENANT_DNS_NAME}   
 - '-c': the number of users to create or delete  
 
@@ -310,7 +305,7 @@ If you are not connected to the test tenant with Azure CLI, you'll be asked to e
 For instance:
 
 ```bash
-    vscode ➜ /workspace $ ./scripts/create-users.sh -a create -t a007455c-dcb3-4067-8a33-************ -s https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation -p automationtest -c 2 
+    vscode ➜ /workspace $ ./scripts/create-users.sh -a create -t a007455c-dcb3-4067-8a33-************ -p automationtest -c 2 
 ```
 
 2. When the users are created, the script will show the value of the variable LOAD_TESTING_USERS_CONFIGURATION.
@@ -318,7 +313,7 @@ For instance:
 
 ```text
 Value of the variable LOAD_TESTING_USERS_CONFIGURATION: 
-'[{"adu":"automationtest1@63whhf.onmicrosoft.com","pw":"******","sco":"https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46","tid":"a007455c-dcb3-4067-8a33-************"},{"adu":"automationtest2@63whhf.onmicrosoft.com","pw":"******","sco":"https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46","tid":"a007455c-dcb3-4067-8a33-************"}]'
+'[{"adu":"automationtest1@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"},{"adu":"automationtest2@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"}]'
 Creation done
 ```
 
@@ -355,11 +350,15 @@ where:
 
 1. Open the admin consent url using the Microsoft Entra ID Tenant admin login and password. 
 
-2. If the admin constent has not been granted, you will see the dialog box below to accept the permissions for all users on behalf of your organisation. Check the box 'Consent on behalft of your organization' and click on the 'Accept' button.  
+2. The home page of the Web Application shoudl be displayed in your browser. Click on the 'Login' button to trigger the authentication.
 
-![azure-devops-org](./docs/img/load-testing-web-app-auth/admin-consent.png)
+![admin-consent-login](./docs/img/load-testing-web-app-auth/admin-consent-login.png)
 
-3. After this step, as the users created for the tests won't have to accept those permissions, we could use those users to run the loading tests in a automated way.
+3. If the admin constent has not been granted, you will see the dialog box below to accept the permissions for all users on behalf of your organisation. Check the box 'Consent on behalft of your organization' and click on the 'Accept' button.  
+
+![admin-consent](./docs/img/load-testing-web-app-auth/admin-consent.png)
+
+4. After this step, as the users created for the tests won't have to accept those permissions, we could use those users to run the loading tests in a automated way.
 
 #### Deploying the load testing infrastructure
 

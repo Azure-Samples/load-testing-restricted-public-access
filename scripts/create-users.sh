@@ -33,7 +33,6 @@ function usage() {
     infoMessage "Arguments:"
     infoMessage " -a  Sets the action 'create' or 'delete'"
     infoMessage " -t  Sets the tenant id of the test tenant"
-    infoMessage " -s  Sets the scope of the multi-tenant application"
     infoMessage " -p  Sets the user name prefix: by default: 'automationtest' "
     infoMessage " -c  Sets the users count (maximum value 10): by default: '5'  "
     infoMessage
@@ -43,13 +42,11 @@ function usage() {
 AZURE_AUTOMATION_USER_PREFIX="automationtest"
 AZURE_USERS_COUNT=5
 AZURE_TENANT=
-AZURE_SCOPE=
 ACTION=
-while getopts ":a:t:s:p:c:" opt; do
+while getopts ":a:t:p:c:" opt; do
     case $opt in
     a) ACTION=$OPTARG ;;
     t) AZURE_TENANT=$OPTARG ;;
-    s) AZURE_SCOPE=$OPTARG ;;
     c) AZURE_USERS_COUNT=$OPTARG ;;    
     p) AZURE_AUTOMATION_USER_PREFIX=$OPTARG ;;    
     :)
@@ -64,7 +61,7 @@ while getopts ":a:t:s:p:c:" opt; do
 done
 
 # Validation
-if [[ $# -eq 0 || -z $ACTION || -z $AZURE_TENANT || ( -z $AZURE_SCOPE && $ACTION == "create" ) ]]; then
+if [[ $# -eq 0 || -z $ACTION || -z $AZURE_TENANT ]]; then
     errorMessage "Required parameters are missing"
     usage
     exit 1
@@ -121,7 +118,7 @@ if [[ "${ACTION}" == "create" ]] ; then
         if [ $? -ne 0 ]; then
             errorMessage "The creation of user '${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}' failed. Command: ${cmd}"
         fi
-        ITEM="{\"adu\":\"${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}\",\"pw\":\"${PASSWORD}\",\"sco\":\"${AZURE_SCOPE}\",\"clid\":\"04b07795-8ddb-461a-bbee-02f9e1bf7b46\",\"tid\":\"${AZURE_TENANT}\"}"
+        ITEM="{\"adu\":\"${AZURE_AUTOMATION_USER_PREFIX}${COUNTER}@${AZURE_TENANT_DNS}\",\"pw\":\"${PASSWORD}\",\"tid\":\"${AZURE_TENANT}\"}"
         # echo "ITEM: ${ITEM}"
         if [[ COUNTER -eq 1 ]]; then
             LOAD_TESTING_USERS_CONFIGURATION_VALUE="${LOAD_TESTING_USERS_CONFIGURATION_VALUE}${ITEM}"

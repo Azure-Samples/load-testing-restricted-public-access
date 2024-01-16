@@ -753,8 +753,6 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         echo "LOAD_TESTING_USERS_CONFIGURATION='[{"
         echo "\"adu\": \"{AD_USERNAME}\","
         echo "\"pw\": \"{AD_PASSWORD}\","
-        echo "\"sco\": \"{SCOPE}\","
-        echo "\"clid\": \"{CLIENT_ID}\","
         echo "\"tid\":\"{TENANT_ID}\""
         echo "}]'"            
         exit 1
@@ -921,11 +919,12 @@ if [[ "${ACTION}" == "runtest" ]] ; then
             exit 1  
         else
             COUNTER=1
+            TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
+            SCOPE="https://${TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation"
+            CLIENT_ID="04b07795-8ddb-461a-bbee-02f9e1bf7b46"
             while read item; do 
                 AD_USER=$(jq -r '.adu' <<< "$item");
                 PASSWORD=$(jq -r '.pw' <<< "$item");
-                CLIENT_ID=$(jq -r '.clid' <<< "$item");
-                SCOPE=$(jq -r '.sco' <<< "$item");
                 TENANT_ID=$(jq -r '.tid' <<< "$item");
 
                 ENCODED_PASSWORD=$(urlEncode "${PASSWORD}")
