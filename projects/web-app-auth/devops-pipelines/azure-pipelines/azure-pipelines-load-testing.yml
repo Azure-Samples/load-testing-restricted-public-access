@@ -13,14 +13,23 @@ pool:
   vmImage: ubuntu-latest
 
 parameters:
-  - name: eventhubSku
-    displayName: Azure Event Hubs Sku
+  - name: sku
+    displayName: Azure Function Sku
     type: string
-    default: "Standard"
+    default: "B1"
     values:
-      - "Basic"
-      - "Standard"
-      - "Premium"
+      - "B1"
+      - "B2"
+      - "B3"
+      - "S1"
+      - "S2"
+      - "S3"
+      - "P1V2"
+      - "P2V2"
+      - "P3V2"
+      - "P1V3"
+      - "P2V3"
+      - "P3V3"
   - name: duration
     displayName: Azure Load Testing duration in seconds
     type: number
@@ -45,6 +54,8 @@ parameters:
 variables:
   - name: CONFIGURATION_FILE
     value: './projects/web-app-auth/configuration/.default.env'
+  - name: USE_STATIC_WEB_APP
+    value: true
   - group: load-testing-web-app-auth-vg
 
 stages:
@@ -83,7 +94,7 @@ stages:
               failOnStandardError: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
-                cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deploy -c $(CONFIGURATION_FILE) -h ${{ parameters.eventhubSku }} "
+                cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deploy -c $(CONFIGURATION_FILE) -h ${{ parameters.sku }} "
                 echo "##[command]$cmd"
                 eval "$cmd"
                 # Read new variables set after the deployment in configuration file
@@ -91,15 +102,15 @@ stages:
                 source "${{ variables.CONFIGURATION_FILE }}"
                 set +o allexport
                 # Create the associated Azure DevOps variables
-                echo "##vso[task.setvariable variable=AZURE_RESOURCE_EVENTHUBS_NAMESPACE;isOutput=true]${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}"
-                echo "##vso[task.setvariable variable=AZURE_RESOURCE_EVENTHUB_INPUT1_NAME;isOutput=true]${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}"
-                echo "##vso[task.setvariable variable=AZURE_RESOURCE_EVENTHUB_INPUT2_NAME;isOutput=true]${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}"
-                echo "##vso[task.setvariable variable=AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME;isOutput=true]${AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME}"
-                echo "##vso[task.setvariable variable=AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP;isOutput=true]${AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP}"
-                echo "##vso[task.setvariable variable=AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP;isOutput=true]${AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP}"
-                echo "##vso[task.setvariable variable=AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP;isOutput=true]${AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP}"
+                echo "##vso[task.setvariable variable=AZURE_RESOURCE_ACR_LOGIN_SERVER;isOutput=true]${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
+                echo "##vso[task.setvariable variable=AZURE_RESOURCE_WEB_APP_SERVER;isOutput=true]${AZURE_RESOURCE_WEB_APP_SERVER}"
+                echo "##vso[task.setvariable variable=AZURE_RESOURCE_FUNCTION_SERVER;isOutput=true]${AZURE_RESOURCE_FUNCTION_SERVER}"
+                echo "##vso[task.setvariable variable=AZURE_RESOURCE_WEB_APP_DOMAIN;isOutput=true]${AZURE_RESOURCE_WEB_APP_DOMAIN}"
+                echo "##vso[task.setvariable variable=AZURE_RESOURCE_FUNCTION_DOMAIN;isOutput=true]${AZURE_RESOURCE_FUNCTION_DOMAIN}"
+                echo "##vso[task.setvariable variable=AZURE_RESOURCE_STATIC_WEBAPP_NAME;isOutput=true]${AZURE_RESOURCE_STATIC_WEBAPP_NAME}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_STORAGE_ACCOUNT_NAME;isOutput=true]${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_NAME;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_NAME}"
+                echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
 
   - stage: stage_load_test
@@ -107,13 +118,13 @@ stages:
     dependsOn:
       - stage_deploy_infrastructure
     variables:
-      AZURE_RESOURCE_EVENTHUBS_NAMESPACE: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_EVENTHUBS_NAMESPACE'] ]
-      AZURE_RESOURCE_EVENTHUB_INPUT1_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME'] ]
-      AZURE_RESOURCE_EVENTHUB_INPUT2_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME'] ]
-      AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME'] ]
-      AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP'] ]
-      AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP'] ]
-      AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP'] ]
+      AZURE_RESOURCE_ACR_LOGIN_SERVER: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_ACR_LOGIN_SERVER'] ]
+      AZURE_RESOURCE_WEB_APP_SERVER: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_WEB_APP_SERVER'] ]
+      AZURE_RESOURCE_FUNCTION_SERVER: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_FUNCTION_SERVER'] ]
+      AZURE_RESOURCE_WEB_APP_DOMAIN: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_WEB_APP_DOMAIN'] ]
+      AZURE_RESOURCE_FUNCTION_DOMAIN: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_FUNCTION_DOMAIN'] ]
+      AZURE_RESOURCE_STATIC_WEBAPP_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STATIC_WEBAPP_NAME'] ]
+      AZURE_APP_ID: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_APP_ID'] ]
       AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME'] ]
       AZURE_RESOURCE_APP_INSIGHTS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_NAME'] ]
       RESOURCE_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.RESOURCE_GROUP'] ]
@@ -139,13 +150,13 @@ stages:
                   echo "AZURE_TEST_SUFFIX=$(AZURE_TEST_SUFFIX)"
                   echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
                   echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
-                  echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE=$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
-                  echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME=$(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
-                  echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME=$(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
-                  echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME=$(AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME)"
-                  echo "AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP=$(AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP)"
-                  echo "AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP=$(AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP)"
-                  echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP=$(AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP)"
+                  echo "AZURE_RESOURCE_ACR_LOGIN_SERVER=$(AZURE_RESOURCE_ACR_LOGIN_SERVER)"
+                  echo "AZURE_RESOURCE_WEB_APP_SERVER=$(AZURE_RESOURCE_WEB_APP_SERVER)"
+                  echo "AZURE_RESOURCE_FUNCTION_SERVER=$(AZURE_RESOURCE_FUNCTION_SERVER)"
+                  echo "AZURE_RESOURCE_WEB_APP_DOMAIN=$(AZURE_RESOURCE_WEB_APP_DOMAIN)"
+                  echo "AZURE_RESOURCE_FUNCTION_DOMAIN=$(AZURE_RESOURCE_FUNCTION_DOMAIN)"
+                  echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME=$(AZURE_RESOURCE_STATIC_WEBAPP_NAME)"
+                  echo "AZURE_APP_ID=$(AZURE_APP_ID)"
                   echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=$(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
                   echo "RESOURCE_GROUP=$(RESOURCE_GROUP)"
@@ -190,8 +201,8 @@ stages:
                 eval "$cmd"
 
           - task: AzureCLI@2
-            displayName: 'Get EventHub Token and store it in Key Vault'
-            name: getandstoretoken
+            displayName: 'Get Microsoft Entra Id Tokens and store it in Key Vault'
+            name: getandstoretokens
             inputs:
               azureSubscription: $(SERVICE_CONNECTION)
               scriptType: "bash"
@@ -205,22 +216,43 @@ stages:
 
                 cat "$(CONFIGURATION_FILE)"
 
-                # Get Event Hub Token
-                KEY=$(az eventhubs namespace authorization-rule keys list --resource-group "$(RESOURCE_GROUP)" --namespace-name "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)" --name RootManageSharedAccessKey | jq -r .primaryKey)
-                echo "KEY: $KEY"
-                EVENTHUB_TOKEN=$("$(System.DefaultWorkingDirectory)/scripts/get-event-hub-token.sh" "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)" RootManageSharedAccessKey "${KEY}")
-                echo "EVENTHUB_TOKEN: $EVENTHUB_TOKEN"
 
-                # store eventhub token into azure key vault secret
-                az keyvault secret set --vault-name "${LOAD_TESTING_KEY_VAULT_NAME}" --name "${LOAD_TESTING_SECRET_NAME}" --value "${EVENTHUB_TOKEN}" --output none
+                if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ];
+                then
+                    echo "Variable LOAD_TESTING_USERS_CONFIGURATION not defined."
+                    exit 1  
+                else
+                    COUNTER=1
+                    TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
+                    SCOPE="https://${TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation"
+                    CLIENT_ID="04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+                    while read item; do 
+                        AD_USER=$(jq -r '.adu' <<< "$item");
+                        PASSWORD=$(jq -r '.pw' <<< "$item");
+                        TENANT_ID=$(jq -r '.tid' <<< "$item");
 
-                # the line below store the Eventhub token in an Azure DevOps secret
-                # currently this secret is not used for this deployment,
-                # we use Azure Key Vault to store the secret.
-                # echo "##vso[task.setvariable variable=EVENTHUB_TOKEN;issecret=true]$EVENTHUB_TOKEN"
+                        ENCODED_PASSWORD=$(urlEncode "${PASSWORD}")
+                        # echo "ENCODED_PASSWORD: ${ENCODED_PASSWORD}"
+                        
+                        printProgress "Getting Azure AD Token for user ${COUNTER}..."     
+                        cmd="curl -s -X POST https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token  \
+                        -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' \
+                        -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${ENCODED_PASSWORD}&grant_type=password' | jq -r '.access_token' "
+                        # echo "${cmd}"
+                        AZURE_AD_TOKEN="Bearer $(eval "${cmd}")"
+                        # echo "TOKEN: ${AZURE_AD_TOKEN}"
+
+                        printProgress "Store the token in the Azure Key Vault for test ${LOAD_TESTING_RESOURCE_NAME} for user ${COUNTER}..."   
+                        cmd="az keyvault secret set --vault-name \"${LOAD_TESTING_KEY_VAULT_NAME}\" --name \"${LOAD_TESTING_SECRET_NAME}-${COUNTER}\" --value \"${AZURE_AD_TOKEN}\" --output none"
+                        # echo "$cmd"
+                        eval "${cmd}"  
+                        checkError
+                        (( COUNTER++ ))
+                    done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+                fi
 
           - task: AzureCLI@2
-            displayName: 'Configure and display Load Testing Configuration for Eventhub'
+            displayName: 'Configure and display Load Testing Configuration for Multi-Tenant Web App'
             name: configureloadtest
             inputs:
               azureSubscription: $(SERVICE_CONNECTION)
@@ -233,9 +265,16 @@ stages:
                 source "$(CONFIGURATION_FILE)"
                 set +o allexport
 
-                echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE: $(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
-                echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME: $(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
-                echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME: $(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
+                echo "AZURE_RESOURCE_ACR_LOGIN_SERVER: $(AZURE_RESOURCE_ACR_LOGIN_SERVER)"
+                echo "AZURE_RESOURCE_WEB_APP_SERVER: $(AZURE_RESOURCE_WEB_APP_SERVER)"
+                echo "AZURE_RESOURCE_FUNCTION_SERVER: $(AZURE_RESOURCE_FUNCTION_SERVER)"
+                echo "AZURE_RESOURCE_WEB_APP_DOMAIN: $(AZURE_RESOURCE_WEB_APP_DOMAIN)"
+                echo "AZURE_RESOURCE_FUNCTION_DOMAIN: $(AZURE_RESOURCE_FUNCTION_DOMAIN)"
+                echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME: $(AZURE_RESOURCE_STATIC_WEBAPP_NAME)"
+                echo "AZURE_APP_ID: $(AZURE_APP_ID)"
+                echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
+                echo "AZURE_RESOURCE_APP_INSIGHTS_NAME: $(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
+
                 echo "DURATION: ${{ parameters.duration }}"
                 echo "THREADS: ${{ parameters.threads }}"
                 echo "ENGINE INSTANCES: ${{ parameters.engineInstances }}"
@@ -243,26 +282,101 @@ stages:
                 echo "RESPONSE TIME MS: ${{ parameters.responseTimeMs }}"
                 # Update Load Testing configuration file
                 TEMP_DIR=$(mktemp -d)
+
+                echo "Preparing load-testing.jmx for test ${LOAD_TESTING_TEST_NAME}..." 
                 cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.jmx" "$TEMP_DIR/load-testing.jmx"
+                COUNTER=1
+                AZURE_AD_TOKENS=""
+                while read item; do     
+                    ITEM="<elementProp name=\"udv_token_${COUNTER}\" elementType=\"Argument\"><stringProp name=\"Argument.name\">udv_token_${COUNTER}</stringProp><stringProp name=\"Argument.value\">\${__GetSecret(token_${COUNTER})}</stringProp><stringProp name=\"Argument.desc\">Azure AD or SAS Token Token ${COUNTER}</stringProp><stringProp name=\"Argument.metadata\">=</stringProp></elementProp>"
+                    # echo "ITEM: ${ITEM}"
+                    if [[ COUNTER -eq 1 ]]; then
+                        AZURE_AD_TOKENS="${ITEM}"
+                    else
+                        AZURE_AD_TOKENS="${AZURE_AD_TOKENS},${ITEM}"
+                    fi
+                    (( COUNTER++ ))
+                done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+                # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
+                sed -i "s/{tokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
+
+                COUNTER=1
+                USERS=""
+                while read item; do 
+                    VALUE=$(jq -r '.adu' <<< "$item");
+                    ITEM="<elementProp name=\"udv_user_${COUNTER}\" elementType=\"Argument\"><stringProp name=\"Argument.name\">udv_user_${COUNTER}</stringProp><stringProp name=\"Argument.value\">\${__BeanShell( System.getenv(\"user_${COUNTER}\") )}</stringProp><stringProp name=\"Argument.desc\">User ${COUNTER}</stringProp><stringProp name=\"Argument.metadata\">=</stringProp></elementProp>"
+                    # echo "ITEM: ${ITEM}"
+                    if [[ COUNTER -eq 1 ]]; then
+                        USERS="${ITEM}"
+                    else
+                        USERS="${USERS},${ITEM}"
+                    fi
+                    (( COUNTER++ ))
+                done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+                # echo "USERS: ${USERS}"
+                sed -i "s/{users}/$(echo ${USERS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
+                (( COUNTER-- ))
+                # echo "COUNTER: ${COUNTER}"
+                sed -i "s/{count}/${COUNTER}/g" "$TEMP_DIR/load-testing.jmx"
+
+                #echo "$TEMP_DIR/load-testing.jmx content:"
+                #cat "$TEMP_DIR/load-testing.jmx"
+
                 cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing.yaml"
+
+                COUNTER=1
+                AZURE_AD_TOKENS=""
+                while read item; do     
+                    ITEM="    - name: \"{loadTestSecretName}-${COUNTER}\"
+      value: \"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}-${COUNTER}/\""
+                    # echo "ITEM: ${ITEM}"
+                    if [[ COUNTER -eq 1 ]]; then
+                        AZURE_AD_TOKENS="${ITEM}"
+                    else
+                        AZURE_AD_TOKENS="${AZURE_AD_TOKENS}
+${ITEM}"
+                    fi
+                    (( COUNTER++ ))
+                done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+                # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
+                sed -i "s/{azureADTokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.yaml"
-                sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing.yaml"
 
                 echo "load-testing.yaml content:"
                 cat "$TEMP_DIR/load-testing.yaml"
+  
+                COUNTER=1
+                LOAD_TESTING_USERS=""
+                while read item; do 
+                    VALUE=$(jq -r '.adu' <<< "$item");
+                    ITEM="{\"name\":\"user_${COUNTER}\",\"value\":\"${VALUE}\"}"
+                    # echo "ITEM: ${ITEM}"
+                    if [[ COUNTER -eq 1 ]]; then
+                        LOAD_TESTING_USERS="${ITEM}"
+                    else
+                        LOAD_TESTING_USERS="${LOAD_TESTING_USERS},${ITEM}"
+                    fi
+                    (( COUNTER++ ))
+                done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+
+                LOAD_TESTING_TARGET_HOSTNAME=${AZURE_RESOURCE_FUNCTION_DOMAIN}
+                LOAD_TESTING_TARGET_PATH="visit"
 
                 # Store the temporary directory in output variable
                 echo "##vso[task.setvariable variable=TEMP_DIR;issecret=false]$TEMP_DIR"
                 echo "##vso[task.setvariable variable=LOAD_TESTING_RESOURCE_GROUP;issecret=false]$LOAD_TESTING_RESOURCE_GROUP"
                 echo "##vso[task.setvariable variable=LOAD_TESTING_NAME;issecret=false]$LOAD_TESTING_NAME"
+                echo "##vso[task.setvariable variable=LOAD_TESTING_TARGET_HOSTNAME;issecret=false]$LOAD_TESTING_TARGET_HOSTNAME"
+                echo "##vso[task.setvariable variable=LOAD_TESTING_TARGET_PATH;issecret=false]$LOAD_TESTING_TARGET_PATH"
+                echo "##vso[task.setvariable variable=LOAD_TESTING_USERS;issecret=false]$LOAD_TESTING_USERS"
 
           - task: AzureLoadTest@1
-            displayName: 'Step Run Load Testing EventHub'
+            displayName: 'Step Run Load Testing Multi-Tenant Web App'
             inputs:
               azureSubscription: $(SERVICE_CONNECTION)
               loadTestConfigFile: '$(TEMP_DIR)/load-testing.yaml'
@@ -274,16 +388,12 @@ stages:
               env: |
                 [
                   {
-                  "name": "eventhub_name_space",
-                  "value": "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
+                  "name": "hostname",
+                  "value": "$(LOAD_TESTING_TARGET_HOSTNAME)"
                   },
                   {
-                  "name": "eventhub_input_1",
-                  "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
-                  },
-                  {
-                  "name": "eventhub_input_2",
-                  "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
+                  "name": "path",
+                  "value": "$(LOAD_TESTING_TARGET_PATH)"
                   },
                   {
                   "name": "duration",
@@ -292,7 +402,8 @@ stages:
                   {
                   "name": "threads",
                   "value": "${{ parameters.threads }}"
-                  }
+                  },
+                  $(LOAD_TESTING_USERS)
                 ]
 
           - task: AzureCLI@2

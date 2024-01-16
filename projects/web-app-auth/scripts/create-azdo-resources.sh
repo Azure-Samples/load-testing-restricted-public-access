@@ -54,7 +54,7 @@ function usage() {
 # Run 'az config set extension.use_dynamic_install=yes_without_prompt' to allow installing extensions without prompt 
 az config set extension.use_dynamic_install=yes_without_prompt 2>/dev/null
 
-project="web-app-auth"
+loadTestingProject="web-app-auth"
 token=
 organization=
 project=
@@ -63,10 +63,10 @@ subscription=
 tenant=
 spid=
 spkey=
-pipelineName="Load-Testing-${project}" 
+pipelineName="Load-Testing-${loadTestingProject}" 
 pipelineDescription="Load Testing Multi-Tenant Web Application"
 pipelineBranch="main"
-variableGroup="load-testing-${project}-vg"
+variableGroup="load-testing-${loadTestingProject}-vg"
 region="eastus2"
 while getopts ":o:p:y:t:s:i:k:r:n:" opt; do
     case $opt in
@@ -202,7 +202,7 @@ then
      pipelineId=$(az pipelines list  --org "https://dev.azure.com/${organization}/" --project "${project}" --name "${pipelineName}"  | jq -r '.[] | select(.name=="'${pipelineName}'").id')
     if [ -z "${pipelineId}" ]
     then
-        infoMessage "Creating Pipeline..." 
+        infoMessage "Creating Pipeline..."
         pipelineJsonResult=$(az pipelines create  --org "https://dev.azure.com/${organization}/" --project "${project}" --name "${pipelineName}" --description "${pipelineDescription}" --repository "${repository}" --branch "${pipelineBranch}" --repository-type tfsgit --yml-path ./projects/web-app-auth/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml)
     else
         infoMessage "Updating Pipeline..." 

@@ -934,7 +934,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
 
         if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ];
         then
-            echo "Variable LOAD_TESTING_USERS_CONFIGURATION not defined."
+            printError "Variable LOAD_TESTING_USERS_CONFIGURATION not defined."
             exit 1  
         else
             COUNTER=1

@@ -1,15 +1,13 @@
 ---
 version: v0.1
-testName: load-testing-eventhub-restricted-public-access
+testName: load-testing-web-app-auth-multi-users
 testPlan: load-testing.jmx
-configurationFiles: [load-testing-eventhubevents1.csv, load-testing-eventhubevents2.csv]
-description: 'load-testing-eventhub-restricted-public-access Test Run'
+description: 'load-testing-web-app-auth-multi-users Test Run'
 engineInstances: "{engineInstances}"
-subnetId: "{subnetId}"
 
 failureCriteria:
     - "avg(response_time_ms) > {responseTimeMs}"
     - "percentage(error) > {errorPercentage}"
 secrets:
-    - name: "{loadTestSecretName}"
-      value: "https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}/"
+{azureADTokens}
+

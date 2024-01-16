@@ -54,7 +54,7 @@ function usage() {
 # Run 'az config set extension.use_dynamic_install=yes_without_prompt' to allow installing extensions without prompt 
 az config set extension.use_dynamic_install=yes_without_prompt 2>/dev/null
 
-project="eventhub"
+loadTestingProject="eventhub"
 token=
 organization=
 project=
@@ -63,10 +63,10 @@ subscription=
 tenant=
 spid=
 spkey=
-pipelineName="Load-Testing-${project}" 
+pipelineName="Load-Testing-${loadTestingProject}" 
 pipelineDescription="Load Testing Event Hubs with restricted public access endpoint"
 pipelineBranch="main"
-variableGroup="load-testing-${project}-vg"
+variableGroup="load-testing-${loadTestingProject}-vg"
 region="eastus2"
 while getopts ":o:p:y:t:s:i:k:r:n:" opt; do
     case $opt in
