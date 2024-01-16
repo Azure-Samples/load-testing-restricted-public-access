@@ -5,9 +5,9 @@ trigger:
       - "main"
   paths:
     include:
-      - ./projects/eventhub/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml
-      - ./projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.yaml
-      - ./projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.jmx
+      - ./projects/web-app-auth/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml
+      - ./projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.yaml
+      - ./projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.jmx
 
 pool:
   vmImage: ubuntu-latest
@@ -44,7 +44,7 @@ parameters:
 
 variables:
   - name: CONFIGURATION_FILE
-    value: './projects/eventhub/configuration/.default.env'
+    value: './projects/web-app-auth/configuration/.default.env'
   - group: load-testing-web-app-auth-vg
 
 stages:
@@ -243,10 +243,8 @@ stages:
                 echo "RESPONSE TIME MS: ${{ parameters.responseTimeMs }}"
                 # Update Load Testing configuration file
                 TEMP_DIR=$(mktemp -d)
-                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.jmx" "$TEMP_DIR/load-testing.jmx"
-                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents1.csv" "$TEMP_DIR/load-testing-eventhubevents1.csv"
-                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents2.csv" "$TEMP_DIR/load-testing-eventhubevents2.csv"
-                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
+                cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.jmx" "$TEMP_DIR/load-testing.jmx"
+                cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing.yaml"
