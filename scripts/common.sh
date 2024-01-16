@@ -712,3 +712,28 @@ function checkWebUrl() {
     echo "false"
     return
 }
+##############################################################################
+#- url encode of a string 
+#  arg 1: string to encode
+##############################################################################
+urlEncode()
+{
+    local S="${1}"
+    local encoded=""
+    local ch
+    local o
+    for i in $(seq 0 $((${#S} - 1)) )
+    do
+        ch=${S:$i:1}
+        case "${ch}" in
+            [-_.~a-zA-Z0-9]) 
+                o="${ch}"
+                ;;
+            *) 
+                o=$(printf '%%%02x' "'$ch")                
+                ;;
+        esac
+        encoded="${encoded}${o}"
+    done
+    echo ${encoded}
+}

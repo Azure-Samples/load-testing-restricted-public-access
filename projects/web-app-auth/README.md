@@ -250,6 +250,8 @@ After this step, the infrastructure to test is ready and we can deploy and run t
 
 #### Creating users in a Microsoft Entra ID test tenant 
 
+##### Creating users manually
+
 As the REST API ( HTTPS POST/GET/PUT/DELETE visit, HTTPS GET time) hosted on the backend requires and authenticated calls, we need to create temporary users in a Microsoft Entra ID test tenant.
 
 You can get a test tenant in joining the Microsoft 365 Developer Program:
@@ -289,6 +291,8 @@ Once the json string is fully defined, you can set the variable LOAD_TESTING_USE
   LOAD_TESTING_USERS_CONFIGURATION='[{"adu":"automationtest@******.onmicrosoft.com","pw":"**************","sco":"https://********.onmicrosoft.com/786e637c-11c6-4b14-9f62-***********/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46","tid":"a007455c-dcb3-4067-8a33-***********"}]'
 ```
 
+##### Creating users automatically
+
 You can also use the script ./scripts/create-users.sh to automatically create the automation test users.
 
 1. From the devcontainer terminal, you can call the script create-users.sh with the following parameters:  
@@ -315,7 +319,8 @@ Value of the variable LOAD_TESTING_USERS_CONFIGURATION:
 Creation done
 ```
 
-**Note:**
+##### Deleting users automatically
+
 When all the tests are completed, using the same script you can also automatically delete the user accounts created for the tests. You can call the script create-users.sh with the following parameters:  
 - '-a': action 'delete'  
 - '-t': test tenant id   
@@ -326,6 +331,31 @@ For instance:
     ```bash
         vscode ➜ /workspace $ ./scripts/create-users.sh -a delete -t a007455c-dcb3-4067-8a33-************ -p automationtest -c 2 
     ```
+
+##### Granting tenant-wide admin consent
+
+When all the users are created in the Microsoft Entra ID tenant, you need to grant admin consent for all the users.
+
+As you know the client ID (also known as the application ID) of the application, you can build the URL to grant tenant-wide admin consent.
+
+The tenant-wide admin consent URL follows the following format:
+
+```http
+    https://login.microsoftonline.com/{organization}/adminconsent?client_id={client-id}
+```
+
+where:  
+
+- {client-id} is the application's client ID (also known as app ID).  
+- {organization} is the tenant ID or any verified domain name of the tenant you want to consent the application in. You can use the value organizationsthat causes the consent to happen in the home tenant of the user you sign in with.
+
+1. Open the admin consent url using the Microsoft Entra ID Tenant admin login and password. 
+
+2. If the admin constent has not been granted, you will see the dialog box below to accept the permissions for all users on behalf of your organisation. Check the box 'Consent on behalft of your organization' and click on the 'Accept' button.  
+
+![azure-devops-org](./docs/img/load-testing-web-app-auth/azure-devops-org.png)
+
+3. After this step, as the users created for the tests won't have to accept those permissions, we could use those users to run the loading tests in a automated way.
 
 #### Deploying the load testing infrastructure
 

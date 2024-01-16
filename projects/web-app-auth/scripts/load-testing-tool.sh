@@ -918,14 +918,17 @@ if [[ "${ACTION}" == "runtest" ]] ; then
                 SCOPE=$(jq -r '.sco' <<< "$item");
                 TENANT_ID=$(jq -r '.tid' <<< "$item");
 
-
+                echo "PASSWORD: ${PASSWORD}"
+                ENCODED_PASSWORD=$(urlEncode "${PASSWORD}")
+                echo "ENCODED_PASSWORD: ${ENCODED_PASSWORD}"
+                
                 printProgress "Getting Azure AD Token for user ${COUNTER}..."     
                 cmd="curl -s -X POST https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token  \
                 -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' \
-                -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${PASSWORD}&grant_type=password' | jq -r '.access_token' "
-                # echo "${cmd}"
+                -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${ENCODED_PASSWORD}&grant_type=password' | jq -r '.access_token' "
+                echo "${cmd}"
                 AZURE_AD_TOKEN="Bearer $(eval "${cmd}")"
-                # echo "${AZURE_AD_TOKEN}"
+                echo "TOKEN: ${AZURE_AD_TOKEN}"
 
                 printProgress "Store the token in the Azure Key Vault for test ${LOAD_TESTING_RESOURCE_NAME} for user ${COUNTER}..."   
                 cmd="az keyvault secret set --vault-name \"${LOAD_TESTING_KEY_VAULT_NAME}\" --name \"${LOAD_TESTING_SECRET_NAME}-${COUNTER}\" --value \"${AZURE_AD_TOKEN}\" --output none"
