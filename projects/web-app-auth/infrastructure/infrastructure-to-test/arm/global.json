@@ -64,8 +64,6 @@
     "appInsightsName": "[concat('ai', parameters('suffix'))]",  
     "staticWebAppName": "[concat('swa', parameters('suffix'))]",  
     "storageAccountName": "[take(concat('sa', parameters('suffix')),24)]",
-    "storageInputContainerName":"[take(concat('input', parameters('suffix')),63)]",
-    "storageOutputContainerName":"[take(concat('output', parameters('suffix')),63)]",
     "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",  
     "appServicePlanName": "[concat('plan', parameters('suffix'))]",
     "functionName": "[concat('func', parameters('suffix'))]",
@@ -159,28 +157,6 @@
         "deleteRetentionPolicy": {
           "enabled": false
         }
-      }
-    },
-    {
-      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-      "apiVersion": "2019-04-01",
-      "name": "[concat(variables('storageAccountName'), '/default/',variables('storageInputContainerName'))]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
-      ],
-      "properties": {
-        "publicAccess": "None"
-      }
-    },
-    {
-      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-      "apiVersion": "2019-04-01",
-      "name": "[concat(variables('storageAccountName'), '/default/',variables('storageOutputContainerName'))]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
-      ],
-      "properties": {
-        "publicAccess": "None"
       }
     },      
     {
@@ -293,6 +269,10 @@
       "type": "string",
       "value": "[variables('storageAccountName')]"
     },
+    "AZURE_RESOURCE_STATIC_WEBAPP_NAME": {
+      "type": "string",
+      "value": "[variables('staticWebAppName')]"
+    },
     "AZURE_RESOURCE_STORAGE_ACCOUNT_TOKEN": {
       "type": "string",
       "value": "[listAccountSas(variables('StorageAccountName'), '2018-07-01', variables('accountSasProperties')).accountSasToken]"
@@ -301,14 +281,6 @@
       "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))).primaryEndpoints.web]",
       "type" : "string"
     },    
-    "AZURE_RESOURCE_INPUT_CONTAINER_NAME": {
-      "type": "string",
-      "value": "[variables('storageInputContainerName')]"
-    },
-    "AZURE_RESOURCE_OUTPUT_CONTAINER_NAME": {
-      "type": "string",
-      "value": "[variables('storageOutputContainerName')]"
-    },
     "AZURE_RESOURCE_APP_INSIGHTS_NAME": {
       "value": "[variables('appInsightsName')]",
       "type": "string"

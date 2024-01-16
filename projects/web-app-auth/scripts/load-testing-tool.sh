@@ -38,6 +38,7 @@ function usage() {
     
 }
 
+USE_STATIC_WEB_APP=true
 ACTION=
 CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../configuration/.default.env"
 AZURE_RESOURCE_PREFIX="waa"
@@ -208,6 +209,17 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_TEST_SUFFIX" "$RESOURCE_GROUP"  \
      "$AZURE_RESOURCE_SKU" "$ip" "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/infrastructure/infrastructure-to-test/arm/global.json" 
     printMessage "Azure Container Registry DNS name: ${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
+    # if we use use Azure Static Web App to host the frontend 
+    # override the value AZURE_RESOURCE_WEB_APP_SERVER with Static Web App url 
+    # instead of Azure Storage Web url
+    if [ ${USE_STATIC_WEB_APP} == true ]; then
+        STATIC_WEB_APP_DOMAIN=$(az staticwebapp show --name "${AZURE_RESOURCE_STATIC_WEBAPP_NAME}" --resource-group "${RESOURCE_GROUP}" --query defaultHostname -o tsv)
+        AZURE_RESOURCE_WEB_APP_SERVER="https://${STATIC_WEB_APP_DOMAIN}/"
+        printProgress "Allowing origin https://${STATIC_WEB_APP_DOMAIN}"
+        cmd="az functionapp cors add -g \"${RESOURCE_GROUP}\" -n \"${AZURE_RESOURCE_FUNCTION_NAME}\" --allowed-origins \"https://${STATIC_WEB_APP_DOMAIN}\""
+        printProgress "$cmd"
+        $(eval "$cmd")        
+    fi
     printMessage "Azure Web App Url: ${AZURE_RESOURCE_WEB_APP_SERVER}"
     printMessage "Azure function Url: ${AZURE_RESOURCE_FUNCTION_SERVER}"
     AZURE_RESOURCE_WEB_APP_DOMAIN=$(echo "${AZURE_RESOURCE_WEB_APP_SERVER}" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
@@ -220,6 +232,7 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_WEB_APP_DOMAIN" "${AZURE_RESOURCE_WEB_APP_DOMAIN}"
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_FUNCTION_DOMAIN" "${AZURE_RESOURCE_FUNCTION_DOMAIN}"  
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME" "${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"   
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_STATIC_WEBAPP_NAME" "${AZURE_RESOURCE_STATIC_WEBAPP_NAME}"
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_APP_INSIGHTS_NAME" "${AZURE_RESOURCE_APP_INSIGHTS_NAME}"      
     echo "File: ${CONFIGURATION_FILE}"
     cat "${CONFIGURATION_FILE}"    
@@ -457,10 +470,6 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     eval "$cmd"    
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.storageAccountName = \"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"    
-    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.storageInputContainerName = \"${AZURE_RESOURCE_INPUT_CONTAINER_NAME}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
-    eval "$cmd"    
-    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.storageOutputContainerName = \"${AZURE_RESOURCE_OUTPUT_CONTAINER_NAME}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
-    eval "$cmd"    
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.storageSASToken = \"\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"    
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.apiEndpoint = \"${AZURE_RESOURCE_FUNCTION_SERVER}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
@@ -552,10 +561,13 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     if [ -z "${latest_webapp_version}" ]; then
         latest_webapp_version=$APP_VERSION
     fi
-
-    # deploy ts-web-app
-    # if [ "$deploymentType" == 'web-storage-api-storage' ]; then
-
+    if [ ${USE_STATIC_WEB_APP} == true ]; then
+        printProgress "Deploy  ts-web-app:${latest_webapp_version} to Azure Static Web App "
+        STATIC_WEB_APP_TOKEN=$(az staticwebapp secrets list --name "${AZURE_RESOURCE_STATIC_WEBAPP_NAME}" --query "properties.apiKey" -o tsv)
+        cmd="swa deploy  \"$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/build\" --deployment-token \"${STATIC_WEB_APP_TOKEN}\" --env production --verbose silly"       
+        printProgress "$cmd"
+        eval "$cmd"
+    else
         printProgress "Enable Static Web Page on Azure Storage: ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} "
         cmd="az storage blob service-properties update --account-name ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} --static-website  --index-document index.html --only-show-errors"
         printProgress "$cmd"
@@ -564,10 +576,8 @@ if [[ "${ACTION}" == "deploy" ]] ; then
         cmd="az storage azcopy blob upload -c \"\\\$web\" --account-name ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} -s \"$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/build/*\" --recursive --only-show-errors"
         printProgress "$cmd"
         eval "$cmd"
-    #else
-    #    printProgress "Deploy image ts-web-app:${latest_webapp_version} from Azure Container Registry ${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
-    #    deployWebAppContainer "$AZURE_SUBSCRIPTION_ID" "$AZURE_TEST_SUFFIX" "webapp" "$WEB_APP_NAME" "${AZURE_RESOURCE_ACR_LOGIN_SERVER}" "${AZURE_RESOURCE_ACR_NAME}"  "ts-web-app" "latest" "${latest_webapp_version}" "${APP_PORT}"
-    #fi
+    fi
+
     # Test web-app
     node_web_app_url="${AZURE_RESOURCE_WEB_APP_SERVER}config.json"
     printProgress "Testing node_web_app_url url: $node_web_app_url expected version: ${latest_webapp_version}"
@@ -918,17 +928,16 @@ if [[ "${ACTION}" == "runtest" ]] ; then
                 SCOPE=$(jq -r '.sco' <<< "$item");
                 TENANT_ID=$(jq -r '.tid' <<< "$item");
 
-                echo "PASSWORD: ${PASSWORD}"
                 ENCODED_PASSWORD=$(urlEncode "${PASSWORD}")
-                echo "ENCODED_PASSWORD: ${ENCODED_PASSWORD}"
+                # echo "ENCODED_PASSWORD: ${ENCODED_PASSWORD}"
                 
                 printProgress "Getting Azure AD Token for user ${COUNTER}..."     
                 cmd="curl -s -X POST https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token  \
                 -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' \
                 -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${ENCODED_PASSWORD}&grant_type=password' | jq -r '.access_token' "
-                echo "${cmd}"
+                # echo "${cmd}"
                 AZURE_AD_TOKEN="Bearer $(eval "${cmd}")"
-                echo "TOKEN: ${AZURE_AD_TOKEN}"
+                # echo "TOKEN: ${AZURE_AD_TOKEN}"
 
                 printProgress "Store the token in the Azure Key Vault for test ${LOAD_TESTING_RESOURCE_NAME} for user ${COUNTER}..."   
                 cmd="az keyvault secret set --vault-name \"${LOAD_TESTING_KEY_VAULT_NAME}\" --name \"${LOAD_TESTING_SECRET_NAME}-${COUNTER}\" --value \"${AZURE_AD_TOKEN}\" --output none"

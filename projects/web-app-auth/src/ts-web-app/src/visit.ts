@@ -270,8 +270,6 @@ class VisitPage extends Page {
       ["information", "information"],
       ["creationDate", "creationDate"],
       ["tenantId", "tenantId"],
-      ["localIp", "localIp"],
-      ["localPort", "localPort"],
       ["remoteIp", "remoteIp"],
       ["remotePort", "remotePort"],
     ]

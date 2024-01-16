@@ -23,7 +23,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - \
     && apt-get install -y nodejs \
     && npm install -g npm@latest 
 
-# install typescript
+# install typescript and swacli
 RUN npm install -g typescript \
     && npm install -g webpack \
     && npm install -g webpack-cli \
@@ -31,6 +31,7 @@ RUN npm install -g typescript \
     && npm install -g @types/jquery \
     && npm install -g http-server \
     && npm install -g eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin \
+    && npm install -g @azure/static-web-apps-cli \
     && npm install -g forever
 
 RUN echo 'source /usr/share/bash-completion/completions/git' >> /home/vscode/.bashrc
