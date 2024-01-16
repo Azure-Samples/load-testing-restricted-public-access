@@ -310,7 +310,7 @@ If you are not connected to the test tenant with Azure CLI, you'll be asked to e
 For instance:
 
 ```bash
-        vscode ➜ /workspace $ ./scripts/create-users.sh -a create -t a007455c-dcb3-4067-8a33-************ -s https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation -p automationtest -c 2 
+    vscode ➜ /workspace $ ./scripts/create-users.sh -a create -t a007455c-dcb3-4067-8a33-************ -s https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation -p automationtest -c 2 
 ```
 
 2. When the users are created, the script will show the value of the variable LOAD_TESTING_USERS_CONFIGURATION.
@@ -333,7 +333,7 @@ When all the tests are completed, using the same script you can also automatical
 For instance:
 
 ```bash
-      vscode ➜ /workspace $ ./scripts/create-users.sh -a delete -t a007455c-dcb3-4067-8a33-************ -p automationtest -c 2 
+    vscode ➜ /workspace $ ./scripts/create-users.sh -a delete -t a007455c-dcb3-4067-8a33-********** -p automationtest -c 2 
 ```
 
 ##### Granting tenant-wide admin consent
