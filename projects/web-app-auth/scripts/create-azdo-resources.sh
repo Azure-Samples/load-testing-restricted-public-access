@@ -10,6 +10,7 @@
 #- [-i] serviceprincipalId - The service principal id.
 #- [-k] serviceprincipalKey - The service principal Key.
 #- [-r] region - The Azure Region for the deployment (eastus2 by default).
+#- [-n] token - The PAT Token for Azure DevOps.
 ###########################################################################################################################################################################################
 set -eu
 parent_path=$(
@@ -53,6 +54,7 @@ function usage() {
 # Run 'az config set extension.use_dynamic_install=yes_without_prompt' to allow installing extensions without prompt 
 az config set extension.use_dynamic_install=yes_without_prompt 2>/dev/null
 
+project="web-app-auth"
 token=
 organization=
 project=
@@ -61,10 +63,10 @@ subscription=
 tenant=
 spid=
 spkey=
-pipelineName="Load-Testing-EventHubs" 
-pipelineDescription="Load Testing Event Hubs with restricted public access endpoint"
+pipelineName="Load-Testing-${project}" 
+pipelineDescription="Load Testing Multi-Tenant Web Application"
 pipelineBranch="main"
-variableGroup="load-testing-vg"
+variableGroup="load-testing-${project}-vg"
 region="eastus2"
 while getopts ":o:p:y:t:s:i:k:r:n:" opt; do
     case $opt in
@@ -175,14 +177,16 @@ then
     if [ -z "${vgid}" ]
     then
         infoMessage "Creating Variables Group..." 
-        vgJsonResult=$(az pipelines variable-group create --org "https://dev.azure.com/${organization}/" --project "${project}"  --name "${variableGroup}" --authorize true --variables AZURE_TEST_SUFFIX=evhub"$(shuf -i 1000-9999 -n 1)" AZURE_REGION="${region}" SERVICE_CONNECTION="${scName}" )
+        vgJsonResult=$(az pipelines variable-group create --org "https://dev.azure.com/${organization}/" --project "${project}"  --name "${variableGroup}" --authorize true --variables AZURE_TEST_SUFFIX=waa"$(shuf -i 1000-9999 -n 1)" AZURE_REGION="${region}" SERVICE_CONNECTION="${scName}" LOAD_TESTING_USERS_CONFIGURATION="[]" )
     else
         infoMessage "Updating Variables Group..." 
-        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_TEST_SUFFIX" --value "evhub$(shuf -i 1000-9999 -n 1)"  )
+        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_TEST_SUFFIX" --value "waa$(shuf -i 1000-9999 -n 1)"  )
         # echo "$vgJsonResult"
         vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_REGION" --value "${region}" )
         # echo "$vgJsonResult"
         vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "SERVICE_CONNECTION" --value "${scName}" )
+        # echo "$vgJsonResult"
+        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "LOAD_TESTING_USERS_CONFIGURATION" --value "[]" )
         # echo "$vgJsonResult"
     fi
 else
@@ -199,10 +203,10 @@ then
     if [ -z "${pipelineId}" ]
     then
         infoMessage "Creating Pipeline..." 
-        pipelineJsonResult=$(az pipelines create  --org "https://dev.azure.com/${organization}/" --project "${project}" --name "${pipelineName}" --description "${pipelineDescription}" --repository "${repository}" --branch "${pipelineBranch}" --repository-type tfsgit --yml-path ./projects/eventhub/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml)
+        pipelineJsonResult=$(az pipelines create  --org "https://dev.azure.com/${organization}/" --project "${project}" --name "${pipelineName}" --description "${pipelineDescription}" --repository "${repository}" --branch "${pipelineBranch}" --repository-type tfsgit --yml-path ./projects/web-app-auth/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml)
     else
         infoMessage "Updating Pipeline..." 
-        pipelineJsonResult=$(az pipelines update  --org "https://dev.azure.com/${organization}/" --project "${project}" --id "${pipelineId}" --description "${pipelineDescription}"  --branch "${pipelineBranch}"  --yml-path ./projects/eventhub/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml)
+        pipelineJsonResult=$(az pipelines update  --org "https://dev.azure.com/${organization}/" --project "${project}" --id "${pipelineId}" --description "${pipelineDescription}"  --branch "${pipelineBranch}"  --yml-path ./projects/web-app-auth/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml)
     fi
     if [ -z "${pipelineJsonResult}" ]
     then

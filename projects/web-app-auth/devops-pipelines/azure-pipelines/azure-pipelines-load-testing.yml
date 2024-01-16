@@ -45,7 +45,7 @@ parameters:
 variables:
   - name: CONFIGURATION_FILE
     value: './projects/eventhub/configuration/.default.env'
-  - group: load-testing-vg
+  - group: load-testing-web-app-auth-vg
 
 stages:
   - stage: stage_deploy_infrastructure
