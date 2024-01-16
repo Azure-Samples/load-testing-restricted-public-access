@@ -519,11 +519,11 @@ You can now create the service connection for the authentication with your Azure
 
 #### **Create Azure DevOps Service Connection, Variable Group and pipeline**
 
-In order to create the service connection, Variable Group and pipeline you can use the following bash file: [scripts/create-azdo-resources.sh](../../scripts/create-azdo-resources.sh)  
+In order to create the service connection, Variable Group and pipeline you can use the following bash file: [scripts/create-azdo-resources.sh](../../projects/eventhub/scripts/create-azdo-resources.sh)  
 This bash file creates:
 
 - the service connection for the authentication with Azure Subscription. The name of this service connection is the name of the service principal created in the previous step with the prefix "sc-".
-- the variable group which contains the parameters of the pipeline like AZURE_TEST_SUFFIX, AZURE_REGION, SERVICE_CONNECTION. By default the name of this variable group is "load-testing-vg". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](../../scripts/create-azdo-resources.sh) and the pipeline file [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml).
+- the variable group which contains the parameters of the pipeline like AZURE_TEST_SUFFIX, AZURE_REGION, SERVICE_CONNECTION. By default the name of this variable group is "load-testing-vg". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](../../projects/eventhub/scripts/create-azdo-resources.sh) and the pipeline file [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml).
 - the Azure DevOps pipeline to run the load testing. By default, the name of the pipeline is "Load-Testing-EventHubs". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
 By default, the pipeline file should be present in the "main" branch, if it's not the case, you also need to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
   
@@ -536,7 +536,7 @@ Before running this bash file you need to be connected with your Azure Account u
 Once you are connected with Azure, you can run the following bash to create the Service Principal:
 
 ```bash
-    vscode ➜ /workspace $ ./scripts/create-azdo-resources.sh -o "<MyORG>" -p "<MyProject>" -y "<MyRepository>" -s "<Azure-Subscription-Id>"  -t "<Azure-Tenant-Id>" -i "<ServicePrincipalId>" -k "<ServicePrincipalKey>"
+    vscode ➜ /workspace $ ./projects/eventhub/scripts/create-azdo-resources.sh -o "<MyORG>" -p "<MyProject>" -y "<MyRepository>" -s "<Azure-Subscription-Id>"  -t "<Azure-Tenant-Id>" -i "<ServicePrincipalId>" -k "<ServicePrincipalKey>"
 ```
 
 where:
@@ -552,7 +552,7 @@ where:
 For instance:
 
 ```bash
-        vscode ➜ /workspace $ ./scripts/create-azdo-resources.sh -o "TestAzDO" -p "load-testing-sharing" -y "load-testing-restricted-public-access" -s "d3814ade-afe8-4260-9b5f-xxxxxxxxxxxx"  -t "6a13df32-a807-43c4-8277-xxxxxxxxxxxx" -i "1d736738-9c5f-4de7-84f9-xxxxxxxxxxxx" -k "ok-8Q~Rsxxxxxxxxxxxx"
+        vscode ➜ /workspace $ ./projects/eventhub/scripts/create-azdo-resources.sh -o "TestAzDO" -p "load-testing-sharing" -y "load-testing-restricted-public-access" -s "d3814ade-afe8-4260-9b5f-xxxxxxxxxxxx"  -t "6a13df32-a807-43c4-8277-xxxxxxxxxxxx" -i "1d736738-9c5f-4de7-84f9-xxxxxxxxxxxx" -k "ok-8Q~Rsxxxxxxxxxxxx"
 ```
 
 Once completed, this bash file displays the information about the different resources created.
@@ -574,6 +574,28 @@ Once completed, this bash file displays the information about the different reso
   Creating Pipeline...
   Pipeline 'Load-Testing-EventHubs' created.
 ```
+
+**WARNING:**  
+If the Microsoft Entra ID Tenant for the Azure Subscription and the Microsoft Entra ID Tenant for Azure DevOps are different, you can't use Azure CLI login, you need to use an Azure DevOps Personal Access Token for the authentication with the Azure DevOps organization.  
+In that case, you need to use the bash file create-azdo-resources.sh with a new option -n "<PATToken>":  
+
+```bash
+    vscode ➜ /workspace $ ./projects/eventhub/scripts/create-azdo-resources.sh -o "<MyORG>" -p "<MyProject>" -y "<MyRepository>" -s "<Azure-Subscription-Id>"  -t "<Azure-Tenant-Id>" -i "<ServicePrincipalId>" -k "<ServicePrincipalKey>" -n "<PATToken>"
+```
+
+To create the PAT Token:
+1. Open the url "https://dev.azure.com/YOUR_ORG/_usersSettings/tokens" with you Internet Browser 
+2. Click on the link "+ New Token".
+3. On the Dialog Box 'Create a new personal access token', enter the name of the token, select Read/Write/Execute permissions for all the scopes (WorkItems, Code, Build, ...)
+4. Click on the button 'Create'
+5. Copy the PAT Token and run the script create-azdo-resources.sh with the PAT Token. 
+
+For instance:
+
+```bash
+        vscode ➜ /workspace $ ./projects/eventhub/scripts/create-azdo-resources.sh -o "TestAzDO" -p "load-testing-sharing" -y "load-testing-restricted-public-access" -s "d3814ade-afe8-4260-9b5f-xxxxxxxxxxxx"  -t "6a13df32-a807-43c4-8277-xxxxxxxxxxxx" -i "1d736738-9c5f-4de7-84f9-xxxxxxxxxxxx" -k "ok-8Q~Rsxxxxxxxxxxxx"  -n "pK8Q****Q3"
+```
+
 
 You can now check whether the service connection, the variable group and pipeline have been created.
 
