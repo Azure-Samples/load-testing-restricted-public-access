@@ -16,7 +16,7 @@ This Azure Load Testing sample describes how to test a Multi-Tenant Application 
 This repository contains:
 
 - bash files and ARM templates to:
-  - deploy/undeploy the infrastructure to test,
+  - build/deploy/undeploy the infrastructure and the services to test,
   - deploy/undeploy the load testing infrastructure
   - open/close the access to Azure Key Vault from Azure Load Testing
   - run the load test
@@ -25,7 +25,7 @@ This repository contains:
 
 The pipelines (Azure DevOps pipelines and Github Actions) running multi-tenant load testing includes the following steps:
 
-- deploy the infrastructure to test
+- deploy the infrastructure to test and build the services to test
 - deploy the load testing infrastructure
 - update the infrastructure for the load test
 - run the load testing
@@ -352,11 +352,11 @@ where:
 
 2. The home page of the Web Application shoudl be displayed in your browser. Click on the 'Login' button to trigger the authentication.
 
-![admin-consent-login](./docs/img/load-testing-web-app-auth/admin-consent-login.png)
+   ![admin-consent-login](./docs/img/load-testing-web-app-auth/admin-consent-login.png)
 
 3. If the admin constent has not been granted, you will see the dialog box below to accept the permissions for all users on behalf of your organisation. Check the box 'Consent on behalft of your organization' and click on the 'Accept' button.  
 
-![admin-consent](./docs/img/load-testing-web-app-auth/admin-consent.png)
+   ![admin-consent](./docs/img/load-testing-web-app-auth/admin-consent.png)
 
 4. After this step, as the users created for the tests won't have to accept those permissions, we could use those users to run the loading tests in a automated way.
 
@@ -385,7 +385,7 @@ Once the load testing infrastructure is deployed, you need to open the access to
 
 - Azure Key Vault for the current user or current service principal and Azure Load Testing.
 
-The command line below configures the network access to Azure Event Hubs and Azure Key Vault:
+The command line below configures the network access to Azure Key Vault:
 
 ```bash
     vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a opentest -c ./projects/web-app-auth/configuration/.default.env 
@@ -395,7 +395,7 @@ This step opens the access to Azure Key Vault.
 
 #### Running the load test scenario
 
-Once the Azure Event Hubs and Azure Key Vault are configured, you can launch the load test scenario with the following command line.
+Once the Azure Key Vault are configured, you can launch the load test scenario with the following command line.
 
 ```bash
     vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a runtest -c ./projects/web-app-auth/configuration/.default.env 
@@ -514,7 +514,7 @@ For instance the following command:
 
 In this chapter, you will use Azure DevOps pipeline and/or Github Action to automate the deployment of the infrastructure and the launch of the load test.  
 
-The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load testing includes the following steps:
+The pipelines (Azure DevOps pipelines and Github Actions) running Multi-Tenant load testing includes the following steps:
 
 - deploy the infrastructure to test
 - deploy the load testing infrastructure
@@ -579,7 +579,7 @@ The service principal for the Azure DevOps pipeline has been created, you can us
 
 The diagram below describes the architecture for this test with with Azure DevOps:
 
-- a resource group associated with the Event Hubs based infrastructure to test
+- a resource group associated with the Multi-Tenant based infrastructure to test
 - a resource group associated with the load testing infrastructure and the VNET
 - the Azure DevOps resources repository, pipeline and artifact
 
@@ -723,7 +723,7 @@ You can now check whether the service connection, the variable group and pipelin
 
     ![azure-devops-pipeline-eventhub-03](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-03.png)
 
-7. On the Azure Load Testing result page, you can see the requests/sec and the response time for the Event Hubs REST API requests towards both Event Hub inputs.
+7. On the Azure Load Testing result page, you can see the requests/sec and the response time for the REST API requests.
 
     ![azure-devops-pipeline-eventhub-04](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-04.png)
 
@@ -739,11 +739,11 @@ You can now check whether the service connection, the variable group and pipelin
 
 ### Github Action
 
-You can also use Github Action to automate the load testing of the same infrastructure based on Azure Event Hubs:
+You can also use Github Action to automate the load testing of the same infrastructure:
 
 The diagram below describes the architecture for this test with Github Action:
 
-- a resource group associated with the Event Hubs based infrastructure to test  
+- a resource group associated with the Multi-Tenant based infrastructure to test  
 - a resource group associated with the load testing infrastructure and the Virtual Network  
 - the Github resources repository, Github Action and artifact  
   
@@ -791,7 +791,7 @@ You can use the command line below to generate a value which will avoid any conf
 
     ![github-action-added-variable](./docs/img/load-testing-web-app-auth/github-action-added-variable.png)
 
-#### **Create Github Action pipeline for Event Hubs with restricted public access Load Testing**
+#### **Create Github Action pipeline for Multi-Tenant Load Testing**
 
 By default, all the Github Action pipelines are stored under 'devops-pipelines/github-action'.
 The Load Testing Github Action pipeline is [github-action-load-testing-eventhub-restricted-public-access.yml](devops-pipelines/github-action/github-action-load-testing-eventhub-restricted-public-access.yml)
@@ -850,7 +850,7 @@ For instance, if the average response time is over 100 ms or if the error percen
 
 You also need to define in the Load Testing Configuration file the subnetId of subnet the Load Testing service will be connected to. The pipeline or the GitHub action will automatically replace {subnetId} with the value of the subnetId.
 
-Moreover, you need to define the information related to the storage of Azure Event Hubs token in the Azure Key Vault. You need to define the secret name for the Event Hubs Token in the JMX file (currently 'eventhub_token'), the Azure Key Vault Name and the Key Vault secret name.
+Moreover, you need to define the information related to the storage of Microsoft Entra Id token in the Azure Key Vault. You need to define the secret name for the Microsoft Entra Id Token in the JMX file (currently 'eventhub_token'), the Azure Key Vault Name and the Key Vault secret name.
 
 All those input parameters are defined in the Load Testing configuration file in the following variables:
 
@@ -924,9 +924,9 @@ For instance, below the Azure DevOps step which updates the Load Testing configu
                 echo "##vso[task.setvariable variable=LOAD_TESTING_NAME;issecret=false]$LOAD_TESTING_NAME"
 ```
 
-### Opening access to Azure Event Hubs and Azure Key Vault
+### Opening access to Azure Key Vault
 
-Before running the Load Test, we need to ensure the Azure Event Hubs and the Azure Key Vault are accessible from Azure Load Testing.
+Before running the Load Test, we need to ensure the Azure Key Vault are accessible from Azure Load Testing.
 
 For instance, below the Azure DevOps pipeline step in [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml) which calls iactoo.sh bash with the option 'opentest'.
 
@@ -948,8 +948,7 @@ For instance, below the Azure DevOps pipeline step in [azure-pipelines-load-test
 The bash file:
 
 - reads the variables in the configuration file (./projects/web-app-auth/configuration/.default.env)
-- adds the public IP address in the list of IP addresses allowed to access the Azure Event Hubs.
-- allows the Access to the Azure Key Vault where the Event Hubs token will be stored
+- allows the Access to the Azure Key Vault where the Microsoft Entra Id token will be stored
 
 ```bash
         readConfigurationFile "$CONFIGURATION_FILE"
@@ -980,7 +979,7 @@ The bash file:
 
 ```
 
-### Implementing the Azure Event Hubs authentication in the JMX files
+### Implementing the Microsoft Entra Id authentication in the JMX files
 
 For the Azure Event Hubs Load Testing pipeline [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml), the authentication with Azure Event Hubs is required, the Load Testing platform sends the Event Hubs Shared Access Token in each http requests towards the endpoint for the authentication.
 
@@ -1259,7 +1258,7 @@ HTTP request for Input 2:
 <!-- markdown-link-check-disable -->
 Moreover, the ts value (Timestamp) in the body of the POST HTTP request is updated with the current time.
 
-At least, when the test is completed, you can check in the result file whether both Event Hub inputs did receive the HTTP Request:
+At least, when the test is completed, you can check in the result file whether the TEST API did receive the HTTP Request:
 
 | timeStamp  | elapsed | label | responseCode | responseMessage | threadName | dataType | URL | Latency | IdleTime | Connect|
 |:----------:|:-------:|:-----:|:-------------:|:----------------:|:-----------:|:---------:|:----|:-------:|:---------:|:-------:|

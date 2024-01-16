@@ -109,6 +109,25 @@ if [[ "${ACTION}" == "install" ]] ; then
     az config set extension.use_dynamic_install=yes_without_prompt
     sudo apt-get -y update
     sudo apt-get -y install  jq
+    printProgress "Installing .Net 6.0 SDK "
+    wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+    sudo dpkg -i packages-microsoft-prod.deb
+    rm packages-microsoft-prod.deb
+    sudo apt-get update; \
+    sudo apt-get install -y apt-transport-https && \
+    sudo apt-get update && \
+    sudo apt-get install -y dotnet-sdk-6.0
+    printProgress "Installing Typescript and node services "
+    sudo npm install -g npm@latest 
+    printProgress "NPM version:"
+    sudo npm --version 
+    sudo npm install --location=global -g typescript
+    tsc --version
+    sudo npm install --location=global -g webpack
+    sudo npm install --location=global  --save-dev @types/jquery
+    sudo npm install --location=global -g http-server
+    sudo npm install --location=global -g forever
+    sudo npm install -g @azure/static-web-apps-cli
     printMessage "Installing pre-requisites done"
     exit 0
 fi

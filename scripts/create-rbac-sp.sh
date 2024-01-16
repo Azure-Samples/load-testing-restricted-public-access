@@ -106,11 +106,11 @@ appId=$(echo "$spjson" | jq -r .clientId)
 # principalId=$(az ad sp show --id "$appId" --query "id" --output tsv --only-show-errors)
 
 verboseMessage "Assign role \"Owner\" to service principal"
-az role assignment create --assignee "$appId"  --role "Owner"  --only-show-errors 1> /dev/null 
+az role assignment create --assignee "$appId"  --role "Owner"  --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}" --only-show-errors 1> /dev/null 
 checkError
 
 verboseMessage "Assign role \"Load Test Contributor\" to service principal"   
-az role assignment create --assignee "$appId"  --role "Load Test Contributor"  --only-show-errors 1> /dev/null 
+az role assignment create --assignee "$appId"  --role "Load Test Contributor"  --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}" --only-show-errors 1> /dev/null 
 checkError
 
 verboseMessage "Information for the creation of Github Action Secret AZURE_CREDENTIALS:"  >&2
