@@ -250,19 +250,21 @@ After this step, the infrastructure to test is ready and we can deploy and run t
 
 #### Creating users in a Microsoft Entra ID test tenant 
 
-##### Creating users manually
+##### Creating the test tenant
 
 As the REST API ( HTTPS POST/GET/PUT/DELETE visit, HTTPS GET time) hosted on the backend requires and authenticated calls, we need to create temporary users in a Microsoft Entra ID test tenant.
 
 You can get a test tenant in joining the Microsoft 365 Developer Program:
 https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment#get-a-test-tenant
 
+##### Creating users manually
+
 Once you get the test tenant, if you are connected to the tenant using the Tenant Administrator account, you can create manually users which will be used for the load testing scenarios:
 https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment#populate-your-tenant-with-users
 
 You need to disable the MFA (Multi Factor Authentication) for each new user. If the MFA is not disabled, the script or the pipeline running the load testing scenario won't be able to get the Microsoft Entry ID token for the user.
 
-The load testing script and the pipeline will use the envrionment variable LOAD_TESTING_USERS_CONFIGURATION to get the list of users for the load testing scenario.
+The load testing script and the pipeline will use the environment variable LOAD_TESTING_USERS_CONFIGURATION to get the list of users for the load testing scenario.
 
 The value of the variable LOAD_TESTING_USERS_CONFIGURATION is a json string with the following format:
 
@@ -270,11 +272,12 @@ The value of the variable LOAD_TESTING_USERS_CONFIGURATION is a json string with
     [
       { "adu":"automationtest1@******.onmicrosoft.com",
         "pw":"*******",
-        "sco":"https://******.onmicrosoft.com/d3c5dde6-2a9e-****-****-***********/user_impersonation","clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+        "sco":"https://******.onmicrosoft.com/d3c5dde6-2a9e-****-****-***********/user_impersonation",
+        "clid":"04b07795-8ddb-461a-bbee-02f9e1bf7b46",
         "tid":"a007455c-dcb3-****-****-***********"
       },
-      {...},
-      {...}
+      {},
+      {}
     ]
 ```
 
@@ -306,9 +309,9 @@ If you are not connected to the test tenant with Azure CLI, you'll be asked to e
 
 For instance:
 
-    ```bash
+```bash
         vscode ➜ /workspace $ ./scripts/create-users.sh -a create -t a007455c-dcb3-4067-8a33-************ -s https://****.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-************/user_impersonation -p automationtest -c 2 
-    ```
+```
 
 2. When the users are created, the script will show the value of the variable LOAD_TESTING_USERS_CONFIGURATION.
 For instance:
@@ -328,9 +331,10 @@ When all the tests are completed, using the same script you can also automatical
 - '-c': the number of users to delete  
 
 For instance:
-    ```bash
-        vscode ➜ /workspace $ ./scripts/create-users.sh -a delete -t a007455c-dcb3-4067-8a33-************ -p automationtest -c 2 
-    ```
+
+```bash
+      vscode ➜ /workspace $ ./scripts/create-users.sh -a delete -t a007455c-dcb3-4067-8a33-************ -p automationtest -c 2 
+```
 
 ##### Granting tenant-wide admin consent
 
@@ -340,7 +344,7 @@ As you know the client ID (also known as the application ID) of the application,
 
 The tenant-wide admin consent URL follows the following format:
 
-```http
+```bash
     https://login.microsoftonline.com/{organization}/adminconsent?client_id={client-id}
 ```
 
@@ -353,7 +357,7 @@ where:
 
 2. If the admin constent has not been granted, you will see the dialog box below to accept the permissions for all users on behalf of your organisation. Check the box 'Consent on behalft of your organization' and click on the 'Accept' button.  
 
-![azure-devops-org](./docs/img/load-testing-web-app-auth/azure-devops-org.png)
+![azure-devops-org](./docs/img/load-testing-web-app-auth/admin-consent.png)
 
 3. After this step, as the users created for the tests won't have to accept those permissions, we could use those users to run the loading tests in a automated way.
 
