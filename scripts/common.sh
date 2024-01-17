@@ -791,7 +791,7 @@ createApplication()
                 --headers \"Content-Type=application/json\" \
                 --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${webAppUrl}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
             # printProgress "$cmd"
-            eval "$cmd"
+            local azRestResult=$(eval "$cmd")
             checkError   
             # Wait few seconds before updating the Application record in Azure AD 
             sleep 10
@@ -799,7 +799,7 @@ createApplication()
                 --headers \"Content-Type=application/json\" \
                 --body \"{\\\"api\\\":{\\\"preAuthorizedApplications\\\": [{\\\"appId\\\": \\\"04b07795-8ddb-461a-bbee-02f9e1bf7b46\\\",\\\"delegatedPermissionIds\\\": [\\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\"]}]}}\""
             # printProgress "$cmd"
-            eval "$cmd"
+            local azRestResult=$(eval "$cmd")
             checkError   
         else
             printError "Error while creating application ${appName} can't get objectId"
@@ -813,7 +813,7 @@ createApplication()
             # printProgress "Create Service principal associated with application '${appName}' "        
             cmd="az ad sp create-for-rbac --name '${appName}'  --role contributor --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP} --only-show-errors"        
             # printProgress "$cmd"
-            eval "$cmd"
+            local spResult=$(eval "$cmd")
             checkError   
         fi 
         # printProgress  "Application '${appName}' with application Id: ${appId} and object Id: ${objectId} has been created"
@@ -836,7 +836,7 @@ createApplication()
                 --headers \"Content-Type=application/json\" \
                 --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${webAppUrl}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
             # printProgress "$cmd"
-            eval "$cmd"
+            local azRestResult=$(eval "$cmd")
             checkError   
         fi
     fi

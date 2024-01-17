@@ -226,9 +226,9 @@ if [[ "${ACTION}" == "createapp" ]] ; then
         # set Azure DevOps variable AZURE_APP_ID 
         updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_APP_ID" "${appId}"
         assignStorageRole "${appId}" "Storage Blob Data Contributor" "${AZURE_SUBSCRIPTION_ID}" "${RESOURCE_GROUP}" "${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
-        printMessage "Create/Update Azure AD Application name: ${appName} done"
+        printMessage "Create/Update Azure AD Application name: ${appName}  appId: ${appId} done"
     else
-        printError "Error while creating Application name: ${appName}"
+        printError "Error while creating Application name: ${appName} appId: ${appId}"
         exit 1
     fi
 fi

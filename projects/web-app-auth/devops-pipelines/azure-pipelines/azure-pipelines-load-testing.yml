@@ -110,12 +110,14 @@ stages:
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_STATIC_WEBAPP_NAME;isOutput=true]${AZURE_RESOURCE_STATIC_WEBAPP_NAME}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_STORAGE_ACCOUNT_NAME;isOutput=true]${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_NAME;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_NAME}"
-                echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
                 
-                cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
-                echo "##[command]$cmd"
-                eval "$cmd"                
+                if [ ! -z "$(AZURE_APP_ID)" ]; then
+                  cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
+                  echo "##[command]$cmd"
+                  eval "$cmd"                
+                fi
+                echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
 
                 cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c $(CONFIGURATION_FILE) "
                 echo "##[command]$cmd"
