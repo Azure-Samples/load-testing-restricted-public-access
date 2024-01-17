@@ -2,7 +2,7 @@
 ##########################################################################################################################################################################################
 #- Purpose: Script used to install pre-requisites, deploy/undeploy service, start/stop service, test service
 #- Parameters are:
-#- [-a] ACTION - value: login, install, getsuffix, createconfig, deploy, createapp, undeploy, deploytest, undeploytest, opentest, runtest, closetest 
+#- [-a] ACTION - value: login, install, getsuffix, createconfig, deploy, createapp, deployservices, undeploy, deploytest, undeploytest, opentest, runtest, closetest 
 #- [-c] configuration file - which contains the list of path of each load-testing-tool.sh to call (configuration/default.env by default)
 #- [-h] event Hub Sku - Event Hub Sku - by default Standard  values: "Basic","Standard","Premium"
 #
@@ -27,7 +27,7 @@ source "$SCRIPTS_DIRECTORY"/../../../scripts/common.sh
 function usage() {
     echo
     echo "Arguments:"
-    echo -e " -a  Sets iactool ACTION {login, install, getsuffix, createconfig, deploy, createapp, undeploy, deploytest, undeploytest, opentest, runtest, closetest}"
+    echo -e " -a  Sets iactool ACTION {login, install, getsuffix, createconfig, deploy, createapp, deployservices, undeploy, deploytest, undeploytest, opentest, runtest, closetest}"
     echo -e " -c  Sets the iactool configuration file"
     echo -e " -h  Azure Function Sku - Azure Function Sku - by default B1 (B1, B2, B3, S1, S2, S3)"
 
@@ -84,8 +84,8 @@ if [[ $# -eq 0 || -z "${ACTION}" || -z $CONFIGURATION_FILE ]]; then
 fi
 if [[ ! "${ACTION}" == "login" && ! "${ACTION}" == "install" && ! "${ACTION}" == "createconfig" && ! "${ACTION}" == "getsuffix" \
     && ! "${ACTION}" == "deploy" && ! "${ACTION}" == "undeploy" && ! "${ACTION}" == "opentest" && ! "${ACTION}" == "runtest" \
-    && ! "${ACTION}" == "closetest" && ! "${ACTION}" == "deploytest" && ! "${ACTION}" == "undeploytest"  && ! "${ACTION}" == "createapp" ]]; then
-    echo "ACTION '${ACTION}' not supported, possible values: login, install, getsuffix, createconfig, deploy, createapp, undeploy, deploytest, undeploytes, opentest, runtest, closetest"
+    && ! "${ACTION}" == "closetest" && ! "${ACTION}" == "deploytest" && ! "${ACTION}" == "undeploytest"  && ! "${ACTION}" == "createapp"  && ! "${ACTION}" == "deployservices" ]]; then
+    echo "ACTION '${ACTION}' not supported, possible values: login, install, getsuffix, createconfig, deploy, createapp, deployservices, undeploy, deploytest, undeploytes, opentest, runtest, closetest"
     usage
     exit 1
 fi
@@ -229,6 +229,7 @@ if [[ "${ACTION}" == "createapp" ]] ; then
         printMessage "Create/Update Azure AD Application name: ${appName} done"
     else
         printError "Error while creating Application name: ${appName}"
+        exit 1
     fi
 fi
 
@@ -259,7 +260,7 @@ if [[ "${ACTION}" == "deploy" ]] ; then
         printProgress "Allowing origin https://${STATIC_WEB_APP_DOMAIN}"
         cmd="az functionapp cors add -g \"${RESOURCE_GROUP}\" -n \"${AZURE_RESOURCE_FUNCTION_NAME}\" --allowed-origins \"https://${STATIC_WEB_APP_DOMAIN}\""
         printProgress "$cmd"
-        $(eval "$cmd")        
+        eval "$cmd"        
     fi
     printMessage "Azure Web App Url: ${AZURE_RESOURCE_WEB_APP_SERVER}"
     printMessage "Azure function Url: ${AZURE_RESOURCE_FUNCTION_SERVER}"
@@ -278,29 +279,17 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     echo "File: ${CONFIGURATION_FILE}"
     cat "${CONFIGURATION_FILE}"    
     printMessage "Deploying the infrastructure done"
+fi
 
-    appName=$(getApplicationName "${AZURE_TEST_SUFFIX}")
-    printMessage "Check if Azure AD Application name ${appName} must be created ..."
-    # if AZURE_APP_ID is not defined in variable group 
-    # Create application
-    if [[ -z ${AZURE_APP_ID} || ${AZURE_APP_ID} == 'null' || ${AZURE_APP_ID} == '' ]] ; then
-        printMessage "Create/Update Azure AD Application name: ${appName} ..."
-        appId=$(createApplication "${AZURE_TEST_SUFFIX}" "${AZURE_RESOURCE_WEB_APP_SERVER}") 
-        if [[ ! -z ${appId} && ${appId} != 'null' && $(isGuid ${appId}) == "true" ]] ; then
-            AZURE_APP_ID="${appId}"
-            assignStorageRole "${appId}" "Storage Blob Data Contributor" "${AZURE_SUBSCRIPTION_ID}" "${RESOURCE_GROUP}" "${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
-            printMessage "Create/Update Azure AD Application name: ${appName} done"
-        else
-            printError "Error while creating Application name: ${appName}"
-            exit 1
-        fi
-    else
-        printProgress "As AZURE_APP_ID is set, it's not necessary to create the application'${appName} "
-        printProgress "AZURE_APP_ID: ${AZURE_APP_ID}"
-        appId=${AZURE_APP_ID}
-    fi
-    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_APP_ID" "${appId}"
-    
+
+if [[ "${ACTION}" == "deployservices" ]] ; then
+    printMessage "Create Application in Microsoft Entra ID Tenant..."
+    # Check Azure connection
+    printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
+    azLogin
+    checkError    
+    az config set extension.use_dynamic_install=yes_without_prompt
+    appName=$(getApplicationName "${AZURE_TEST_SUFFIX}") 
     printMessage "Building the backend hosting the Web API containers..."
     printProgress  "Building Application '${appName}' with application Id: ${AZURE_APP_ID} "
     # Variables used to build the application or configure the application
