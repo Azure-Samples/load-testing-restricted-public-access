@@ -112,16 +112,30 @@ stages:
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_NAME;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_NAME}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
                 
-                if [ ! -z "$(AZURE_APP_ID)" ]; then
+                if [ -z "$(AZURE_APP_ID)" ]; then
                   cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
                   echo "##[command]$cmd"
-                  eval "$cmd"                
+                  eval "$cmd"
+                  configFile="$(CONFIGURATION_FILE)"
+                  variable="AZURE_APP_ID"
+                  AZURE_APP_ID=$(grep "${variable}=*"  < "${configFile}" | head -n 1 | sed 's/${variable}=//g')
+                  echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
+                else
+                  echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]$(AZURE_APP_ID)"
                 fi
-                echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
 
                 cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c $(CONFIGURATION_FILE) "
                 echo "##[command]$cmd"
                 eval "$cmd"                
+
+                if [ -z "$(LOAD_TESTING_USERS_CONFIGURATION)" ]; then
+                  configFile="$(CONFIGURATION_FILE)"
+                  variable="LOAD_TESTING_USERS_CONFIGURATION"
+                  LOAD_TESTING_USERS_CONFIGURATION=$(grep "${variable}=*"  < "${configFile}" | head -n 1 | sed 's/${variable}=//g')
+                  echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]${LOAD_TESTING_USERS_CONFIGURATION}"
+                else
+                  echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]$(LOAD_TESTING_USERS_CONFIGURATION)"
+                fi
 
   - stage: stage_load_test
     displayName: stage-load-test
@@ -135,6 +149,7 @@ stages:
       AZURE_RESOURCE_FUNCTION_DOMAIN: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_FUNCTION_DOMAIN'] ]
       AZURE_RESOURCE_STATIC_WEBAPP_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STATIC_WEBAPP_NAME'] ]
       AZURE_APP_ID: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_APP_ID'] ]
+      LOAD_TESTING_USERS_CONFIGURATION: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.LOAD_TESTING_USERS_CONFIGURATION'] ]
       AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME'] ]
       AZURE_RESOURCE_APP_INSIGHTS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_NAME'] ]
       RESOURCE_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.RESOURCE_GROUP'] ]
@@ -167,6 +182,7 @@ stages:
                   echo "AZURE_RESOURCE_FUNCTION_DOMAIN=$(AZURE_RESOURCE_FUNCTION_DOMAIN)"
                   echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME=$(AZURE_RESOURCE_STATIC_WEBAPP_NAME)"
                   echo "AZURE_APP_ID=$(AZURE_APP_ID)"
+                  echo "LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)"
                   echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=$(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
                   echo "RESOURCE_GROUP=$(RESOURCE_GROUP)"

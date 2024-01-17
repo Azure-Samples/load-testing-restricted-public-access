@@ -507,13 +507,24 @@ function updateConfigurationFile(){
     value="$3"
 
     count=$(grep "${variable}=.*" -c < "$configFile") || true
-    if [ "${count}" == 1 ]; then
+    if [ "${count}" != 0 ]; then
         # escape backslash before sed
         value=${value//\\/\\\\}
         sed -i "s/${variable}=.*/${variable}=${value////\\/}/g" "${configFile}"         
     elif [ "${count}" == 0 ]; then
         echo "${variable}=${value}" >> "${configFile}"
     fi
+}
+##############################################################################
+#- readConfigurationFileValue: Read one value in  configuration file
+#  arg 1: Configuration file path
+#  arg 2: Variable Name
+##############################################################################
+function readConfigurationFileValue(){
+    configFile="$1"
+    variable="$2"
+
+    grep "${variable}=*"  < "${configFile}" | head -n 1 | sed 's/${variable}=//g'
 }
 ##############################################################################
 #- readConfigurationFile: Update configuration file

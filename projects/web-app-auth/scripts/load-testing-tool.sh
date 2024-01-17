@@ -250,7 +250,6 @@ if [[ "${ACTION}" == "deploy" ]] ; then
 
     deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_TEST_SUFFIX" "$RESOURCE_GROUP"  \
      "$AZURE_RESOURCE_SKU" "$ip" "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/infrastructure/infrastructure-to-test/arm/global.json" 
-    printMessage "Azure Container Registry DNS name: ${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
     # if we use use Azure Static Web App to host the frontend 
     # override the value AZURE_RESOURCE_WEB_APP_SERVER with Static Web App url 
     # instead of Azure Storage Web url
