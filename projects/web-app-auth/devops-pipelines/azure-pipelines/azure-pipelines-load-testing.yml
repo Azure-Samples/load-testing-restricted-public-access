@@ -331,17 +331,19 @@ stages:
                 AZURE_AD_TOKENS=""
                 while read item; do     
                     ITEM="    - name: \"{loadTestSecretName}-${COUNTER}\"
-      value: \"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}-${COUNTER}/\""
+                value: \"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}-${COUNTER}/\""
                     # echo "ITEM: ${ITEM}"
                     if [[ COUNTER -eq 1 ]]; then
                         AZURE_AD_TOKENS="${ITEM}"
                     else
                         AZURE_AD_TOKENS="${AZURE_AD_TOKENS}
-${ITEM}"
+                ${ITEM}"
                     fi
                     (( COUNTER++ ))
                 done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+                
                 # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
+                
                 sed -i "s/{azureADTokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"

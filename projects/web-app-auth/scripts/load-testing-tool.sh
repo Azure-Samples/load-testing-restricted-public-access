@@ -2,7 +2,7 @@
 ##########################################################################################################################################################################################
 #- Purpose: Script used to install pre-requisites, deploy/undeploy service, start/stop service, test service
 #- Parameters are:
-#- [-a] ACTION - value: login, install, getsuffix, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest 
+#- [-a] ACTION - value: login, install, getsuffix, createconfig, deploy, createapp, undeploy, deploytest, undeploytest, opentest, runtest, closetest 
 #- [-c] configuration file - which contains the list of path of each load-testing-tool.sh to call (configuration/default.env by default)
 #- [-h] event Hub Sku - Event Hub Sku - by default Standard  values: "Basic","Standard","Premium"
 #
@@ -27,7 +27,7 @@ source "$SCRIPTS_DIRECTORY"/../../../scripts/common.sh
 function usage() {
     echo
     echo "Arguments:"
-    echo -e " -a  Sets iactool ACTION {login, install, getsuffix, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}"
+    echo -e " -a  Sets iactool ACTION {login, install, getsuffix, createconfig, deploy, createapp, undeploy, deploytest, undeploytest, opentest, runtest, closetest}"
     echo -e " -c  Sets the iactool configuration file"
     echo -e " -h  Azure Function Sku - Azure Function Sku - by default B1 (B1, B2, B3, S1, S2, S3)"
 
@@ -84,8 +84,8 @@ if [[ $# -eq 0 || -z "${ACTION}" || -z $CONFIGURATION_FILE ]]; then
 fi
 if [[ ! "${ACTION}" == "login" && ! "${ACTION}" == "install" && ! "${ACTION}" == "createconfig" && ! "${ACTION}" == "getsuffix" \
     && ! "${ACTION}" == "deploy" && ! "${ACTION}" == "undeploy" && ! "${ACTION}" == "opentest" && ! "${ACTION}" == "runtest" \
-    && ! "${ACTION}" == "closetest" && ! "${ACTION}" == "deploytest" && ! "${ACTION}" == "undeploytest" ]]; then
-    echo "ACTION '${ACTION}' not supported, possible values: login, install, getsuffix, createconfig, deploy, undeploy, deploytest, undeploytes, opentest, runtest, closetest"
+    && ! "${ACTION}" == "closetest" && ! "${ACTION}" == "deploytest" && ! "${ACTION}" == "undeploytest"  && ! "${ACTION}" == "createapp" ]]; then
+    echo "ACTION '${ACTION}' not supported, possible values: login, install, getsuffix, createconfig, deploy, createapp, undeploy, deploytest, undeploytes, opentest, runtest, closetest"
     usage
     exit 1
 fi
@@ -208,7 +208,29 @@ else
     printWarning "No env. file specified. Using environment variables."
 fi
 
-
+if [[ "${ACTION}" == "createapp" ]] ; then
+    printMessage "Create Application in Microsoft Entra ID Tenant..."
+    # Check Azure connection
+    printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
+    azLogin
+    checkError    
+    az config set extension.use_dynamic_install=yes_without_prompt 
+    # Get resources names for the infrastructure deployment
+    RESOURCE_GROUP=$(getResourceGroupName "${AZURE_TEST_SUFFIX}")
+    appName=$(getApplicationName "${AZURE_TEST_SUFFIX}")
+    printMessage "Create/Update Azure AD Application name: ${appName} ..."
+    # if AZURE_APP_ID is not defined in variable group 
+    # Create application
+    appId=$(createApplication "${AZURE_TEST_SUFFIX}" "${AZURE_RESOURCE_WEB_APP_SERVER}") 
+    if [[ ! -z ${appId} && ${appId} != 'null' && $(isGuid ${appId}) == "true" ]] ; then
+        # set Azure DevOps variable AZURE_APP_ID 
+        updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_APP_ID" "${appId}"
+        assignStorageRole "${appId}" "Storage Blob Data Contributor" "${AZURE_SUBSCRIPTION_ID}" "${RESOURCE_GROUP}" "${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
+        printMessage "Create/Update Azure AD Application name: ${appName} done"
+    else
+        printError "Error while creating Application name: ${appName}"
+    fi
+fi
 
 if [[ "${ACTION}" == "deploy" ]] ; then
     printMessage "Deploying the infrastructure..."
@@ -257,122 +279,30 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     cat "${CONFIGURATION_FILE}"    
     printMessage "Deploying the infrastructure done"
 
-    printMessage "Create Azure AD Application..."
+    appName=$(getApplicationName "${AZURE_TEST_SUFFIX}")
+    printMessage "Check if Azure AD Application name ${appName} must be created ..."
     # if AZURE_APP_ID is not defined in variable group 
     # Create application
     if [[ -z ${AZURE_APP_ID} || ${AZURE_APP_ID} == 'null' || ${AZURE_APP_ID} == '' ]] ; then
-        # Create or update application
-        printProgress "As AZURE_APP_ID is not set, check if Application 'sp-${AZURE_TEST_SUFFIX}-app' exists"
-        cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].appId"
-        printProgress "$cmd"
-        appId=$(eval "$cmd") || true    
-        if [[ -z ${appId} || ${appId} == 'null' ]] ; then
-            # Create application 
-            printProgress "Create Application 'sp-${AZURE_TEST_SUFFIX}-app' "        
-            cmd="az ad app create  --display-name \"sp-${AZURE_TEST_SUFFIX}-app\"  --required-resource-access \"[{\\\"resourceAppId\\\": \\\"00000003-0000-0000-c000-000000000000\\\",\\\"resourceAccess\\\": [{\\\"id\\\": \\\"e1fe6dd8-ba31-4d61-89e7-88639da4683d\\\",\\\"type\\\": \\\"Scope\\\"}]},{\\\"resourceAppId\\\": \\\"e406a681-f3d4-42a8-90b6-c2b029497af1\\\",\\\"resourceAccess\\\": [{\\\"id\\\": \\\"03e0da56-190b-40ad-a80c-ea378c433f7f\\\",\\\"type\\\": \\\"Scope\\\"}]}]\" --only-show-errors | jq -r \".appId\" "
-            printProgress "$cmd"
-            appId=$(eval "$cmd")
-            # wait 30 seconds
-            printProgress "Wait 30 seconds after app creation"
-            # Wait few seconds before updating the Application record in Azure AD
-            sleep 30
-            # Get application objectId  
-            cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].id"    
-            printProgress "$cmd"
-            objectId=$(eval "$cmd") || true    
-            if [[ -n ${objectId} && ${objectId} != 'null' ]] ; then
-                printProgress "Update Application 'sp-${AZURE_TEST_SUFFIX}-app' in Microsoft Graph "   
-                # Azure CLI Application Id : 04b07795-8ddb-461a-bbee-02f9e1bf7b46 
-                # Azure CLI will be authorized to get access token to the API using the commands below:
-                #  token=$(az account get-access-token --resource https://<TenantDNSName>/<WebAPIAppId> | jq -r .accessToken)
-                #  curl -i -X GET --header "Authorization: Bearer $token"  https://<<WebAPIDomain>/visit
-                TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
-                cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
-                    --headers \"Content-Type=application/json\" \
-                    --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${AZURE_RESOURCE_WEB_APP_SERVER}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
-                printProgress "$cmd"
-                eval "$cmd"
-                # Wait few seconds before updating the Application record in Azure AD 
-                sleep 10
-                cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
-                    --headers \"Content-Type=application/json\" \
-                    --body \"{\\\"api\\\":{\\\"preAuthorizedApplications\\\": [{\\\"appId\\\": \\\"04b07795-8ddb-461a-bbee-02f9e1bf7b46\\\",\\\"delegatedPermissionIds\\\": [\\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\"]}]}}\""
-                printProgress "$cmd"
-                eval "$cmd"            
-            else
-                printError "Error while creating application sp-${AZURE_TEST_SUFFIX}-app can't get objectId"
-                exit 1
-            fi
-            cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].appId"
-            printProgress "$cmd"
-            appId=$(eval "$cmd") || true    
-            if [[ -n ${appId} && ${appId} != 'null' ]] ; then
-                printProgress "Create Service principal associated with application 'sp-${AZURE_TEST_SUFFIX}-app' "        
-                cmd="az ad sp create-for-rbac --name 'sp-${AZURE_TEST_SUFFIX}-app'  --role contributor --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP} --only-show-errors"        
-                printProgress "$cmd"
-                eval "$cmd" || true
-            fi 
-            printProgress  "Application 'sp-${AZURE_TEST_SUFFIX}-app' with application Id: ${appId} and object Id: ${objectId} has been created"
+        printMessage "Create/Update Azure AD Application name: ${appName} ..."
+        appId=$(createApplication "${AZURE_TEST_SUFFIX}" "${AZURE_RESOURCE_WEB_APP_SERVER}") 
+        if [[ ! -z ${appId} && ${appId} != 'null' && $(isGuid ${appId}) == "true" ]] ; then
+            AZURE_APP_ID="${appId}"
+            assignStorageRole "${appId}" "Storage Blob Data Contributor" "${AZURE_SUBSCRIPTION_ID}" "${RESOURCE_GROUP}" "${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
+            printMessage "Create/Update Azure AD Application name: ${appName} done"
         else
-            printProgress  "Application 'sp-${AZURE_TEST_SUFFIX}-app' with application Id: ${appId} already exists"
-            printProgress  "Update application 'sp-${AZURE_TEST_SUFFIX}-app' with the new redirectUri ${AZURE_RESOURCE_WEB_APP_SERVER}"
-            # Get application objectId  
-            cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].id"    
-            printProgress "$cmd"
-            objectId=$(eval "$cmd") || true    
-            if [[ -n ${objectId} && ${objectId} != 'null' ]] ; then
-                printProgress "Update Application 'sp-${AZURE_TEST_SUFFIX}-app' in Microsoft Graph "   
-                # Azure CLI Application Id : 04b07795-8ddb-461a-bbee-02f9e1bf7b46 
-                # Azure CLI will be authorized to get access token to the API using the commands below:
-                #  token=$(az account get-access-token --resource https://<TenantDNSName>/<WebAPIAppId> | jq -r .accessToken)
-                #  curl -i -X GET --header "Authorization: Bearer $token"  https://<<WebAPIDomain>/visit
-                TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
-                cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
-                    --headers \"Content-Type=application/json\" \
-                    --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${AZURE_RESOURCE_WEB_APP_SERVER}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
-                printProgress "$cmd"
-                eval "$cmd"
-            fi
+            printError "Error while creating Application name: ${appName}"
+            exit 1
         fi
-        printMessage "Azure AD Application creation done"
     else
-        printProgress "As AZURE_APP_ID is set, it's not necessary to create the application 'sp-${AZURE_TEST_SUFFIX}-app'"
+        printProgress "As AZURE_APP_ID is set, it's not necessary to create the application'${appName} "
         printProgress "AZURE_APP_ID: ${AZURE_APP_ID}"
         appId=${AZURE_APP_ID}
     fi
-    # set Azure DevOps variable AZURE_APP_ID if run from a pipeline
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_APP_ID" "${appId}"
     
-    # Get Application service principal appId  
-    if [[ -n ${appId} && ${appId} != 'null' ]] ; then
-        printProgress  "Check 'Storage Blob Data Contributor' role assignment on scope ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} for Application sp-${AZURE_TEST_SUFFIX}-app..."
-        cmd="az role assignment list --assignee \"${appId}\" --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Storage/storageAccounts/${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} --only-show-errors  | jq -r 'select(.[].roleDefinitionName==\"Storage Blob Data Contributor\") | length'"
-        printProgress "$cmd"
-        WebAppMsiAcrPullAssignmentCount=$(eval "$cmd") || true  
-        if [ "$WebAppMsiAcrPullAssignmentCount" != "1" ];
-        then
-            printProgress  "Assigning 'Storage Blob Data Contributor' role assignment on scope ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} for  appId..."
-            cmd="az role assignment create --assignee \"${appId}\"  --scope /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Storage/storageAccounts/${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} --role \"Storage Blob Data Contributor\" --only-show-errors"        
-            printProgress "$cmd"
-            eval "$cmd"
-        fi
-    fi
-
     printMessage "Building the backend hosting the Web API containers..."
-    # Create or update application
-    printProgress "Check if Application 'sp-${AZURE_TEST_SUFFIX}-app' appId exists"
-    if [[ -z ${AZURE_APP_ID} || ${AZURE_APP_ID} == 'null' || ${AZURE_APP_ID} == '' ]] ; then
-        cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json 2>/dev/null | jq -r .[0].appId"
-        printProgress "$cmd"
-        appId=$(eval "$cmd") || true    
-        if [[ -z ${appId} || ${appId} == 'null' ]] ; then
-            printError "Application sp-${AZURE_TEST_SUFFIX}-app appId not available"
-            exit 1
-        else
-            AZURE_APP_ID=${appId} 
-        fi
-    fi
-    printProgress  "Building Application 'sp-${AZURE_TEST_SUFFIX}-app' with application Id: ${AZURE_APP_ID} "
+    printProgress  "Building Application '${appName}' with application Id: ${AZURE_APP_ID} "
     # Variables used to build the application or configure the application
     APP_VERSION=$(date +"%y%m%d.%H%M%S")
     APP_PORT=80  
@@ -380,7 +310,7 @@ if [[ "${ACTION}" == "deploy" ]] ; then
 
     # Build dotnet-api docker image
     TEMPDIR=$(mktemp -d)
-    printProgress  "Update file: $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json application Id: ${AZURE_APP_ID} name: 'sp-${AZURE_TEST_SUFFIX}-app'"
+    printProgress  "Update file: $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json application Id: ${AZURE_APP_ID} name: '${appName}'"
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json  | jq -r '.AzureAd.ClientId = \"${AZURE_APP_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.json"
     eval "$cmd"    
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json  | jq -r '.AzureAd.ClientId = \"${AZURE_APP_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/dotnet-web-api/appsettings.Development.json"
@@ -452,26 +382,26 @@ if [[ "${ACTION}" == "deploy" ]] ; then
 
     printMessage "Building the Front End hosting the Web UI..."
     # Create or update application
-    printProgress "Check if Application 'sp-${AZURE_TEST_SUFFIX}-app' appId exists"
+    printProgress "Check if Application '${appName}' appId exists"
     if [[ -z ${AZURE_APP_ID} || ${AZURE_APP_ID} == 'null' || ${AZURE_APP_ID} == '' ]] ; then
-        cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json 2> /dev/null | jq -r .[0].appId"
+        cmd="az ad app list --filter \"displayName eq '${appName}'\" -o json 2> /dev/null | jq -r .[0].appId"
         printProgress "$cmd"
         appId=$(eval "$cmd") || true    
         if [[ -z ${appId} || ${appId} == 'null' ]] ; then
-            printError "Application sp-${AZURE_TEST_SUFFIX}-app appId not available"
+            printError "Application ${appName} appId not available"
             exit 1
         else
             AZURE_APP_ID=${appId} 
         fi
     fi
-    printProgress  "Building Application 'sp-${AZURE_TEST_SUFFIX}-app' with application Id: ${AZURE_APP_ID} "
+    printProgress  "Building Application '${appName}' with application Id: ${AZURE_APP_ID} "
 
     printMessage "Building ts-web-app container version:${APP_VERSION} port: ${APP_PORT}"
 
     # Update version in HTML package
     TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
     TEMPDIR=$(mktemp -d)
-    printProgress  "Update file: $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json application Id: ${AZURE_APP_ID} name: 'sp-${AZURE_TEST_SUFFIX}-app'"
+    printProgress  "Update file: $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json application Id: ${AZURE_APP_ID} name: '${appName}'"
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.version = \"${APP_VERSION}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"    
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.clientId = \"${AZURE_APP_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
@@ -622,23 +552,24 @@ if [[ "${ACTION}" == "undeploy" ]] ; then
     RESOURCE_GROUP=$(getResourceGroupName "${AZURE_TEST_SUFFIX}")
     undeployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$RESOURCE_GROUP"
 
-    printProgress "Check if Application 'sp-${AZURE_TEST_SUFFIX}-app' still exists..."        
-    cmd="az ad app list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].id"
+    appName=$(getApplicationName "${AZURE_TEST_SUFFIX}")    
+    printProgress "Check if Application '${appName}' still exists..."        
+    cmd="az ad app list --filter \"displayName eq '${appName}'\" -o json --only-show-errors | jq -r .[0].id"
     printProgress "$cmd"
     id=$(eval "$cmd") || true    
     if [[ -n ${id} && ${id} != 'null' ]] ; then
-        printProgress "Delete Application 'sp-${AZURE_TEST_SUFFIX}-app' "        
+        printProgress "Delete Application '${appName}' "        
         cmd="az ad app delete --id '${id}'"        
         printProgress "$cmd"
         eval "$cmd" || true
         checkError
     fi 
-    printProgress "Check if Service Principal 'sp-${AZURE_TEST_SUFFIX}-app' still exists..."        
-    cmd="az ad sp list --filter \"displayName eq 'sp-${AZURE_TEST_SUFFIX}-app'\" -o json --only-show-errors | jq -r .[0].id"
+    printProgress "Check if Service Principal '${appName}' still exists..."        
+    cmd="az ad sp list --filter \"displayName eq '${appName}'\" -o json --only-show-errors | jq -r .[0].id"
     printProgress "$cmd"
     id=$(eval "$cmd") || true    
     if [[ -n ${id} && ${id} != 'null' ]] ; then
-        printProgress "Delete Service Principal 'sp-${AZURE_TEST_SUFFIX}-app' "        
+        printProgress "Delete Service Principal '${appName}' "        
         cmd="az ad sp delete --id '${id}'"        
         printProgress "$cmd"
         eval "$cmd" || true

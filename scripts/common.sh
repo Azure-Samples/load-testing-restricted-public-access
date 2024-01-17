@@ -737,3 +737,149 @@ urlEncode()
     done
     echo ${encoded}
 }
+##############################################################################
+#- Get Application Name 
+#  arg 1: Suffix
+##############################################################################
+getApplicationName()
+{
+    if [[ -z $1 ]] ; then
+        echo ""
+    else
+        echo "sp-$1-app"
+    fi
+}
+##############################################################################
+#- Create an Application in Microsoft Entra ID Tenant 
+#  arg 1: Suffix
+#  arg 2: Web App Url (redirect Uri)
+##############################################################################
+createApplication()
+{
+    local suffix=$1
+    local webAppUrl=$2
+    local appId=""
+    local appName=$(getApplicationName "${suffix}")
+    cmd="az ad app list --filter \"displayName eq '${appName}'\" -o json --only-show-errors | jq -r .[0].appId"
+    # printProgress "$cmd"
+    appId=$(eval "$cmd")
+    checkError   
+    if [[ -z ${appId} || ${appId} == 'null' ]] ; then
+        # Create application 
+        # printProgress "Create Application '${appName}' "        
+        cmd="az ad app create  --display-name \"${appName}\"  --required-resource-access \"[{\\\"resourceAppId\\\": \\\"00000003-0000-0000-c000-000000000000\\\",\\\"resourceAccess\\\": [{\\\"id\\\": \\\"e1fe6dd8-ba31-4d61-89e7-88639da4683d\\\",\\\"type\\\": \\\"Scope\\\"}]},{\\\"resourceAppId\\\": \\\"e406a681-f3d4-42a8-90b6-c2b029497af1\\\",\\\"resourceAccess\\\": [{\\\"id\\\": \\\"03e0da56-190b-40ad-a80c-ea378c433f7f\\\",\\\"type\\\": \\\"Scope\\\"}]}]\" --only-show-errors | jq -r \".appId\" "
+        # printProgress "$cmd"
+        appId=$(eval "$cmd")
+        checkError   
+        # wait 30 seconds
+        # printProgress "Wait 30 seconds after app creation"
+        # Wait few seconds before updating the Application record in Azure AD
+        sleep 30
+        # Get application objectId  
+        cmd="az ad app list --filter \"displayName eq '${appName}'\" -o json --only-show-errors | jq -r .[0].id"    
+        # printProgress "$cmd"
+        objectId=$(eval "$cmd")     
+        checkError   
+        if [[ -n ${objectId} && ${objectId} != 'null' ]] ; then
+            # printProgress "Update Application '${appName}' in Microsoft Graph "   
+            # Azure CLI Application Id : 04b07795-8ddb-461a-bbee-02f9e1bf7b46 
+            # Azure CLI will be authorized to get access token to the API using the commands below:
+            #  token=$(az account get-access-token --resource https://<TenantDNSName>/<WebAPIAppId> | jq -r .accessToken)
+            #  curl -i -X GET --header "Authorization: Bearer $token"  https://<<WebAPIDomain>/visit
+            TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
+            cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/${objectId}\" \
+                --headers \"Content-Type=application/json\" \
+                --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${webAppUrl}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
+            # printProgress "$cmd"
+            eval "$cmd"
+            checkError   
+            # Wait few seconds before updating the Application record in Azure AD 
+            sleep 10
+            cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/${objectId}\" \
+                --headers \"Content-Type=application/json\" \
+                --body \"{\\\"api\\\":{\\\"preAuthorizedApplications\\\": [{\\\"appId\\\": \\\"04b07795-8ddb-461a-bbee-02f9e1bf7b46\\\",\\\"delegatedPermissionIds\\\": [\\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\"]}]}}\""
+            # printProgress "$cmd"
+            eval "$cmd"
+            checkError   
+        else
+            printError "Error while creating application ${appName} can't get objectId"
+            exit 1
+        fi
+        cmd="az ad app list --filter \"displayName eq '${appName}'\" -o json --only-show-errors | jq -r .[0].appId"
+        # printProgress "$cmd"
+        appId=$(eval "$cmd")     
+        checkError   
+        if [[ -n ${appId} && ${appId} != 'null' ]] ; then
+            # printProgress "Create Service principal associated with application '${appName}' "        
+            cmd="az ad sp create-for-rbac --name '${appName}'  --role contributor --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP} --only-show-errors"        
+            # printProgress "$cmd"
+            eval "$cmd"
+            checkError   
+        fi 
+        # printProgress  "Application '${appName}' with application Id: ${appId} and object Id: ${objectId} has been created"
+    else
+        # printProgress  "Application '${appName}' with application Id: ${appId} already exists"
+        # printProgress  "Update application '${appName}' with the new redirectUri ${webAppUrl}"
+        # Get application objectId  
+        cmd="az ad app list --filter \"displayName eq '${appName}'\" -o json --only-show-errors | jq -r .[0].id"    
+        # printProgress "$cmd"
+        objectId=$(eval "$cmd")    
+        checkError   
+        if [[ -n ${objectId} && ${objectId} != 'null' ]] ; then
+            # printProgress "Update Application '${appName}' in Microsoft Graph "   
+            # Azure CLI Application Id : 04b07795-8ddb-461a-bbee-02f9e1bf7b46 
+            # Azure CLI will be authorized to get access token to the API using the commands below:
+            #  token=$(az account get-access-token --resource https://<TenantDNSName>/<WebAPIAppId> | jq -r .accessToken)
+            #  curl -i -X GET --header "Authorization: Bearer $token"  https://<<WebAPIDomain>/visit
+            TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
+            cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/$objectId\" \
+                --headers \"Content-Type=application/json\" \
+                --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${webAppUrl}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
+            # printProgress "$cmd"
+            eval "$cmd"
+            checkError   
+        fi
+    fi
+    echo "${appId}"
+}
+##############################################################################
+#- Check if string is a GUID 
+#  arg 1: string
+##############################################################################
+isGuid()
+{
+    local uuid=$1
+    if [[ $uuid =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
+##############################################################################
+#- Assign Storage Role to an Application 
+#  arg 1: application Id
+#  arg 2: Role
+#  arg 3: Subscription
+#  arg 4: ResourceGroup
+#  arg 5: Storage Account Name
+##############################################################################
+assignStorageRole()
+{
+    local appId=$1
+    local role=$2
+    local subscriptionId=$3
+    local resourceGroup=$4
+    local storageAccountName=$5
+    printProgress  "Check 'Storage Blob Data Contributor' role assignment on scope ${storageAccountName} for ApplicationId ${appId}..."
+    cmd="az role assignment list --assignee \"${appId}\" --scope /subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Storage/storageAccounts/${storageAccountName} --only-show-errors  | jq -r 'select(.[].roleDefinitionName==\"Storage Blob Data Contributor\") | length'"
+    printProgress "$cmd"
+    assignmentCount=$(eval "$cmd") || true  
+    if [ "${assignmentCount}" != "1" ];
+    then
+        printProgress  "Assigning 'Storage Blob Data Contributor' role assignment on scope ${storageAccountName} for  appId..."
+        cmd="az role assignment create --assignee \"${appId}\"  --scope /subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Storage/storageAccounts/${storageAccountName} --role \"Storage Blob Data Contributor\" --only-show-errors"        
+        printProgress "$cmd"
+        eval "$cmd"
+    fi
+}
