@@ -373,15 +373,8 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     # Create or update application
     printProgress "Check if Application '${appName}' appId exists"
     if [[ -z ${AZURE_APP_ID} || ${AZURE_APP_ID} == 'null' || ${AZURE_APP_ID} == '' ]] ; then
-        cmd="az ad app list --filter \"displayName eq '${appName}'\" -o json 2> /dev/null | jq -r .[0].appId"
-        printProgress "$cmd"
-        appId=$(eval "$cmd") || true    
-        if [[ -z ${appId} || ${appId} == 'null' ]] ; then
-            printError "Application ${appName} appId not available"
-            exit 1
-        else
-            AZURE_APP_ID=${appId} 
-        fi
+        printError "Application ${appName} appId not available"
+        exit 1
     fi
     printProgress  "Building Application '${appName}' with application Id: ${AZURE_APP_ID} "
 

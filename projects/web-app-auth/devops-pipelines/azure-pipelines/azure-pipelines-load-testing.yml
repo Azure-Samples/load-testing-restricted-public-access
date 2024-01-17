@@ -113,7 +113,8 @@ stages:
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
                 
-                if [ -z "$(AZURE_APP_ID)" ]; then
+                AZURE_APP_ID=$(AZURE_APP_ID)
+                if [ -z "${AZURE_APP_ID}" ]; then
                   cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
                   echo "##[command]$cmd"
                   eval "$cmd"
@@ -122,20 +123,25 @@ stages:
                   AZURE_APP_ID=$(grep "${variable}=*"  < "${configFile}" | head -n 1 | sed 's/${variable}=//g')
                   echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
                 else
-                  echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]$(AZURE_APP_ID)"
+                  echo "export AZURE_APP_ID=${AZURE_APP_ID}"
+                  export AZURE_APP_ID="${AZURE_APP_ID}"
+                  echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
                 fi
 
                 cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c $(CONFIGURATION_FILE) "
                 echo "##[command]$cmd"
                 eval "$cmd"                
 
-                if [ -z "$(LOAD_TESTING_USERS_CONFIGURATION)" ]; then
+                LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)
+                if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ]; then
                   configFile="$(CONFIGURATION_FILE)"
                   variable="LOAD_TESTING_USERS_CONFIGURATION"
                   LOAD_TESTING_USERS_CONFIGURATION=$(grep "${variable}=*"  < "${configFile}" | head -n 1 | sed 's/${variable}=//g')
                   echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]${LOAD_TESTING_USERS_CONFIGURATION}"
                 else
-                  echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]$(LOAD_TESTING_USERS_CONFIGURATION)"
+                  echo "export LOAD_TESTING_USERS_CONFIGURATION=${LOAD_TESTING_USERS_CONFIGURATION}"
+                  export LOAD_TESTING_USERS_CONFIGURATION=${LOAD_TESTING_USERS_CONFIGURATION}
+                  echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]${LOAD_TESTING_USERS_CONFIGURATION}"
                 fi
 
   - stage: stage_load_test
