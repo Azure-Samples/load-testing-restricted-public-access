@@ -110,6 +110,7 @@ stages:
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_STATIC_WEBAPP_NAME;isOutput=true]${AZURE_RESOURCE_STATIC_WEBAPP_NAME}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_STORAGE_ACCOUNT_NAME;isOutput=true]${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_NAME;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_NAME}"
+                echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
                 
                 if [ -z "$(AZURE_APP_ID)" ]; then
@@ -152,8 +153,8 @@ stages:
       LOAD_TESTING_USERS_CONFIGURATION: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.LOAD_TESTING_USERS_CONFIGURATION'] ]
       AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME'] ]
       AZURE_RESOURCE_APP_INSIGHTS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_NAME'] ]
+      AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING'] ]
       RESOURCE_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.RESOURCE_GROUP'] ]
-
 
     condition: succeeded()
     jobs:
@@ -185,6 +186,7 @@ stages:
                   echo "LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)"
                   echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=$(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
+                  echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING=$(AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING)"
                   echo "RESOURCE_GROUP=$(RESOURCE_GROUP)"
                 } >> "$(CONFIGURATION_FILE)"
 
@@ -300,6 +302,7 @@ stages:
                 echo "AZURE_APP_ID: $(AZURE_APP_ID)"
                 echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                 echo "AZURE_RESOURCE_APP_INSIGHTS_NAME: $(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
+                echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: $(AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING)"
 
                 echo "DURATION: ${{ parameters.duration }}"
                 echo "THREADS: ${{ parameters.threads }}"
