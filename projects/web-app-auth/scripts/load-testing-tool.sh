@@ -218,6 +218,10 @@ if [[ "${ACTION}" == "createapp" ]] ; then
     # Get resources names for the infrastructure deployment
     RESOURCE_GROUP=$(getResourceGroupName "${AZURE_TEST_SUFFIX}")
     appName=$(getApplicationName "${AZURE_TEST_SUFFIX}")
+    AZURE_TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
+    checkError
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_TENANT_DNS_NAME" "${AZURE_TENANT_DNS_NAME}"
+
     printMessage "Create/Update Azure AD Application name: ${appName} ..."
     # if AZURE_APP_ID is not defined in variable group 
     # Create application
@@ -381,7 +385,6 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     printMessage "Building ts-web-app container version:${APP_VERSION} port: ${APP_PORT}"
 
     # Update version in HTML package
-    TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
     TEMPDIR=$(mktemp -d)
     printProgress  "Update file: $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json application Id: ${AZURE_APP_ID} name: '${appName}'"
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.version = \"${APP_VERSION}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
@@ -389,7 +392,7 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.clientId = \"${AZURE_APP_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"   
 
-    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tokenAPIRequest.scopes = [\"https://${TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation\" ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tokenAPIRequest.scopes = [\"https://${AZURE_TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation\" ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"   
 
     #cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
@@ -851,8 +854,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
             exit 1  
         else
             COUNTER=1
-            TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
-            SCOPE="https://${TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation"
+            SCOPE="https://${AZURE_TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation"
             CLIENT_ID="04b07795-8ddb-461a-bbee-02f9e1bf7b46"
             while read item; do 
                 AD_USER=$(jq -r '.adu' <<< "$item");

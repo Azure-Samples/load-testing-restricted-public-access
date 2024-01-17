@@ -81,6 +81,9 @@ stages:
                   echo "AZURE_TEST_SUFFIX=$(AZURE_TEST_SUFFIX)"
                   echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
                   echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
+                  echo "AZURE_APP_ID=$(AZURE_APP_ID)"
+                  echo "LOAD_TESTING_USERS_CONFIGURATION=$(printf '%q\n' '$(LOAD_TESTING_USERS_CONFIGURATION)')"
+                  echo "AZURE_TENANT_DNS_NAME=$(AZURE_TENANT_DNS_NAME)"
                 } >> $(CONFIGURATION_FILE)
                 cat $(CONFIGURATION_FILE)
 
@@ -94,13 +97,15 @@ stages:
               failOnStandardError: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
+                # include common.sh
+                source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
                 cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deploy -c $(CONFIGURATION_FILE) -h ${{ parameters.sku }} "
                 echo "##[command]$cmd"
                 eval "$cmd"
+
                 # Read new variables set after the deployment in configuration file
-                set -o allexport
-                source "${{ variables.CONFIGURATION_FILE }}"
-                set +o allexport
+                readConfigurationFile "${{ variables.CONFIGURATION_FILE }}"
+
                 # Create the associated Azure DevOps variables
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_ACR_LOGIN_SERVER;isOutput=true]${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_WEB_APP_SERVER;isOutput=true]${AZURE_RESOURCE_WEB_APP_SERVER}"
@@ -111,38 +116,28 @@ stages:
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_STORAGE_ACCOUNT_NAME;isOutput=true]${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_NAME;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_NAME}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING}"
+                echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
                 
-                AZURE_APP_ID=$(AZURE_APP_ID)
                 if [ -z "${AZURE_APP_ID}" ]; then
                   cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
                   echo "##[command]$cmd"
                   eval "$cmd"
-                  configFile="$(CONFIGURATION_FILE)"
-                  variable="AZURE_APP_ID"
-                  AZURE_APP_ID=$(grep "${variable}=*"  < "${configFile}" | head -n 1 | sed 's/${variable}=//g')
+                  AZURE_APP_ID=$(readConfigurationFileValue "$(CONFIGURATION_FILE)" "AZURE_APP_ID")
                   echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
+                  AZURE_TENANT_DNS_NAME=$(readConfigurationFileValue "$(CONFIGURATION_FILE)" "AZURE_TENANT_DNS_NAME")
+                  echo "##vso[task.setvariable variable=AZURE_TENANT_DNS_NAME;isOutput=true]${AZURE_TENANT_DNS_NAME}"
                 else
-                  echo "export AZURE_APP_ID=${AZURE_APP_ID}"
-                  export AZURE_APP_ID="${AZURE_APP_ID}"
                   echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
+                  echo "##vso[task.setvariable variable=AZURE_TENANT_DNS_NAME;isOutput=true]${AZURE_TENANT_DNS_NAME}"
                 fi
 
                 cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c $(CONFIGURATION_FILE) "
                 echo "##[command]$cmd"
                 eval "$cmd"                
 
-                LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)
-                if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ]; then
-                  configFile="$(CONFIGURATION_FILE)"
-                  variable="LOAD_TESTING_USERS_CONFIGURATION"
-                  LOAD_TESTING_USERS_CONFIGURATION=$(grep "${variable}=*"  < "${configFile}" | head -n 1 | sed 's/${variable}=//g')
-                  echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]${LOAD_TESTING_USERS_CONFIGURATION}"
-                else
-                  echo "export LOAD_TESTING_USERS_CONFIGURATION=${LOAD_TESTING_USERS_CONFIGURATION}"
-                  export LOAD_TESTING_USERS_CONFIGURATION=${LOAD_TESTING_USERS_CONFIGURATION}
-                  echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]${LOAD_TESTING_USERS_CONFIGURATION}"
-                fi
+                echo "LOAD_TESTING_USERS_CONFIGURATION=${LOAD_TESTING_USERS_CONFIGURATION}"
+                echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]${LOAD_TESTING_USERS_CONFIGURATION}"
 
   - stage: stage_load_test
     displayName: stage-load-test
@@ -156,10 +151,13 @@ stages:
       AZURE_RESOURCE_FUNCTION_DOMAIN: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_FUNCTION_DOMAIN'] ]
       AZURE_RESOURCE_STATIC_WEBAPP_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STATIC_WEBAPP_NAME'] ]
       AZURE_APP_ID: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_APP_ID'] ]
+      AZURE_TENANT_DNS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_TENANT_DNS_NAME'] ]
       LOAD_TESTING_USERS_CONFIGURATION: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.LOAD_TESTING_USERS_CONFIGURATION'] ]
       AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME'] ]
       AZURE_RESOURCE_APP_INSIGHTS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_NAME'] ]
       AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING'] ]
+      AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY'] ]                 
+
       RESOURCE_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.RESOURCE_GROUP'] ]
 
     condition: succeeded()
@@ -189,10 +187,12 @@ stages:
                   echo "AZURE_RESOURCE_FUNCTION_DOMAIN=$(AZURE_RESOURCE_FUNCTION_DOMAIN)"
                   echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME=$(AZURE_RESOURCE_STATIC_WEBAPP_NAME)"
                   echo "AZURE_APP_ID=$(AZURE_APP_ID)"
+                  echo "AZURE_TENANT_DNS_NAME=$(AZURE_TENANT_DNS_NAME)"
                   echo "LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)"
                   echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=$(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING=$(AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING)"
+                  echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY=$(AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY)"                 
                   echo "RESOURCE_GROUP=$(RESOURCE_GROUP)"
                 } >> "$(CONFIGURATION_FILE)"
 
@@ -306,9 +306,11 @@ stages:
                 echo "AZURE_RESOURCE_FUNCTION_DOMAIN: $(AZURE_RESOURCE_FUNCTION_DOMAIN)"
                 echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME: $(AZURE_RESOURCE_STATIC_WEBAPP_NAME)"
                 echo "AZURE_APP_ID: $(AZURE_APP_ID)"
+                echo "AZURE_TENANT_DNS_NAME: $(AZURE_TENANT_DNS_NAME)"
                 echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                 echo "AZURE_RESOURCE_APP_INSIGHTS_NAME: $(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
                 echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: $(AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING)"
+                echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: $(AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY)"                 
 
                 echo "DURATION: ${{ parameters.duration }}"
                 echo "THREADS: ${{ parameters.threads }}"
