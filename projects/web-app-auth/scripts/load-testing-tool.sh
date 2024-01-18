@@ -38,7 +38,7 @@ function usage() {
     
 }
 
-USE_STATIC_WEB_APP=true
+USE_STATIC_WEB_APP=false
 ACTION=
 CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../configuration/.default.env"
 AZURE_RESOURCE_PREFIX="waa"
@@ -103,10 +103,10 @@ NC='\033[0m' # No Color
 
 
 if [[ "${ACTION}" == "install" ]] ; then
-    printMessage "Installing pre-requisite"
+    printMessage "Installing pre-requisites"
     printProgress "Installing azure cli"
     curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-    az config set extension.use_dynamic_install=yes_without_prompt
+    az config set extension.use_dynamic_install=yes_without_prompt  2>/dev/null || true
     sudo apt-get -y update
     sudo apt-get -y install  jq
     printProgress "Installing .Net 6.0 SDK "
@@ -214,7 +214,7 @@ if [[ "${ACTION}" == "createapp" ]] ; then
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
     checkError    
-    az config set extension.use_dynamic_install=yes_without_prompt 
+    az config set extension.use_dynamic_install=yes_without_prompt  2>/dev/null || true 
     # Get resources names for the infrastructure deployment
     RESOURCE_GROUP=$(getResourceGroupName "${AZURE_TEST_SUFFIX}")
     appName=$(getApplicationName "${AZURE_TEST_SUFFIX}")
@@ -243,7 +243,7 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
     checkError    
-    az config set extension.use_dynamic_install=yes_without_prompt 
+    az config set extension.use_dynamic_install=yes_without_prompt  2>/dev/null || true 
     printMessage "Deploy infrastructure subscription: '$AZURE_SUBSCRIPTION_ID' region: '$AZURE_REGION' suffix: '$AZURE_TEST_SUFFIX'"
     printMessage "       Backend: 'Azure EventHubs with restricted public access'"
     # Get Agent IP address
@@ -261,7 +261,7 @@ if [[ "${ACTION}" == "deploy" ]] ; then
         STATIC_WEB_APP_DOMAIN=$(az staticwebapp show --name "${AZURE_RESOURCE_STATIC_WEBAPP_NAME}" --resource-group "${RESOURCE_GROUP}" --query defaultHostname -o tsv)
         AZURE_RESOURCE_WEB_APP_SERVER="https://${STATIC_WEB_APP_DOMAIN}/"
         printProgress "Allowing origin https://${STATIC_WEB_APP_DOMAIN}"
-        cmd="az functionapp cors add -g \"${RESOURCE_GROUP}\" -n \"${AZURE_RESOURCE_FUNCTION_NAME}\" --allowed-origins \"https://${STATIC_WEB_APP_DOMAIN}\""
+        cmd="az functionapp cors add -g \"${RESOURCE_GROUP}\" -n \"${AZURE_RESOURCE_FUNCTION_NAME}\" --allowed-origins \"https://${STATIC_WEB_APP_DOMAIN}\" --only-show-errors"
         printProgress "$cmd"
         eval "$cmd"        
     fi
@@ -272,8 +272,10 @@ if [[ "${ACTION}" == "deploy" ]] ; then
 
     updateConfigurationFile "${CONFIGURATION_FILE}" "RESOURCE_GROUP" "${RESOURCE_GROUP}"
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_ACR_LOGIN_SERVER" "${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_ACR_NAME" "${AZURE_RESOURCE_ACR_NAME}"
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_WEB_APP_SERVER" "${AZURE_RESOURCE_WEB_APP_SERVER}"
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_FUNCTION_SERVER" "${AZURE_RESOURCE_FUNCTION_SERVER}"
+    updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_FUNCTION_NAME" "${AZURE_RESOURCE_FUNCTION_NAME}"
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_WEB_APP_DOMAIN" "${AZURE_RESOURCE_WEB_APP_DOMAIN}"
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_FUNCTION_DOMAIN" "${AZURE_RESOURCE_FUNCTION_DOMAIN}"  
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME" "${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"   
@@ -293,7 +295,7 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     printProgress "Check Azure connection for subscription: '$AZURE_SUBSCRIPTION_ID'"
     azLogin
     checkError    
-    az config set extension.use_dynamic_install=yes_without_prompt
+    az config set extension.use_dynamic_install=yes_without_prompt  2>/dev/null || true
     appName=$(getApplicationName "${AZURE_TEST_SUFFIX}") 
     printMessage "Building the backend hosting the Web API containers..."
     printProgress  "Building Application '${appName}' with application Id: ${AZURE_APP_ID} "
@@ -448,7 +450,7 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     
     printProgress "Checking role assignment 'Storage Table Data Contributor' between '${AZURE_RESOURCE_FUNCTION_NAME}' and Storage '${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}' "  
 
-    WebAppMsiPrincipalId=$(az functionapp show -n "${AZURE_RESOURCE_FUNCTION_NAME}" -g "${RESOURCE_GROUP}" -o json 2> /dev/null | jq -r .identity.principalId)
+    WebAppMsiPrincipalId=$(az functionapp show -n "${AZURE_RESOURCE_FUNCTION_NAME}" -g "${RESOURCE_GROUP}" -o json --only-show-errors 2> /dev/null | jq -r .identity.principalId)
     WebAppMsiAcrPullAssignmentCount=$(az role assignment list --assignee "${WebAppMsiPrincipalId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.Storage/storageAccounts/"${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}" 2> /dev/null | jq -r 'select(.[].roleDefinitionName=="Storage Table Data Contributor") | length')
 
     if [ "$WebAppMsiAcrPullAssignmentCount" != "1" ];
@@ -525,7 +527,6 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     fi
 
     printMessage "Deploying the frontend container hosting web ui in the infrastructure done"
-
     exit 0
 fi
 
@@ -703,7 +704,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
         printProgress "Launching Load Testing for scenario '${LOAD_TESTING_SCENARIO}'..."  
 
         printProgress "Getting Load Testing token..."  
-        az config set extension.use_dynamic_install=yes_without_prompt  
+        az config set extension.use_dynamic_install=yes_without_prompt  2>/dev/null || true  
         LOAD_TESTING_RESOURCE_GROUP=$(getLoadTestingResourceGroupName "${AZURE_TEST_SUFFIX}")
         LOAD_TESTING_RESOURCE_NAME=$(getLoadTestingResourceName "${AZURE_TEST_SUFFIX}")
         cmd="az load  show --name ${LOAD_TESTING_RESOURCE_NAME} --resource-group ${LOAD_TESTING_RESOURCE_GROUP}"

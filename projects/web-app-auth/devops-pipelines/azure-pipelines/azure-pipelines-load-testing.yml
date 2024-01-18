@@ -74,6 +74,10 @@ stages:
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
+                # include common.sh
+                source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
+
+                printMessage "Creating the configuration file: $(CONFIGURATION_FILE)"
                 AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
                 AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
                 {
@@ -82,13 +86,18 @@ stages:
                   echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
                   echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
                   echo "AZURE_APP_ID=$(AZURE_APP_ID)"
-                  echo "LOAD_TESTING_USERS_CONFIGURATION=$(printf '%q\n' '$(LOAD_TESTING_USERS_CONFIGURATION)')"
+                  echo LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)
                   echo "AZURE_TENANT_DNS_NAME=$(AZURE_TENANT_DNS_NAME)"
                 } >> $(CONFIGURATION_FILE)
                 cat $(CONFIGURATION_FILE)
 
+                printMessage "Installing pre-requisites"
+                cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a install "
+                printProgress "##[command]$cmd"
+                eval "$cmd"                
+
           - task: AzureCLI@2
-            displayName: 'Step Deploy Infrastructure'
+            displayName: 'Step Deploy Infrastructure and Services'
             name: StepDeployInfrastructure
             inputs:
               azureSubscription: $(SERVICE_CONNECTION)
@@ -99,10 +108,13 @@ stages:
               inlineScript: |
                 # include common.sh
                 source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
+
+                printMessage "Deploy infrastructure"
                 cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deploy -c $(CONFIGURATION_FILE) -h ${{ parameters.sku }} "
                 echo "##[command]$cmd"
                 eval "$cmd"
 
+                printMessage "Read variables from the deployment"
                 # Read new variables set after the deployment in configuration file
                 readConfigurationFile "${{ variables.CONFIGURATION_FILE }}"
 
@@ -118,7 +130,9 @@ stages:
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
+                echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]$(printf '%q\n' $(LOAD_TESTING_USERS_CONFIGURATION))"
                 
+                printMessage "Create Application if not already created"
                 if [ -z "${AZURE_APP_ID}" ]; then
                   cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
                   echo "##[command]$cmd"
@@ -132,12 +146,11 @@ stages:
                   echo "##vso[task.setvariable variable=AZURE_TENANT_DNS_NAME;isOutput=true]${AZURE_TENANT_DNS_NAME}"
                 fi
 
+                printMessage "Build and deploy backend and frontend"
                 cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c $(CONFIGURATION_FILE) "
                 echo "##[command]$cmd"
                 eval "$cmd"                
 
-                echo "LOAD_TESTING_USERS_CONFIGURATION=${LOAD_TESTING_USERS_CONFIGURATION}"
-                echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]${LOAD_TESTING_USERS_CONFIGURATION}"
 
   - stage: stage_load_test
     displayName: stage-load-test
@@ -157,7 +170,6 @@ stages:
       AZURE_RESOURCE_APP_INSIGHTS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_NAME'] ]
       AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING'] ]
       AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY'] ]                 
-
       RESOURCE_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.RESOURCE_GROUP'] ]
 
     condition: succeeded()
@@ -188,13 +200,14 @@ stages:
                   echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME=$(AZURE_RESOURCE_STATIC_WEBAPP_NAME)"
                   echo "AZURE_APP_ID=$(AZURE_APP_ID)"
                   echo "AZURE_TENANT_DNS_NAME=$(AZURE_TENANT_DNS_NAME)"
-                  echo "LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)"
+                  echo LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)
                   echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=$(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING=$(AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY=$(AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY)"                 
                   echo "RESOURCE_GROUP=$(RESOURCE_GROUP)"
                 } >> "$(CONFIGURATION_FILE)"
+                cat $(CONFIGURATION_FILE)
 
           - task: AzureCLI@2
             displayName: 'Deploy Load Testing Infrastructure'
@@ -205,6 +218,10 @@ stages:
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
+                # include common.sh
+                source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
+
+                printMessage "Deploy load test infrastructure"
                 cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a deploytest -c $(CONFIGURATION_FILE) "
                 echo "$cmd"
                 eval "$cmd"
@@ -222,7 +239,7 @@ stages:
                 echo "##vso[task.setvariable variable=LOAD_TESTING_NAME;issecret=true]$LOAD_TESTING_NAME"
 
           - task: AzureCLI@2
-            displayName: 'Open access to EventHub and KeyVault for the test'
+            displayName: 'Open access to KeyVault for the test'
             name: openloadtest
             inputs:
               azureSubscription: $(SERVICE_CONNECTION)
@@ -243,6 +260,9 @@ stages:
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
+                # include common.sh
+                source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
+
                 # Read variables from configuration file
                 set -o allexport
                 source "$(CONFIGURATION_FILE)"
@@ -257,8 +277,7 @@ stages:
                     exit 1  
                 else
                     COUNTER=1
-                    TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
-                    SCOPE="https://${TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation"
+                    SCOPE="https://${AZURE_TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation"
                     CLIENT_ID="04b07795-8ddb-461a-bbee-02f9e1bf7b46"
                     while read item; do 
                         AD_USER=$(jq -r '.adu' <<< "$item");
@@ -294,6 +313,9 @@ stages:
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
+                # include common.sh
+                source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
+
                 # Read variables from configuration file
                 set -o allexport
                 source "$(CONFIGURATION_FILE)"
@@ -321,7 +343,7 @@ stages:
                 TEMP_DIR=$(mktemp -d)
 
                 echo "Preparing load-testing.jmx for test ${LOAD_TESTING_TEST_NAME}..." 
-                cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.jmx" "$TEMP_DIR/load-testing.jmx"
+                cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.jmx" "$TEMP_DIR/load-testing.jmx"
                 COUNTER=1
                 AZURE_AD_TOKENS=""
                 while read item; do     
@@ -350,6 +372,7 @@ stages:
                     fi
                     (( COUNTER++ ))
                 done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+
                 # echo "USERS: ${USERS}"
                 sed -i "s/{users}/$(echo ${USERS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
                 (( COUNTER-- ))
@@ -381,7 +404,7 @@ stages:
                 
                 # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
                 
-                sed -i "s/{azureADTokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{azureADTokens}/$(echo \"${AZURE_AD_TOKENS}\" | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.yaml"
@@ -446,7 +469,7 @@ stages:
                 ]
 
           - task: AzureCLI@2
-            displayName: 'Close access to EventHub and KeyVault for the test'
+            displayName: 'Close access to KeyVault for the test'
             condition: always()
             inputs:
               azureSubscription: $(SERVICE_CONNECTION)
@@ -459,5 +482,5 @@ stages:
                 eval "$cmd"
 
           - publish: $(System.DefaultWorkingDirectory)/loadTest
-            displayName: 'Step Publish Load Testing Results for deployment eventhub-restricted-public-access in $(System.DefaultWorkingDirectory)/loadTest'
+            displayName: 'Step Publish Load Testing Results for deployment web-app-auth-multi-users in $(System.DefaultWorkingDirectory)/loadTest'
             artifact: results

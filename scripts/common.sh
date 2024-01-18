@@ -614,7 +614,7 @@ function deployWebAppContainer(){
 
     # When deployed, WebApps get automatically a managed identity. Ensuring this MSI has AcrPull rights
     printProgress  "Ensure ${webapp} has AcrPull role assignment on ${ContainerRegistryName}..."
-    WebAppMsiPrincipalId=$(az "${appType}" show -n "$webapp" -g "$resourcegroup" -o json   2> /dev/null | jq -r .identity.principalId)
+    WebAppMsiPrincipalId=$(az "${appType}" show -n "$webapp" -g "$resourcegroup" -o json --only-show-errors  2> /dev/null | jq -r .identity.principalId)
     WebAppMsiAcrPullAssignmentCount=$(az role assignment list --assignee "$WebAppMsiPrincipalId" --scope /subscriptions/"${SUBSCRIPTION_ID}"/resourceGroups/"${resourcegroup}"/providers/Microsoft.ContainerRegistry/registries/"${ContainerRegistryName}" 2> /dev/null | jq -r 'select(.[].roleDefinitionName=="AcrPull") | length')
 
     if [ "$WebAppMsiAcrPullAssignmentCount" != "1" ];
@@ -644,10 +644,10 @@ function deployWebAppContainer(){
     if [ "${appType}" == "webapp" ];
     then 
     cmd="az ${appType} config appsettings set -g \"$resourcegroup\" -n \"$webapp\" \
-    --settings WEBSITES_PORT=8080 APP_VERSION=${appVersion} PORT_HTTP=${portHTTP} --output none"
+    --settings WEBSITES_PORT=8080 APP_VERSION=${appVersion} PORT_HTTP=${portHTTP} --only-show-errors --output none"
     else
     cmd="az ${appType} config appsettings set -g \"$resourcegroup\" -n \"$webapp\" \
-    --settings APP_VERSION=${appVersion} PORT_HTTP=${portHTTP} --output none"
+    --settings APP_VERSION=${appVersion} PORT_HTTP=${portHTTP} --only-show-errors --output none"
     fi
     printProgress "$cmd"
     eval "$cmd"
