@@ -86,7 +86,7 @@ stages:
                   echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
                   echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
                   echo "AZURE_APP_ID=$(AZURE_APP_ID)"
-                  echo LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)
+                  echo LOAD_TESTING_USERS_CONFIGURATION=\'$(LOAD_TESTING_USERS_CONFIGURATION)\'
                   echo "AZURE_TENANT_DNS_NAME=$(AZURE_TENANT_DNS_NAME)"
                 } >> $(CONFIGURATION_FILE)
                 cat $(CONFIGURATION_FILE)
@@ -200,7 +200,7 @@ stages:
                   echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME=$(AZURE_RESOURCE_STATIC_WEBAPP_NAME)"
                   echo "AZURE_APP_ID=$(AZURE_APP_ID)"
                   echo "AZURE_TENANT_DNS_NAME=$(AZURE_TENANT_DNS_NAME)"
-                  echo LOAD_TESTING_USERS_CONFIGURATION=$(LOAD_TESTING_USERS_CONFIGURATION)
+                  echo LOAD_TESTING_USERS_CONFIGURATION=\'$(LOAD_TESTING_USERS_CONFIGURATION)\'
                   echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=$(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=$(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
                   echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING=$(AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING)"
@@ -269,7 +269,8 @@ stages:
                 set +o allexport
 
                 cat "$(CONFIGURATION_FILE)"
-
+                echo "LOAD_TESTING_USERS_CONFIGURATION:"
+                echo "${LOAD_TESTING_USERS_CONFIGURATION}"
 
                 if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ];
                 then
@@ -284,6 +285,10 @@ stages:
                         PASSWORD=$(jq -r '.pw' <<< "$item");
                         TENANT_ID=$(jq -r '.tid' <<< "$item");
 
+                        # echo "AD_USER: ${AD_USER}"
+                        # echo "TENANT_ID: ${TENANT_ID}"
+                        # echo "PASSWORD: ${PASSWORD}"
+                        
                         ENCODED_PASSWORD=$(urlEncode "${PASSWORD}")
                         # echo "ENCODED_PASSWORD: ${ENCODED_PASSWORD}"
                         
@@ -332,7 +337,8 @@ stages:
                 echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $(AZURE_RESOURCE_STORAGE_ACCOUNT_NAME)"
                 echo "AZURE_RESOURCE_APP_INSIGHTS_NAME: $(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
                 echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: $(AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING)"
-                echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: $(AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY)"                 
+                echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: $(AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY)"   
+                echo "LOAD_TESTING_USERS_CONFIGURATION: $(LOAD_TESTING_USERS_CONFIGURATION)"              
 
                 echo "DURATION: ${{ parameters.duration }}"
                 echo "THREADS: ${{ parameters.threads }}"
@@ -342,7 +348,7 @@ stages:
                 # Update Load Testing configuration file
                 TEMP_DIR=$(mktemp -d)
 
-                echo "Preparing load-testing.jmx for test ${LOAD_TESTING_TEST_NAME}..." 
+                printMessage "Preparing load-testing.jmx for test ${LOAD_TESTING_TEST_NAME}..." 
                 cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.jmx" "$TEMP_DIR/load-testing.jmx"
                 COUNTER=1
                 AZURE_AD_TOKENS=""
@@ -390,9 +396,9 @@ stages:
                 COUNTER=1
                 AZURE_AD_TOKENS=""
                 while read item; do     
-                    ITEM="    - name: \"{loadTestSecretName}-${COUNTER}\"
+                    ITEM="    - name: \"{loadTestSecretName}_${COUNTER}\"
                 value: \"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}-${COUNTER}/\""
-                    # echo "ITEM: ${ITEM}"
+                    echo ITEM: "${ITEM}"
                     if [[ COUNTER -eq 1 ]]; then
                         AZURE_AD_TOKENS="${ITEM}"
                     else
@@ -402,10 +408,10 @@ stages:
                     (( COUNTER++ ))
                 done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
                 
-                # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
-                
-                sed -i "s/{azureADTokens}/$(echo \"${AZURE_AD_TOKENS}\" | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.yaml"
-                sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.yaml"
+                echo AZURE_AD_TOKENS: "${AZURE_AD_TOKENS}"
+                AZURE_AD_TOKENS_ESCAPE=$(echo \"${AZURE_AD_TOKENS}\" | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g' |  sed '$!s@$@\\@g')
+                sed -i "s/{azureADTokens}/${AZURE_AD_TOKENS_ESCAPE}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{loadTestSecretName}/token/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.yaml"
 

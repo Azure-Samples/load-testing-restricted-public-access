@@ -12,7 +12,7 @@ ARG ARG_APP_VERSION
 ENV APP_VERSION=${ARG_APP_VERSION}
 
 RUN apt-get update  -y
-RUN  apt-get install -y curl gnupg2 ca-certificates lsb-release 
+RUN  apt-get install -y curl gpgv ca-certificates lsb-release 
 RUN  apt-get install nginx -y
 COPY ./build /usr/share/nginx/html
 
