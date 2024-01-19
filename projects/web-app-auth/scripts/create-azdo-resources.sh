@@ -177,7 +177,7 @@ then
     if [ -z "${vgid}" ]
     then
         infoMessage "Creating Variables Group..." 
-        vgJsonResult=$(az pipelines variable-group create --org "https://dev.azure.com/${organization}/" --project "${project}"  --name "${variableGroup}" --authorize true --variables AZURE_TEST_SUFFIX=waa"$(shuf -i 1000-9999 -n 1)" AZURE_REGION="${region}" SERVICE_CONNECTION="${scName}" LOAD_TESTING_USERS_CONFIGURATION="[]" AZURE_APP_ID="" AZURE_TENANT_DNS_NAME="" )
+        vgJsonResult=$(az pipelines variable-group create --org "https://dev.azure.com/${organization}/" --project "${project}"  --name "${variableGroup}" --authorize true --variables AZURE_TEST_SUFFIX=waa"$(shuf -i 1000-9999 -n 1)" AZURE_REGION="${region}" SERVICE_CONNECTION="${scName}" LOAD_TESTING_USERS_CONFIGURATION="[]" AZURE_APP_ID="null" AZURE_TENANT_DNS_NAME="null" )
     else
         infoMessage "Updating Variables Group..." 
         vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_TEST_SUFFIX" --value "waa$(shuf -i 1000-9999 -n 1)"  )
@@ -188,9 +188,9 @@ then
         # echo "$vgJsonResult"
         vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "LOAD_TESTING_USERS_CONFIGURATION" --value "[]" )
         # echo "$vgJsonResult"
-        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_APP_ID" --value "" )
+        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_APP_ID" --value "null" )
         # echo "$vgJsonResult"
-        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_TENANT_DNS_NAME" --value "" )
+        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_TENANT_DNS_NAME" --value "null" )
         # echo "$vgJsonResult"
     fi
 else
@@ -214,11 +214,11 @@ then
     fi
     if [ -z "${pipelineJsonResult}" ]
     then
-        errorMessage "Error while creating Variable Group:  ${variableGroup}"
+        errorMessage "Error while creating Pipeline '${pipelineName}'"
         exit 1
     fi    
 else
-    errorMessage "Error while creating Variable Group:  ${variableGroup}"
+    errorMessage "Error while creating Pipeline '${pipelineName}'"
     exit 1
 fi
 infoMessage "Pipeline '${pipelineName}' created." 

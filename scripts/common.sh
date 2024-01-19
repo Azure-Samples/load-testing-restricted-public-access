@@ -508,9 +508,8 @@ function updateConfigurationFile(){
 
     count=$(grep "${variable}=.*" -c < "$configFile") || true
     if [ "${count}" != 0 ]; then
-        # escape backslash before sed
-        value=${value//\\/\\\\}
-        sed -i "s/${variable}=.*/${variable}=${value////\\/}/g" "${configFile}"         
+        ESCAPED_REPLACE=$(printf '%s\n' "${value}" | sed -e 's/[\/&]/\\&/g')
+        sed -i "s/${variable}=.*/${variable}=${ESCAPED_REPLACE}/g" "${configFile}"         
     elif [ "${count}" == 0 ]; then
         echo "${variable}=${value}" >> "${configFile}"
     fi

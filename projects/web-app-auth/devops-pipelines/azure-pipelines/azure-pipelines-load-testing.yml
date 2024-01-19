@@ -133,7 +133,7 @@ stages:
                 echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]$(printf '%q\n' $(LOAD_TESTING_USERS_CONFIGURATION))"
                 
                 printMessage "Create Application if not already created"
-                if [ -z "${AZURE_APP_ID}" ]; then
+                if [ -z "${AZURE_APP_ID}" || "${AZURE_APP_ID}" == "null"]; then
                   cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
                   echo "##[command]$cmd"
                   eval "$cmd"
@@ -269,8 +269,6 @@ stages:
                 set +o allexport
 
                 cat "$(CONFIGURATION_FILE)"
-                echo "LOAD_TESTING_USERS_CONFIGURATION:"
-                echo "${LOAD_TESTING_USERS_CONFIGURATION}"
 
                 if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ];
                 then
@@ -338,7 +336,7 @@ stages:
                 echo "AZURE_RESOURCE_APP_INSIGHTS_NAME: $(AZURE_RESOURCE_APP_INSIGHTS_NAME)"
                 echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: $(AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING)"
                 echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: $(AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY)"   
-                echo "LOAD_TESTING_USERS_CONFIGURATION: $(LOAD_TESTING_USERS_CONFIGURATION)"              
+                echo LOAD_TESTING_USERS_CONFIGURATION: \'$(LOAD_TESTING_USERS_CONFIGURATION)\'              
 
                 echo "DURATION: ${{ parameters.duration }}"
                 echo "THREADS: ${{ parameters.threads }}"
@@ -385,8 +383,8 @@ stages:
                 # echo "COUNTER: ${COUNTER}"
                 sed -i "s/{count}/${COUNTER}/g" "$TEMP_DIR/load-testing.jmx"
 
-                #echo "$TEMP_DIR/load-testing.jmx content:"
-                #cat "$TEMP_DIR/load-testing.jmx"
+                echo "$TEMP_DIR/load-testing.jmx content:"
+                cat "$TEMP_DIR/load-testing.jmx"
 
                 cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
@@ -397,8 +395,8 @@ stages:
                 AZURE_AD_TOKENS=""
                 while read item; do     
                     ITEM="    - name: \"{loadTestSecretName}_${COUNTER}\"
-                value: \"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}-${COUNTER}/\""
-                    echo ITEM: "${ITEM}"
+                      value: \"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}-${COUNTER}/\""
+                    # echo ITEM: "${ITEM}"
                     if [[ COUNTER -eq 1 ]]; then
                         AZURE_AD_TOKENS="${ITEM}"
                     else
@@ -409,7 +407,8 @@ stages:
                 done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
                 
                 echo AZURE_AD_TOKENS: "${AZURE_AD_TOKENS}"
-                AZURE_AD_TOKENS_ESCAPE=$(echo \"${AZURE_AD_TOKENS}\" | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g' |  sed '$!s@$@\\@g')
+                AZURE_AD_TOKENS_ESCAPE=$(echo "${AZURE_AD_TOKENS}" | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g' |  sed '$!s@$@\\@g')
+                echo AZURE_AD_TOKENS_ESCAPE: "${AZURE_AD_TOKENS_ESCAPE}"
                 sed -i "s/{azureADTokens}/${AZURE_AD_TOKENS_ESCAPE}/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{loadTestSecretName}/token/g" "$TEMP_DIR/load-testing.yaml"
                 sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
@@ -432,6 +431,9 @@ stages:
                     (( COUNTER++ ))
                 done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
 
+                # echo "LOAD_TESTING_USERS:"
+                # echo "${LOAD_TESTING_USERS}"
+                
                 LOAD_TESTING_TARGET_HOSTNAME=${AZURE_RESOURCE_FUNCTION_DOMAIN}
                 LOAD_TESTING_TARGET_PATH="visit"
 

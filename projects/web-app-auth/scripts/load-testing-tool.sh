@@ -38,7 +38,7 @@ function usage() {
     
 }
 
-USE_STATIC_WEB_APP=false
+USE_STATIC_WEB_APP=true
 ACTION=
 CONFIGURATION_FILE="$(dirname "${BASH_SOURCE[0]}")/../configuration/.default.env"
 AZURE_RESOURCE_PREFIX="waa"
@@ -223,7 +223,6 @@ if [[ "${ACTION}" == "createapp" ]] ; then
     updateConfigurationFile "${CONFIGURATION_FILE}" "AZURE_TENANT_DNS_NAME" "${AZURE_TENANT_DNS_NAME}"
 
     printMessage "Create/Update Azure AD Application name: ${appName} ..."
-    # if AZURE_APP_ID is not defined in variable group 
     # Create application
     appId=$(createApplication "${AZURE_TEST_SUFFIX}" "${AZURE_RESOURCE_WEB_APP_SERVER}") 
     if [[ ! -z ${appId} && ${appId} != 'null' && $(isGuid ${appId}) == "true" ]] ; then
