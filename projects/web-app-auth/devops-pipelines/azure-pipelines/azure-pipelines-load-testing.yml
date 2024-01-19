@@ -291,9 +291,15 @@ stages:
                         printProgress "Getting Azure AD Token for user ${COUNTER}..."     
                         cmd="curl -s -X POST https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token  \
                         -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' \
-                        -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${ENCODED_PASSWORD}&grant_type=password' | jq -r '.access_token' "
+                        -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${ENCODED_PASSWORD}&grant_type=password' "
                         # echo "${cmd}"
-                        AZURE_AD_TOKEN="Bearer $(eval "${cmd}")"
+                        RESULT=$(eval "${cmd}")
+                        AZURE_AD_TOKEN=$(echo "${RESULT}" | jq -r '.access_token')
+                        if [[ -z "${AZURE_AD_TOKEN}" || "${AZURE_AD_TOKEN}" == "null" ]]; then
+                            printError "Error while getting Token for user: '${AD_USER}'. Message: ${RESULT}"
+                            exit 1
+                        fi
+                        AZURE_AD_TOKEN="Bearer ${AZURE_AD_TOKEN}"
                         # echo "TOKEN: ${AZURE_AD_TOKEN}"
 
                         printProgress "Store the token in the Azure Key Vault for test ${LOAD_TESTING_RESOURCE_NAME} for user ${COUNTER}..."   
