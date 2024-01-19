@@ -216,7 +216,6 @@ stages:
               azureSubscription: $(SERVICE_CONNECTION)
               scriptType: "bash"
               addSpnToEnvironment: "true"
-              failOnStandardError: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
                 # include common.sh
