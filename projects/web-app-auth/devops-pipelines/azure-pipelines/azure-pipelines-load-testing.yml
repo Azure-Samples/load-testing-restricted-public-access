@@ -264,7 +264,7 @@ stages:
 
                 printMessage "Read variables from the deployment"
                 # Read new variables set after the deployment in configuration file
-                readConfigurationFile "${{ env.CONFIGURATION_FILE }}"
+                readConfigurationFile "${{ variables.CONFIGURATION_FILE }}"
 
                 cat "$(CONFIGURATION_FILE)"
 
