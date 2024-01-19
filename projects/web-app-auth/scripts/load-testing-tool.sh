@@ -128,6 +128,10 @@ if [[ "${ACTION}" == "install" ]] ; then
     sudo npm install --location=global -g http-server
     sudo npm install --location=global -g forever
     sudo npm install -g @azure/static-web-apps-cli
+    printProgress "Check if Static Web App Client has been installed "
+    cmd="swa --version"       
+    printProgress "$cmd"
+    eval "$cmd"    
     printMessage "Installing pre-requisites done"
     exit 0
 fi
@@ -244,7 +248,7 @@ if [[ "${ACTION}" == "deploy" ]] ; then
     checkError    
     az config set extension.use_dynamic_install=yes_without_prompt  2>/dev/null || true 
     printMessage "Deploy infrastructure subscription: '$AZURE_SUBSCRIPTION_ID' region: '$AZURE_REGION' suffix: '$AZURE_TEST_SUFFIX'"
-    printMessage "       Backend: 'Azure EventHubs with restricted public access'"
+    printMessage "       Backend: 'Multi-Tenant Web App'"
     # Get Agent IP address
     ip=$(curl -s https://ifconfig.me/ip) || true
 
@@ -500,9 +504,9 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     if [ ${USE_STATIC_WEB_APP} == true ]; then
         printProgress "Deploy  ts-web-app:${latest_webapp_version} to Azure Static Web App "
         STATIC_WEB_APP_TOKEN=$(az staticwebapp secrets list --name "${AZURE_RESOURCE_STATIC_WEBAPP_NAME}" --query "properties.apiKey" -o tsv)
-        cmd="swa deploy  \"$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/build\" --deployment-token \"${STATIC_WEB_APP_TOKEN}\" --env production --verbose silly"       
+        cmd="swa deploy  \"$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/build\" --deployment-token \"${STATIC_WEB_APP_TOKEN}\" --env production 2> /dev/null"       
         printProgress "$cmd"
-        eval "$cmd"
+        eval "$cmd" || true
     else
         printProgress "Enable Static Web Page on Azure Storage: ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} "
         cmd="az storage blob service-properties update --account-name ${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME} --static-website  --index-document index.html --only-show-errors"
@@ -574,7 +578,7 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
     azLogin
     checkError    
     printMessage "Deploy load testing infrastructure subscription: '$AZURE_SUBSCRIPTION_ID' region: '$AZURE_REGION' suffix: '$AZURE_TEST_SUFFIX'"
-    printMessage "       Backend: 'Azure EventHubs with restricted public access'"
+    printMessage "       Backend: 'Multi-Tenant Web App'"
     # Get Agent IP address
     ip=$(curl -s https://ifconfig.me/ip) || true
 

@@ -1,19 +1,28 @@
 ---
-name: load-testing-eventhub-restricted-public-access
+name: load-testing-multi-tenant-web-app
 # Controls when the action will run.
 on:  # yamllint disable-line rule:truthy
 
   workflow_dispatch:
     inputs:
-      eventhubSku:
-        description: 'Azure Event Hubs Sku'
-        default: "Standard"
+      sku:
+        description: 'Azure Function Sku'
+        default: "B1"
         type: choice
         required: true
         options:
-          - "Basic"
-          - "Standard"
-          - "Premium"
+          - "B1"
+          - "B2"
+          - "B3"
+          - "S1"
+          - "S2"
+          - "S3"
+          - "P1V2"
+          - "P2V2"
+          - "P3V2"
+          - "P1V3"
+          - "P2V3"
+          - "P3V3"          
       duration:
         description: 'Azure Load Testing duration in seconds'
         required: true
@@ -41,20 +50,26 @@ env:
   CONFIGURATION_FILE: './projects/eventhub/configuration/.default.env'
   AZURE_REGION: "${{ vars.AZURE_REGION }}"
   AZURE_TEST_SUFFIX: "${{ vars.AZURE_TEST_SUFFIX }}"
+  USE_STATIC_WEB_APP: true  
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   stage-deploy-infrastructure:
     runs-on: ubuntu-20.04
     outputs:
-      AZURE_RESOURCE_EVENTHUBS_NAMESPACE: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}
-      AZURE_RESOURCE_EVENTHUB_INPUT1_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME }}
-      AZURE_RESOURCE_EVENTHUB_INPUT2_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME }}
-      AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME }}
-      AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP }}
-      AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP }}
-      AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP: ${{ steps.deploy.outputs.AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP }}
+      AZURE_RESOURCE_ACR_LOGIN_SERVER: ${{ steps.deploy.outputs.AZURE_RESOURCE_ACR_LOGIN_SERVER }}
+      AZURE_RESOURCE_WEB_APP_SERVER: ${{ steps.deploy.outputs.AZURE_RESOURCE_WEB_APP_SERVER }}
+      AZURE_RESOURCE_FUNCTION_SERVER: ${{ steps.deploy.outputs.AZURE_RESOURCE_FUNCTION_SERVER }}
+      AZURE_RESOURCE_WEB_APP_DOMAIN: ${{ steps.deploy.outputs.AZURE_RESOURCE_WEB_APP_DOMAIN }}
+      AZURE_RESOURCE_FUNCTION_DOMAIN: ${{ steps.deploy.outputs.AZURE_RESOURCE_FUNCTION_DOMAIN }}
+      AZURE_RESOURCE_STATIC_WEBAPP_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_STATIC_WEBAPP_NAME }}
+      AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME }}
       AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME }}
       AZURE_RESOURCE_APP_INSIGHTS_NAME: ${{ steps.deploy.outputs.AZURE_RESOURCE_APP_INSIGHTS_NAME }}
+      AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: ${{ steps.deploy.outputs.AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING }}
+      AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ steps.deploy.outputs.AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY }}
+      AZURE_APP_ID: ${{ steps.deploy.outputs.AZURE_APP_ID }}
+      AZURE_TENANT_DNS_NAME: ${{ steps.deploy.outputs.AZURE_TENANT_DNS_NAME }}
+      LOAD_TESTING_USERS_CONFIGURATION: ${{ steps.deploy.outputs.LOAD_TESTING_USERS_CONFIGURATION }}
       RESOURCE_GROUP: ${{ steps.deploy.outputs.RESOURCE_GROUP }}
 
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -69,6 +84,9 @@ jobs:
 
       - name: Install Configuration file
         run: |
+          # include common.sh
+          source "scripts/common.sh"
+
           AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
           AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
           {
@@ -76,32 +94,68 @@ jobs:
             echo "AZURE_TEST_SUFFIX=${{ env.AZURE_TEST_SUFFIX }}"
             echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
             echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
+            echo "AZURE_APP_ID=${{ env.AZURE_APP_ID }}"
+            echo LOAD_TESTING_USERS_CONFIGURATION=\'${{ env.LOAD_TESTING_USERS_CONFIGURATION }}\'
+            echo "AZURE_TENANT_DNS_NAME=${{ env.AZURE_TENANT_DNS_NAME }}"
+
           } >> ${{ env.CONFIGURATION_FILE }}
           cat ${{ env.CONFIGURATION_FILE }}
+
+          printMessage "Installing pre-requisites"
+          cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a install "
+          printProgress "$cmd"
+          eval "$cmd"             
 
       - name: Deploy Infrastructure
         id: deploy
         run: |
-          cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -h ${{ github.event.inputs.eventhubSku }}"
-          echo "$cmd"
+          # include common.sh
+          source "scripts/common.sh"
+
+          printMessage "Deploy infrastructure"
+          cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -h ${{ github.event.inputs.sku }}"
+          printProgress "$cmd"
           eval "$cmd"
+
+          printMessage "Read variables from the deployment"
           # Read new variables set after the deployment in configuration file
-          set -o allexport
-          source "${{ env.CONFIGURATION_FILE }}"
-          set +o allexport
+          readConfigurationFile "${{ env.CONFIGURATION_FILE }}"
+
           # Create the associated Github Action variables
           {
-            echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE=${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}"
-            echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME=${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}"
-            echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME=${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}"
-            echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME=${AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME}"
-            echo "AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP=${AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP}"
-            echo "AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP=${AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP}"
-            echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP=${AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP}"
+            echo "AZURE_RESOURCE_ACR_LOGIN_SERVER=${AZURE_RESOURCE_ACR_LOGIN_SERVER}"
+            echo "AZURE_RESOURCE_WEB_APP_SERVER=${AZURE_RESOURCE_WEB_APP_SERVER}"
+            echo "AZURE_RESOURCE_FUNCTION_SERVER=${AZURE_RESOURCE_FUNCTION_SERVER}"
+            echo "AZURE_RESOURCE_WEB_APP_DOMAIN=${AZURE_RESOURCE_WEB_APP_DOMAIN}"
+            echo "AZURE_RESOURCE_FUNCTION_DOMAIN=${AZURE_RESOURCE_FUNCTION_DOMAIN}"
+            echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME=${AZURE_RESOURCE_STATIC_WEBAPP_NAME}"
+            echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
             echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=${AZURE_RESOURCE_STORAGE_ACCOUNT_NAME}"
             echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=${AZURE_RESOURCE_APP_INSIGHTS_NAME}"
+            echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING=${AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING}"
+            echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY=${AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY}"
+            echo "LOAD_TESTING_USERS_CONFIGURATION=$(printf '%q\n' ${LOAD_TESTING_USERS_CONFIGURATION})"
             echo "RESOURCE_GROUP=${RESOURCE_GROUP}"
           } >> "$GITHUB_OUTPUT"
+
+          printMessage "Create Application if not already created"
+          if [[ -z "${AZURE_APP_ID}" || "${AZURE_APP_ID}" == "null" ]]; then
+            cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
+            printProgress "$cmd"
+            AZURE_APP_ID=$(readConfigurationFileValue "$(CONFIGURATION_FILE)" "AZURE_APP_ID")
+            AZURE_TENANT_DNS_NAME=$(readConfigurationFileValue "$(CONFIGURATION_FILE)" "AZURE_TENANT_DNS_NAME")
+          fi
+
+          {
+            echo "AZURE_TENANT_DNS_NAME=${AZURE_TENANT_DNS_NAME}"
+            echo "AZURE_APP_ID=${AZURE_APP_ID}"
+          } >> "$GITHUB_OUTPUT"
+
+          printMessage "Build and deploy backend and frontend"
+          cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c $(CONFIGURATION_FILE) "
+          printProgress "##[command]$cmd"
+          eval "$cmd" 
+         
 
   stage-load-test:
     runs-on: ubuntu-20.04
@@ -125,96 +179,243 @@ jobs:
             echo "AZURE_TEST_SUFFIX=${{ env.AZURE_TEST_SUFFIX }}"
             echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
             echo "AZURE_TENANT_ID=$AZURE_TENANT_ID"
-            echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}"
-            echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME }}"
-            echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME }}"
-            echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_OUTPUT1_NAME }}"
-            echo "AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_CONSUMER_GROUP }}"
-            echo "AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_CONSUMER_GROUP }}"
-            echo "AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_OUTPUT1_CONSUMER_GROUP }}"
+            echo "AZURE_RESOURCE_ACR_LOGIN_SERVER=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_ACR_LOGIN_SERVER }}"
+            echo "AZURE_RESOURCE_WEB_APP_SERVER=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_WEB_APP_SERVER }}"
+            echo "AZURE_RESOURCE_FUNCTION_SERVER=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_FUNCTION_SERVER }}"
+            echo "AZURE_RESOURCE_WEB_APP_DOMAIN=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_WEB_APP_DOMAIN }}"
+            echo "AZURE_RESOURCE_FUNCTION_DOMAIN=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_FUNCTION_DOMAIN }}"
+            echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_STATIC_WEBAPP_NAME }}"
             echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME }}"
             echo "AZURE_RESOURCE_APP_INSIGHTS_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_APP_INSIGHTS_NAME }}"
+            echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING }}"
+            echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY=${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY }}"
             echo "RESOURCE_GROUP=${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}"
+            echo "AZURE_APP_ID=${{ needs.stage-deploy-infrastructure.outputs.AZURE_APP_ID }}"
+            echo "AZURE_TENANT_DNS_NAME=${{ needs.stage-deploy-infrastructure.outputs.AZURE_TENANT_DNS_NAME }}"
+            echo "LOAD_TESTING_USERS_CONFIGURATION=${{ needs.stage-deploy-infrastructure.outputs.LOAD_TESTING_USERS_CONFIGURATION }}"
           } >> "${{ env.CONFIGURATION_FILE }}"
 
       - name: Deploy Load Testing Infrastructure
         id: deployloadtest
         run: |
+          # include common.sh
+          source "scripts/common.sh"
+
           cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a deploytest -c ${{ env.CONFIGURATION_FILE }} "
-          echo "$cmd"
+          printProgress "$cmd"
           eval "$cmd"
 
-          # Read variables from configuration file
-          set -o allexport
-          source "${{ env.CONFIGURATION_FILE }}"
-          set +o allexport
+          printMessage "Read variables from the deployment"
+          # Read new variables set after the deployment in configuration file
+          readConfigurationFile "${{ env.CONFIGURATION_FILE }}"
 
-          echo "LOAD_TESTING_RESOURCE_GROUP=${LOAD_TESTING_RESOURCE_GROUP}"
-          echo "LOAD_TESTING_NAME=${LOAD_TESTING_NAME}"
+          printProgress "LOAD_TESTING_RESOURCE_GROUP=${LOAD_TESTING_RESOURCE_GROUP}"
+          printProgress "LOAD_TESTING_NAME=${LOAD_TESTING_NAME}"
 
           # store load testing resource name and load testing resource group in step output
           echo "LOAD_TESTING_RESOURCE_GROUP=${LOAD_TESTING_RESOURCE_GROUP}" >> "$GITHUB_OUTPUT"
           echo "LOAD_TESTING_NAME=${LOAD_TESTING_NAME}"  >> "$GITHUB_OUTPUT"
 
-      - name: Open access to EventHub and KeyVault for the test
+      - name: Open access to KeyVault for the test
         run: |
+          # include common.sh
+          source "scripts/common.sh"
+
           cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a opentest -c ${{ env.CONFIGURATION_FILE }}"
-          echo "$cmd"
+          printProgress "$cmd"
           eval "$cmd"
 
-      - name: Get EventHub Token and store it in Key Vault
+      - name: Get Microsoft Entra Id Token and store it in Key Vault
         run: |
-          # Read variables from configuration file
-          set -o allexport
-          source "${{ env.CONFIGURATION_FILE }}"
-          set +o allexport
+          # include common.sh
+          source "scripts/common.sh"
 
-          # Get Event Hub Token
-          KEY=$(az eventhubs namespace authorization-rule keys list --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}" --namespace-name "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}" --name RootManageSharedAccessKey | jq -r .primaryKey)
-          EVENTHUB_TOKEN=$(./scripts/get-event-hub-token.sh "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}" RootManageSharedAccessKey "${KEY}")
+          printMessage "Read variables from the deployment"
+          # Read new variables set after the deployment in configuration file
+          readConfigurationFile "${{ env.CONFIGURATION_FILE }}"
 
-          # store eventhub token into azure key vault secret
-          az keyvault secret set --vault-name "${LOAD_TESTING_KEY_VAULT_NAME}" --name "${LOAD_TESTING_SECRET_NAME}" --value "${EVENTHUB_TOKEN}" --output none
+          cat "${{ env.CONFIGURATION_FILE }}"
 
-      - name: Configure and display Load Testing Configuration for Eventhub
+          if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ];
+          then
+              printError "Variable LOAD_TESTING_USERS_CONFIGURATION not defined."
+              exit 1  
+          else
+              COUNTER=1
+              SCOPE="https://${AZURE_TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation"
+              CLIENT_ID="04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+              while read item; do 
+                  AD_USER=$(jq -r '.adu' <<< "$item");
+                  PASSWORD=$(jq -r '.pw' <<< "$item");
+                  TENANT_ID=$(jq -r '.tid' <<< "$item");
+
+                  # echo "AD_USER: ${AD_USER}"
+                  # echo "TENANT_ID: ${TENANT_ID}"
+                  # echo "PASSWORD: ${PASSWORD}"
+                  
+                  ENCODED_PASSWORD=$(urlEncode "${PASSWORD}")
+                  # echo "ENCODED_PASSWORD: ${ENCODED_PASSWORD}"
+                  
+                  printProgress "Getting Azure AD Token for user ${COUNTER}..."     
+                  cmd="curl -s -X POST https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token  \
+                  -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' \
+                  -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${ENCODED_PASSWORD}&grant_type=password' | jq -r '.access_token' "
+                  # echo "${cmd}"
+                  AZURE_AD_TOKEN="Bearer $(eval "${cmd}")"
+                  # echo "TOKEN: ${AZURE_AD_TOKEN}"
+
+                  printProgress "Store the token in the Azure Key Vault for test ${LOAD_TESTING_RESOURCE_NAME} for user ${COUNTER}..."   
+                  cmd="az keyvault secret set --vault-name \"${LOAD_TESTING_KEY_VAULT_NAME}\" --name \"${LOAD_TESTING_SECRET_NAME}-${COUNTER}\" --value \"${AZURE_AD_TOKEN}\" --output none"
+                  # echo "$cmd"
+                  eval "${cmd}"  
+                  checkError
+                  (( COUNTER++ ))
+              done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+          fi
+
+      - name: Configure and display Load Testing Configuration for Multi-Tenant Web App
         id: configureloadtest
         continue-on-error: false
         run: |
-          # Read variables from configuration file
-          set -o allexport
-          source "${{ env.CONFIGURATION_FILE }}"
-          set +o allexport
+          # include common.sh
+          source "scripts/common.sh"
 
-          echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}"
-          echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME }}"
-          echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME }}"
+          printMessage "Read variables from the deployment"
+          # Read new variables set after the deployment in configuration file
+          readConfigurationFile "${{ env.CONFIGURATION_FILE }}"
+
+          echo "AZURE_RESOURCE_ACR_LOGIN_SERVER: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_ACR_LOGIN_SERVER }}"
+          echo "AZURE_RESOURCE_WEB_APP_SERVER: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_WEB_APP_SERVER }}"
+          echo "AZURE_RESOURCE_FUNCTION_SERVER: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_FUNCTION_SERVER }}"
+          echo "AZURE_RESOURCE_WEB_APP_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_WEB_APP_DOMAIN }}"
+          echo "AZURE_RESOURCE_FUNCTION_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_FUNCTION_DOMAIN }}"
+          echo "AZURE_RESOURCE_STATIC_WEBAPP_NAME: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_STATIC_WEBAPP_NAME }}"
+          echo "AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME }}"
+          echo "AZURE_RESOURCE_APP_INSIGHTS_NAME: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_APP_INSIGHTS_NAME }}"
+          echo "AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING }}"
+          echo "AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY }}"
+          echo "AZURE_APP_ID: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_APP_ID }}"
+          echo "AZURE_TENANT_DNS_NAME: ${{ needs.stage-deploy-infrastructure.outputs.AZURE_TENANT_DNS_NAME }}"
+          echo "LOAD_TESTING_USERS_CONFIGURATION: ${{ needs.stage-deploy-infrastructure.outputs.LOAD_TESTING_USERS_CONFIGURATION }}"
+
           echo "DURATION: ${{ github.event.inputs.duration }}"
           echo "THREADS: ${{ github.event.inputs.threads }}"
           echo "ENGINE INSTANCES: ${{ github.event.inputs.engineInstances }}"
           echo "ERROR PERCENTAGE: ${{ github.event.inputs.errorPercentage }}"
           echo "RESPONSE TIME MS: ${{ github.event.inputs.responseTimeMs }}"
+                          
           # Update Load Testing configuration file
           TEMP_DIR=$(mktemp -d)
-          cp "./projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.jmx" "$TEMP_DIR/load-testing.jmx"
-          cp "./projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents1.csv" "$TEMP_DIR/load-testing-eventhubevents1.csv"
-          cp "./projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents2.csv" "$TEMP_DIR/load-testing-eventhubevents2.csv"
-          cp "./projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{engineInstances}/${{ github.event.inputs.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{errorPercentage}/${{ github.event.inputs.errorPercentage }}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{responseTimeMs}/${{ github.event.inputs.responseTimeMs }}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.yaml"
+          
+          printMessage "Preparing load-testing.jmx for test ${LOAD_TESTING_TEST_NAME}..." 
+          cp "projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.jmx" "$TEMP_DIR/load-testing.jmx"
+          COUNTER=1
+          AZURE_AD_TOKENS=""
+          while read item; do     
+              ITEM="<elementProp name=\"udv_token_${COUNTER}\" elementType=\"Argument\"><stringProp name=\"Argument.name\">udv_token_${COUNTER}</stringProp><stringProp name=\"Argument.value\">\${__GetSecret(token_${COUNTER})}</stringProp><stringProp name=\"Argument.desc\">Azure AD or SAS Token Token ${COUNTER}</stringProp><stringProp name=\"Argument.metadata\">=</stringProp></elementProp>"
+              # echo "ITEM: ${ITEM}"
+              if [[ COUNTER -eq 1 ]]; then
+                  AZURE_AD_TOKENS="${ITEM}"
+              else
+                  AZURE_AD_TOKENS="${AZURE_AD_TOKENS},${ITEM}"
+              fi
+              (( COUNTER++ ))
+          done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+          # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
+          sed -i "s/{tokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
+
+          COUNTER=1
+          USERS=""
+          while read item; do 
+              VALUE=$(jq -r '.adu' <<< "$item");
+              ITEM="<elementProp name=\"udv_user_${COUNTER}\" elementType=\"Argument\"><stringProp name=\"Argument.name\">udv_user_${COUNTER}</stringProp><stringProp name=\"Argument.value\">\${__BeanShell( System.getenv(\"user_${COUNTER}\") )}</stringProp><stringProp name=\"Argument.desc\">User ${COUNTER}</stringProp><stringProp name=\"Argument.metadata\">=</stringProp></elementProp>"
+              # echo "ITEM: ${ITEM}"
+              if [[ COUNTER -eq 1 ]]; then
+                  USERS="${ITEM}"
+              else
+                  USERS="${USERS},${ITEM}"
+              fi
+              (( COUNTER++ ))
+          done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+
+          # echo "USERS: ${USERS}"
+          sed -i "s/{users}/$(echo ${USERS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
+          (( COUNTER-- ))
+          # echo "COUNTER: ${COUNTER}"
+          sed -i "s/{count}/${COUNTER}/g" "$TEMP_DIR/load-testing.jmx"
+
+          echo "$TEMP_DIR/load-testing.jmx content:"
+          cat "$TEMP_DIR/load-testing.jmx"
+
+          cp "projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
+          sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
+          sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing.yaml"
+          sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing.yaml"
+
+          COUNTER=1
+          AZURE_AD_TOKENS=""
+          while read item; do     
+              ITEM="    - name: \"{loadTestSecretName}_${COUNTER}\"
+                value: \"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}-${COUNTER}/\""
+              # echo ITEM: "${ITEM}"
+              if [[ COUNTER -eq 1 ]]; then
+                  AZURE_AD_TOKENS="${ITEM}"
+              else
+                  AZURE_AD_TOKENS="${AZURE_AD_TOKENS}
+          ${ITEM}"
+              fi
+              (( COUNTER++ ))
+          done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+          
+          echo AZURE_AD_TOKENS: "${AZURE_AD_TOKENS}"
+          AZURE_AD_TOKENS_ESCAPE=$(echo "${AZURE_AD_TOKENS}" | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g' |  sed '$!s@$@\\@g')
+          echo AZURE_AD_TOKENS_ESCAPE: "${AZURE_AD_TOKENS_ESCAPE}"
+          sed -i "s/{azureADTokens}/${AZURE_AD_TOKENS_ESCAPE}/g" "$TEMP_DIR/load-testing.yaml"
+          sed -i "s/{loadTestSecretName}/token/g" "$TEMP_DIR/load-testing.yaml"
           sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
           sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing.yaml"
 
           echo "load-testing.yaml content:"
           cat "$TEMP_DIR/load-testing.yaml"
 
-          # Store the temporary directory in output variable
-          echo "TEMP_DIR=${TEMP_DIR}"
-          echo "TEMP_DIR=${TEMP_DIR}"  >> "$GITHUB_OUTPUT"
+          COUNTER=1
+          LOAD_TESTING_USERS=""
+          while read item; do 
+              VALUE=$(jq -r '.adu' <<< "$item");
+              ITEM="{\"name\":\"user_${COUNTER}\",\"value\":\"${VALUE}\"}"
+              # echo "ITEM: ${ITEM}"
+              if [[ COUNTER -eq 1 ]]; then
+                  LOAD_TESTING_USERS="${ITEM}"
+              else
+                  LOAD_TESTING_USERS="${LOAD_TESTING_USERS},${ITEM}"
+              fi
+              (( COUNTER++ ))
+          done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
 
-      - name: 'Step Run Load Testing Eventhub Restricted Public Access'
+          # echo "LOAD_TESTING_USERS:"
+          # echo "${LOAD_TESTING_USERS}"
+          
+          LOAD_TESTING_TARGET_HOSTNAME=${AZURE_RESOURCE_FUNCTION_DOMAIN}
+          LOAD_TESTING_TARGET_PATH="visit"
+
+          # Store the temporary directory in output variable
+          echo "##vso[task.setvariable variable=TEMP_DIR;issecret=false]$TEMP_DIR"
+          echo "##vso[task.setvariable variable=LOAD_TESTING_RESOURCE_GROUP;issecret=false]$LOAD_TESTING_RESOURCE_GROUP"
+          echo "##vso[task.setvariable variable=LOAD_TESTING_NAME;issecret=false]$LOAD_TESTING_NAME"
+          echo "##vso[task.setvariable variable=LOAD_TESTING_TARGET_HOSTNAME;issecret=false]$LOAD_TESTING_TARGET_HOSTNAME"
+          echo "##vso[task.setvariable variable=LOAD_TESTING_TARGET_PATH;issecret=false]$LOAD_TESTING_TARGET_PATH"
+          echo "##vso[task.setvariable variable=LOAD_TESTING_USERS;issecret=false]$LOAD_TESTING_USERS"
+                  
+          {
+            echo "TEMP_DIR=${TEMP_DIR}"
+            echo "LOAD_TESTING_RESOURCE_GROUP=${LOAD_TESTING_RESOURCE_GROUP}"
+            echo "LOAD_TESTING_NAME=${LOAD_TESTING_NAME}"
+            echo "LOAD_TESTING_TARGET_HOSTNAME=${LOAD_TESTING_TARGET_HOSTNAME}"
+            echo "LOAD_TESTING_TARGET_PATH=${LOAD_TESTING_TARGET_PATH}"
+            echo "LOAD_TESTING_USERS=${LOAD_TESTING_USERS}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 'Step Run Load Testing Multi-Tenant Web App'
         uses: azure/load-testing@v1
         with:
           loadTestConfigFile: '${{ steps.configureloadtest.outputs.TEMP_DIR }}/load-testing.yaml'
@@ -226,16 +427,12 @@ jobs:
           env: |
             [
               {
-              "name": "eventhub_name_space",
-              "value": "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUBS_NAMESPACE }}"
+              "name": "hostname",
+              "value": "${{ steps.deployloadtest.outputs.LOAD_TESTING_TARGET_HOSTNAME }}"
               },
               {
-              "name": "eventhub_input_1",
-              "value": "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT1_NAME }}"
-              },
-              {
-              "name": "eventhub_input_2",
-              "value": "${{ needs.stage-deploy-infrastructure.outputs.AZURE_RESOURCE_EVENTHUB_INPUT2_NAME }}"
+              "name": "path",
+              "value": "${{ steps.deployloadtest.outputs.LOAD_TESTING_TARGET_PATH }}"
               },
               {
               "name": "duration",
@@ -244,14 +441,18 @@ jobs:
               {
               "name": "threads",
               "value": "${{ github.event.inputs.threads }}"
-              }
-            ]
+              },
+              $(LOAD_TESTING_USERS)
+            ]            
 
-      - name: Close access to EventHub and KeyVault for the test
+      - name: Close access to KeyVault for the test
         if: ${{ always() }}
         run: |
+          # include common.sh
+          source "scripts/common.sh"
+          
           cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a closetest -c ${{ env.CONFIGURATION_FILE }}"
-          echo "$cmd"
+          printProgress "$cmd"
           eval "$cmd"
 
 

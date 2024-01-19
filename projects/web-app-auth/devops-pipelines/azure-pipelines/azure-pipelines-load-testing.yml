@@ -133,7 +133,7 @@ stages:
                 echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]$(printf '%q\n' $(LOAD_TESTING_USERS_CONFIGURATION))"
                 
                 printMessage "Create Application if not already created"
-                if [ -z "${AZURE_APP_ID}" || "${AZURE_APP_ID}" == "null"]; then
+                if [[ -z "${AZURE_APP_ID}" || "${AZURE_APP_ID}" == "null" ]]; then
                   cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c $(CONFIGURATION_FILE)  "
                   echo "##[command]$cmd"
                   eval "$cmd"
@@ -226,10 +226,9 @@ stages:
                 echo "$cmd"
                 eval "$cmd"
 
-                # Read variables from configuration file
-                set -o allexport
-                source "$(CONFIGURATION_FILE)"
-                set +o allexport
+                printMessage "Read variables from the deployment"
+                # Read new variables set after the deployment in configuration file
+                readConfigurationFile "${{ variables.CONFIGURATION_FILE }}"
 
                 echo "LOAD_TESTING_RESOURCE_GROUP=${LOAD_TESTING_RESOURCE_GROUP}"
                 echo "LOAD_TESTING_NAME=${LOAD_TESTING_NAME}"
@@ -263,16 +262,15 @@ stages:
                 # include common.sh
                 source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
 
-                # Read variables from configuration file
-                set -o allexport
-                source "$(CONFIGURATION_FILE)"
-                set +o allexport
+                printMessage "Read variables from the deployment"
+                # Read new variables set after the deployment in configuration file
+                readConfigurationFile "${{ env.CONFIGURATION_FILE }}"
 
                 cat "$(CONFIGURATION_FILE)"
 
                 if [ -z "${LOAD_TESTING_USERS_CONFIGURATION}" ];
                 then
-                    echo "Variable LOAD_TESTING_USERS_CONFIGURATION not defined."
+                    printError "Variable LOAD_TESTING_USERS_CONFIGURATION not defined."
                     exit 1  
                 else
                     COUNTER=1
@@ -319,10 +317,9 @@ stages:
                 # include common.sh
                 source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
 
-                # Read variables from configuration file
-                set -o allexport
-                source "$(CONFIGURATION_FILE)"
-                set +o allexport
+                printMessage "Read variables from the deployment"
+                # Read new variables set after the deployment in configuration file
+                readConfigurationFile "${{ variables.CONFIGURATION_FILE }}"
 
                 echo "AZURE_RESOURCE_ACR_LOGIN_SERVER: $(AZURE_RESOURCE_ACR_LOGIN_SERVER)"
                 echo "AZURE_RESOURCE_WEB_APP_SERVER: $(AZURE_RESOURCE_WEB_APP_SERVER)"
