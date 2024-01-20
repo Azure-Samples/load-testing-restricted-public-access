@@ -523,7 +523,7 @@ function readConfigurationFileValue(){
     configFile="$1"
     variable="$2"
 
-    grep "${variable}=*"  < "${configFile}" | head -n 1 | sed 's/${variable}=//g'
+    grep "${variable}=*"  < "${configFile}" | head -n 1 | sed "s/${variable}=//g"
 }
 ##############################################################################
 #- readConfigurationFile: Update configuration file
