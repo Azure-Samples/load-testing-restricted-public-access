@@ -791,6 +791,15 @@ You can use the command line below to generate a value which will avoid any conf
 
     ![github-action-added-variable](./docs/img/load-testing-web-app-auth/github-action-added-variable.png)
 
+4. In the menu 'Secrets and variables' select the tab 'Secrets' on the page 'Actions secrets and variables'.
+
+5. Click on 'New repository secret' button, enter 'LOAD_TESTING_USERS_CONFIGURATION' in the Name field and copy/paste the JSON value associated with the list of users used for the tests. For instance:
+
+```text
+'[{"adu":"automationtest1@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"},{"adu":"automationtest2@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"}]'
+```
+    ![github-action-added-secret-bis](./docs/img/load-testing-web-app-auth/github-action-added-secret-bis.png)
+
 #### **Create Github Action pipeline for Multi-Tenant Load Testing**
 
 By default, all the Github Action pipelines are stored under 'devops-pipelines/github-action'.
@@ -799,12 +808,12 @@ The Load Testing Github Action pipeline is [github-action-load-testing-eventhub-
 In order to activate this pipeline, follow the steps below:
 
 1. Create a folder '.github/workflows' in your repository
-2. Copy the file github-action-load-testing-eventhub-restricted-public-access.yml in the folder '.github/workflows'
+2. Copy the file projects/web-app-auth/devops-pipelines/github-action/github-action-load-testing.yml in the folder '.github/workflows'
 3. Commit and push this modification in your "main" branch
 
     ```bash
-      git add  .github/workflows/github-action-load-testing-eventhub-restricted-public-access.yml
-      git commit -m "Create Eventhub Load with restricted public access Testing Github Action"
+      git add  .github/workflows/github-action-load-testing.yml
+      git commit -m "Create Multi-Tenant Load Testing Github Action"
       git push
     ```
 
