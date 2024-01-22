@@ -511,7 +511,7 @@ Before running this bash file you need to be connected with your Azure Account u
 Once you are connected with Azure, you can run the following bash to create the Service Principal:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/create-rbac-sp.sh -s <Azure-Subscription-Id> -a <Service-Principal-Name>
+    vscode ➜ /workspace $ ./scripts/create-rbac-sp.sh -s <Azure-Subscription-Id> -a <Service-Principal-Name>
 ```
 
 where \<Azure-Subscription-Id\> is the subscriptionId of your Azure Account and \<Service-Principal-Name\> the name of the service principal which is created.  
@@ -520,7 +520,7 @@ Once completed, this bash file displays the information required for the Azure a
 For instance:
 
 ```bash
-    vscode ➜ /workspace $ ./devops-pipelines/utils/create-rbac-sp.sh -s d3814ade-afe8-4260-9b5f-************ -a sp-loadtest-01
+    vscode ➜ /workspace $ ./scripts/create-rbac-sp.sh -s d3814ade-afe8-4260-9b5f-************ -a sp-loadtest-01
 ```
 
 The bash file displays the following information in Json format:
