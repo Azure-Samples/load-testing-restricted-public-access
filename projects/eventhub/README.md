@@ -738,11 +738,11 @@ Currently you can create one Azure DevOps pipeline using the YAML file below:
 
 You can create one Github Actions using the YAML file below:
 
-- EventHubs with restricted public access Load Testing GitHub action: [github-action-load-testing-eventhub-restricted-public-access.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub-restricted-public-access.yml)
+- EventHubs with restricted public access Load Testing GitHub action: [github-action-load-testing-eventhub-restricted-public-access.yml](./devops-pipelines/github-action/github-action-load-testing.yml)
 
 Associated with each pipeline or GitHub action there are:
 
-- a YAML file which defines the Azure Load Testing configuration. EventHubs with restricted public access Load Testing configuration file: [projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.template.yaml](./scenarios/eventhub-restricted-public-access/load-testing.template.yaml)  
+- a YAML file which defines the Azure Load Testing configuration. EventHubs with restricted public access Load Testing configuration file: [scenarios/eventhub-restricted-public-access/load-testing.template.yaml](./scenarios/eventhub-restricted-public-access/load-testing.template.yaml)  
 - a JMX file which contains the JMeter project in XML format. EventHubs with restricted public access Load Testing JMX file: [load-testing.jmx](./scenarios/eventhub-restricted-public-access/load-testing.jmx)  
 
 For each load test you can define:
@@ -808,20 +808,20 @@ For instance, below the Azure DevOps step which updates the Load Testing configu
                 echo "RESPONSE TIME MS: ${{ parameters.responseTimeMs }}"
                 # Update Load Testing configuration file
                 TEMP_DIR=$(mktemp -d)
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.jmx"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhubevents1.csv" "$TEMP_DIR/load-testing-eventhubevents1.csv"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhubevents2.csv" "$TEMP_DIR/load-testing-eventhubevents2.csv"
-                cp "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.yaml" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
-                sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
+                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.jmx" "$TEMP_DIR/load-testing.jmx"
+                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents1.csv" "$TEMP_DIR/load-testing-eventhubevents1.csv"
+                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents2.csv" "$TEMP_DIR/load-testing-eventhubevents2.csv"
+                cp "$(System.DefaultWorkingDirectory)/projects/eventhub/scenarios/eventhub-restricted-public-access/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.yaml"
+                sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing.yaml"
 
-                echo "load-testing-eventhub-restricted-public-access.yaml content:"
-                cat "$TEMP_DIR/load-testing-eventhub-restricted-public-access.yaml"
+                echo "load-testing.yaml content:"
+                cat "$TEMP_DIR/load-testing.yaml"
 
                 # Store the temporary directory in output variable
                 echo "##vso[task.setvariable variable=TEMP_DIR;issecret=false]$TEMP_DIR"
@@ -845,7 +845,7 @@ For instance, below the Azure DevOps pipeline step in [azure-pipelines-load-test
               addSpnToEnvironment: "true"
               scriptLocation: "inlineScript"
               inlineScript: |
-                cmd="devops-pipelines/utils/load-testing-tool.sh -a opentest -c $(CONFIGURATION_FILE)"
+                cmd="projects/eventhub/scripts/load-testing-tool.sh -a opentest -c $(CONFIGURATION_FILE)"
                 echo "$cmd"
                 eval "$cmd"
 ```
@@ -857,31 +857,33 @@ The bash file:
 - allows the Access to the Azure Key Vault where the Event Hubs token will be stored
 
 ```bash
-        readConfigurationFile "$CONFIGURATION_FILE"
+          readConfigurationFile "$CONFIGURATION_FILE"
 
-        printProgress "Open access to EventHubs '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' access for the load testing resource with public ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
-        if [[ -n ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} ]]; then
-            if [[ -n $(az eventhubs namespace show --name "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
-                if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
-                    cmd="az eventhubs namespace network-rule list  --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} | jq -r '.ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
-                    ALLOW=$(eval "${cmd}")
-                    if [ ! "${ALLOW}" == "Allow" ]  
-                    then
-                        cmd="az eventhubs namespace network-rule add --ip-address ${LOAD_TESTING_PUBLIC_IP_ADDRESS} --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} "
-                        echo "$cmd"
-                        eval "${cmd}" >/dev/null
-                        # Wait 30 seconds for the access to the eventhubs
-                        sleep 30
-                    fi
-                fi
-            fi
-        fi
+          printProgress "Open access to EventHubs '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' access for the load testing resource with public ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
+          if [[ -n ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} ]]; then
+              if [[ -n $(az eventhubs namespace show --name "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
+                  if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
+                      cmd="az eventhubs namespace network-rule-set list  --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} | jq -r '.[].ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
+                      ALLOW=$(eval "${cmd}")
+                      if [ ! "${ALLOW}" == "Allow" ]  
+                      then
+                          # Get Agent IP address
+                          ip=$(curl -s https://ifconfig.me/ip) || true
+                          cmd="az eventhubs namespace network-rule-set update --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} --default-action Deny --public-network Enabled --ip-rules \"[{ip-mask:${ip},action:Allow},{ip-mask:${LOAD_TESTING_PUBLIC_IP_ADDRESS},action:Allow}]\"  "
+                          eval "${cmd}" >/dev/null
+                          checkError
+                          # Wait 30 seconds for the access to the eventhubs
+                          sleep 30
+                      fi
+                  fi
+              fi
+          fi
 
-        printProgress "Open access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
-        cmd="az keyvault update --default-action Allow --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
-        echo "$cmd"
-        eval "${cmd}" >/dev/null
-        printMessage "Eventhub and Keyvault are now accessible from Azure Load Testing"
+          printProgress "Open access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
+          cmd="az keyvault update --default-action Allow --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
+          eval "${cmd}" >/dev/null
+          checkError
+          printMessage "Eventhub and Keyvault are now accessible from Azure Load Testing"
 
 ```
 
@@ -931,40 +933,39 @@ This configuration file is used to create the load test in the step: 'Step Run L
 This step shares the Event Hubs Shared Access Token with the load testing platform running the jmx file through the secret called 'eventhub_token':  
 
 ```yaml
-    - task: AzureLoadTest@1
-      displayName: 'Step Run Load Testing EventHub'
-      inputs:
-        azureSubscription: $(SERVICE_CONNECTION)
-        loadTestConfigFile: '$(TEMP_DIR)/load-testing-eventhub-restricted-public-access.yaml'
-        resourceGroup: $(LOAD_TESTING_RESOURCE_GROUP)
-        loadTestResource: $(LOAD_TESTING_NAME)
-        secrets: |
-          [
-          ]
-        env: |
-          [
-            {
-            "name": "eventhub_name_space",
-            "value": "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
-            },
-            {
-            "name": "eventhub_input_1",
-            "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
-            },
-            {
-            "name": "eventhub_input_2",
-            "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
-            },
-            {
-            "name": "duration",
-            "value": "${{ parameters.duration }}"
-            },
-            {
-            "name": "threads",
-            "value": "${{ parameters.threads }}"
-            }
-          ]
-
+      - task: AzureLoadTest@1
+        displayName: 'Step Run Load Testing EventHub'
+        inputs:
+          azureSubscription: $(SERVICE_CONNECTION)
+          loadTestConfigFile: '$(TEMP_DIR)/load-testing.yaml'
+          resourceGroup: $(LOAD_TESTING_RESOURCE_GROUP)
+          loadTestResource: $(LOAD_TESTING_NAME)
+          secrets: |
+            [
+            ]
+          env: |
+            [
+              {
+              "name": "eventhub_name_space",
+              "value": "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
+              },
+              {
+              "name": "eventhub_input_1",
+              "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
+              },
+              {
+              "name": "eventhub_input_2",
+              "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
+              },
+              {
+              "name": "duration",
+              "value": "${{ parameters.duration }}"
+              },
+              {
+              "name": "threads",
+              "value": "${{ parameters.threads }}"
+              }
+            ]
 ```
 
 The load testing service reads the secret called 'eventhub_token'and initialize the variable 'udv_token' with the token value.
@@ -1007,7 +1008,7 @@ The load testing service reads the secret called 'eventhub_token'and initialize 
               <stringProp name="Argument.value">${__BeanShell( System.getenv("threads") )}</stringProp>
               <stringProp name="Argument.desc">Test number of threads</stringProp>
               <stringProp name="Argument.metadata">=</stringProp>
-            </elementProp>
+            </elementProp>                                           
           </collectionProp>
         </Arguments>
 ```
@@ -1100,7 +1101,7 @@ Input 2 with the declaration of each variable associated with the columns in the
         </CSVDataSet>  
 ```
 
-Once the format of the source files is defined, the file [load-testing-eventhub-restricted-public-access.jmx](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx) is updated to define the format of the HTTP request body towards the Event Hub.
+Once the format of the source files is defined, the file [load-testing.jmx](./scenarios/eventhub-restricted-public-access/load-testing.jmx) is updated to define the format of the HTTP request body towards the Event Hub.
 
 HTTP request for Input 1:
 
@@ -1185,46 +1186,49 @@ Before calling the REST API, you need to get the Load Testing Token. First you n
     LOAD_TESTING_TOKEN=$(az account get-access-token --resource "${LOAD_TESTING_HOSTNAME}" --scope "https://cnt-prod.loadtesting.azure.com/.default" | jq -r '.accessToken')
 ```
 
-Once you get the token, you can call the load test administration REST API to create a new test filling the values in the template file [./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.json](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.json). This json file is used as the body of the REST API call. 
+Once you get the token, you can call the load test administration REST API to create a new test filling the values in the template file [./scenarios/eventhub-restricted-public-access/load-testing.template.json](./scenarios/eventhub-restricted-public-access/load-testing.template.json). This json file is used as the body of the REST API call. 
 
 Further information about the load test administration REST API on this page: [https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-administration](https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-administration)
 
 Below the code to create the load test:
 
 ```bash
-    LOAD_TESTING_TEST_ID=$(cat /proc/sys/kernel/random/uuid)
+        LOAD_TESTING_TEST_ID=$(cat /proc/sys/kernel/random/uuid)
 
-    TEMP_DIR=$(mktemp -d)
-    cp  "$SCRIPTS_DIRECTORY/../../devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.template.json"  "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
-    sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access.json"
+        printProgress ""
+        printProgress "Creating/Updating test ${LOAD_TESTING_TEST_NAME} ID:${LOAD_TESTING_TEST_ID}..."    
+        # Update Load Testing configuration file
+        TEMP_DIR=$(mktemp -d)
+        cp  "$SCRIPTS_DIRECTORY/../../../projects/eventhub/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.template.json"  "$TEMP_DIR/load-testing.json"
+        sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing.json"
+        sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing.json"
 
-    cmd="curl -s -X PATCH \
-    \"https://$LOAD_TESTING_HOSTNAME/tests/$LOAD_TESTING_TEST_ID?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer $LOAD_TESTING_TOKEN' \
-     -d \"@$TEMP_DIR/load-testing-eventhub-restricted-public-access.json\" "
-    eval "$cmd" >/dev/null
+        cmd="curl -s -X PATCH \
+        \"https://$LOAD_TESTING_HOSTNAME/tests/$LOAD_TESTING_TEST_ID?api-version=2022-11-01\" \
+        -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer $LOAD_TESTING_TOKEN' \
+        -d \"@$TEMP_DIR/load-testing.json\" "
+        eval "$cmd" >/dev/null
 ```
 
 Once the load test is created you need to upload the jmx and csv files associated with the load test using the code below:
 
 ```bash
-    cmd="curl -s -X PUT \
-    \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/load-testing-eventhub-restricted-public-access.jmx?fileType=JMX_FILE&api-version=2022-11-01\" \
-     -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-     --data-binary  \"@$SCRIPTS_DIRECTORY/../../devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx\" "
-    eval "$cmd" >/dev/null
+        cmd="curl -s -X PUT \
+        \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/load-testing.jmx?fileType=JMX_FILE&api-version=2022-11-01\" \
+        -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
+        --data-binary  \"@$SCRIPTS_DIRECTORY/../../../projects/eventhub/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.jmx\" "
+        eval "$cmd" >/dev/null
 ```
 
 Once the jmx file and the 2 csv files are uploaded, you can run the load test using the load test run REST API. Further information about this REST API on this page:
@@ -1233,51 +1237,61 @@ Once the jmx file and the 2 csv files are uploaded, you can run the load test us
 You need to fill the values in the template file [./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access-run.template.json](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access-run.template.json) before calling the API to run the test. This json file is used as the body of the REST API call. 
 
 ```bash
-    LOAD_TESTING_TEST_RUN_ID=$(cat /proc/sys/kernel/random/uuid)
-    printProgress "Launching test ${LOAD_TESTING_TEST_NAME} RunID:${LOAD_TESTING_TEST_RUN_ID}..."    
-    # Update Load Testing configuration file
-    LOAD_TESTING_DATE=$(date +"%y%m%d-%H%M%S")
-    TEMP_DIR=$(mktemp -d)
-    cp  "$SCRIPTS_DIRECTORY/../../devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access-run.template.json"  "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{id}/${LOAD_TESTING_TEST_ID}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{date}/${LOAD_TESTING_DATE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
-    sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json"
+        LOAD_TESTING_TEST_RUN_ID=$(cat /proc/sys/kernel/random/uuid)
+        printProgress "Launching test ${LOAD_TESTING_TEST_NAME} RunID:${LOAD_TESTING_TEST_RUN_ID}..."    
+        # Update Load Testing configuration file
+        LOAD_TESTING_DATE=$(date +"%y%m%d-%H%M%S")
+        TEMP_DIR=$(mktemp -d)
+        cp  "$SCRIPTS_DIRECTORY/../../../projects/eventhub/scenarios/${LOAD_TESTING_SCENARIO}/load-testing-run.template.json"  "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{id}/${LOAD_TESTING_TEST_ID}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{date}/${LOAD_TESTING_DATE}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-run.json"
+        sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-run.json"
 
-    # Wait 10 seconds to be sure the JMX file is validated
-    sleep 10
+        # Wait 10 seconds to be sure the JMX file is validated
+        sleep 10
 
-    cmd="curl -s -X PATCH  \
-    \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-     -d \"@$TEMP_DIR/load-testing-eventhub-restricted-public-access-run.json\" "
-    eval "$cmd"  >/dev/null
+        cmd="curl -s -X PATCH  \
+        \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
+        -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
+        -d \"@$TEMP_DIR/load-testing-run.json\" "
+        eval "$cmd"  >/dev/null
 ```
 
 Once the load test is launched, you can monitor the status of the load test using the REST API below.
 
 ```bash
-    statuscmd="curl -s -X GET \
-    \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
-    LOAD_TESTING_STATUS="unknown"
-    while [ "${LOAD_TESTING_STATUS}" != "DONE" ] && [ "${LOAD_TESTING_STATUS}" != "FAILED" ] && [ "${LOAD_TESTING_STATUS}" != "null" ]
-    do
-        sleep 10
-        LOAD_TESTING_STATUS=$(eval "$statuscmd" | jq -r '.status')
-        printProgress "Current status: ${LOAD_TESTING_STATUS}" 
-    done
+        statuscmd="curl -s -X GET \
+        \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
+        -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
+        # echo "$statuscmd"
+        LOAD_TESTING_STATUS="unknown"
+        while [ "${LOAD_TESTING_STATUS}" != "DONE" ] && [ "${LOAD_TESTING_STATUS}" != "FAILED" ] && [ "${LOAD_TESTING_STATUS}" != "null" ]
+        do
+            sleep 10
+            LOAD_TESTING_STATUS=$(eval "$statuscmd" | jq -r '.status')
+            printProgress "Current status: ${LOAD_TESTING_STATUS}" 
+        done
+
+        # echo "$statuscmd"
+        LOAD_TESTING_RESULT=$(eval "$statuscmd" | jq -r '.testResult')
+        if [ "${LOAD_TESTING_STATUS}" == "FAILED" ] || [ "${LOAD_TESTING_STATUS}" == "null" ]
+        then
+            printError "Running load testing failed"
+        else
+            printMessage "Running load testing successful"
+        fi
 ```
 
 This REST API returns the status of the load test:
@@ -1291,17 +1305,25 @@ This REST API returns the status of the load test:
 As soon as the status of the load test is 'DONE', you can check the status of testResult. When the value is 'PASSED' the load test results are available.
 
 ```bash
-    LOAD_TESTING_RESULT="NOT_APPLICABLE"
-    while [ "${LOAD_TESTING_RESULT}" == "NOT_APPLICABLE" ] 
-    do
-        sleep 10
-        LOAD_TESTING_RESULT=$(eval "$statuscmd" | jq -r '.testResult')
-        printProgress "Current results status: ${LOAD_TESTING_RESULT}" 
-    done
-    LOAD_TESTING_STATISTICS=$(eval "$statuscmd" | jq -r '.testRunStatistics')
-    printMessage "Running load testing successful"
-    printMessage "Result: $LOAD_TESTING_RESULT"
-    printMessage "Statistics: $LOAD_TESTING_STATISTICS"  
+            LOAD_TESTING_RESULT="NOT_APPLICABLE"
+            while [ "${LOAD_TESTING_RESULT}" == "NOT_APPLICABLE" ] 
+            do
+                sleep 10
+                LOAD_TESTING_RESULT=$(eval "$statuscmd" | jq -r '.testResult')
+                printProgress "Current results status: ${LOAD_TESTING_RESULT}" 
+            done
+            # Renewing the token
+            LOAD_TESTING_TOKEN=$(az account get-access-token --resource "${LOAD_TESTING_HOSTNAME}" --scope "https://cnt-prod.loadtesting.azure.com/.default" | jq -r '.accessToken')
+            statuscmd="curl -s -X GET \
+            \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
+            -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
+            LOAD_TESTING_RESULTS=$(eval "$statuscmd")
+            # printMessage "Result: $LOAD_TESTING_RESULTS"
+            LOAD_TESTING_STATISTICS=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testRunStatistics')
+            LOAD_TESTING_RESULTS_CSV_URL=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.url')
+            LOAD_TESTING_RESULTS_CSV_FILE=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.fileName')
+            LOAD_TESTING_RESULTS_LOGS_URL=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.url')
+            LOAD_TESTING_RESULTS_LOGS_FILE=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.fileName') 
 ```
 
 ## Contribute
