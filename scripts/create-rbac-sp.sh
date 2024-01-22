@@ -57,7 +57,8 @@ grantPermission () {
         --headers \"Content-Type=application/json\" \
         --body \"{\\\"principalId\\\": \\\"$1\\\", \\\"resourceId\\\": \\\"$2\\\", \\\"appRoleId\\\": \\\"$3\\\"}\" \
         --only-show-errors  || true"
-    eval "${cmd}"
+    eval "${cmd}" > /dev/null
+    checkError
   else
     verboseMessage "Permission '$4'-'$3'  already granted for service principal '$1'"    
   fi
@@ -74,32 +75,8 @@ addPermission () {
     permissionId=$(eval "${cmd}")
     if [ "$permissionId" != "$3" ]; then
         verboseMessage "Adding permission '$4'-'$3' to service principal '$1'"
-        az ad app permission add \
-        --id $1 \
-        --api $2 \
-        --api-permissions \
-            $3=Role
-    else
-        verboseMessage "Permission '$4'-'$3' already set to service principal '$1'"
-    fi
-}
-#######################################################
-#- add permission to the service principal
-# $1 = SP appId
-# $2 = API ID
-# $3 = permissionId
-# $4 = permission text
-#######################################################
-addPermission () {
-    cmd="az ad app permission list --id $1  --query \"[?resourceAppId=='$2'].resourceAccess[]\" | jq -r '[.[]|select(.type==\"Role\"and.id==\"$3\")][0].id'"
-    permissionId=$(eval "${cmd}")
-    if [ "$permissionId" != "$3" ]; then
-        verboseMessage "Adding permission '$4'-'$3' to service principal '$1'"
-        az ad app permission add \
-        --id $1 \
-        --api $2 \
-        --api-permissions \
-            $3=Role
+        cmd="az ad app permission add --id $1 --api $2 --api-permissions $3=Role"
+        eval "${cmd}" > /dev/null 2> /dev/null
     else
         verboseMessage "Permission '$4'-'$3' already set to service principal '$1'"
     fi
@@ -233,9 +210,9 @@ USER_READ_ALL_ID=$(getPermissionId $GRAPH_API_ID $USER_READ_ALL_ROLE)
 APPLICATION_READWRITE_ALL_ID=$(getPermissionId $GRAPH_API_ID $APPLICATION_READWRITE_ALL_ROLE)
 DOMAIN_READ_ALL_ID=$(getPermissionId $GRAPH_API_ID $DOMAIN_READ_ALL_ROLE)
 
-echo "USER_READ_ALL_ROLE = $USER_READ_ALL_ID"
-echo "APPLICATION_READWRITE_ALL_ROLE = $APPLICATION_READWRITE_ALL_ID"
-echo "DOMAIN_READ_ALL_ROLE = $DOMAIN_READ_ALL_ID"
+verboseMessage  "USER_READ_ALL_ROLE = $USER_READ_ALL_ID"
+verboseMessage  "APPLICATION_READWRITE_ALL_ROLE = $APPLICATION_READWRITE_ALL_ID"
+verboseMessage  "DOMAIN_READ_ALL_ROLE = $DOMAIN_READ_ALL_ID"
 
 # Add permissions to SP
 verboseMessage "Adding permissions"
