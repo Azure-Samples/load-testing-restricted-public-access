@@ -911,6 +911,10 @@ You can use the command line below to generate a value which will avoid any conf
 
 3. Click on 'New repository variable' button, enter 'AZURE_TEST_SUFFIX' in the 'Name' field and enter the suffix in the 'Value' field and click on the 'Add variable'
 
+4. Click on 'New repository variable' button, enter 'AZURE_APP_ID' in the 'Name' field and enter the value 'null' and click on the 'Add variable'
+
+5. Click on 'New repository variable' button, enter 'AZURE_TENANT_DNS_NAME' in the 'Name' field and enter the value 'null' and click on the 'Add variable'
+
     ![github-action-added-variable](./docs/img/load-testing-web-app-auth/github-action-added-variable.png)
 
 #### **Create Github Action pipeline for Event Hubs with restricted public access Load Testing**
