@@ -699,16 +699,16 @@ You can use the command line below to generate a value which will avoid any conf
 #### **Create Github Action pipeline for Event Hubs with restricted public access Load Testing**
 
 By default, all the Github Action pipelines are stored under 'devops-pipelines/github-action'.
-The Load Testing Github Action pipeline is [github-action-load-testing-eventhub-restricted-public-access.yml](devops-pipelines/github-action/github-action-load-testing-eventhub-restricted-public-access.yml)
+The Load Testing Github Action pipeline is [github-action-load-testing.yml](devops-pipelines/github-action/github-action-load-testing.yml)
 
 In order to activate this pipeline, follow the steps below:
 
 1. Create a folder '.github/workflows' in your repository
-2. Copy the file github-action-load-testing-eventhub-restricted-public-access.yml in the folder '.github/workflows'
+2. Copy the file ./projects/eventhub/devops-pipelines/github-action/github-action-load-testing.yml  in the folder '.github/workflows'
 3. Commit and push this modification in your "main" branch
 
     ```bash
-      git add  .github/workflows/github-action-load-testing-eventhub-restricted-public-access.yml
+      git add  .github/workflows/github-action-load-testing.yml
       git commit -m "Create Eventhub Load with restricted public access Testing Github Action"
       git push
     ```
