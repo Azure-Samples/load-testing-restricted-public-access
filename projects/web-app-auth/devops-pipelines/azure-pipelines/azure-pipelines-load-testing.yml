@@ -131,6 +131,23 @@ stages:
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
                 echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]$(printf '%q\n' $(LOAD_TESTING_USERS_CONFIGURATION))"
+                                
+          - task: AzureCLI@2
+            displayName: 'Step Create Application'
+            name: StepCreateApplication
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION)
+              scriptType: "bash"
+              addSpnToEnvironment: "true"
+              failOnStandardError: "true"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                # include common.sh
+                source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
+
+                printMessage "Read variables from the deployment"
+                # Read new variables set after the deployment in configuration file
+                readConfigurationFile "${{ variables.CONFIGURATION_FILE }}"
                 
                 printMessage "Create Application if not already created"
                 if [[ -z "${AZURE_APP_ID}" || "${AZURE_APP_ID}" == "null" ]]; then
@@ -145,11 +162,32 @@ stages:
                   echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]${AZURE_APP_ID}"
                   echo "##vso[task.setvariable variable=AZURE_TENANT_DNS_NAME;isOutput=true]${AZURE_TENANT_DNS_NAME}"
                 fi
+                if [ -z $AZURE_APP_ID ]; then
+                    echo "##[error]Variable AZURE_APP_ID is not defined, do you have enough privilege to create an application?"
+                    exit 1
+                fi 
 
+          - task: AzureCLI@2
+            displayName: 'Step Build and Deploy Services'
+            name: StepBuildDeployServices
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION)
+              scriptType: "bash"
+              addSpnToEnvironment: "true"
+              failOnStandardError: "true"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                # include common.sh
+                source "$(System.DefaultWorkingDirectory)/scripts/common.sh"
+
+                printMessage "Read variables from the deployment"
+                # Read new variables set after the deployment in configuration file
+                readConfigurationFile "${{ variables.CONFIGURATION_FILE }}"
+                
                 printMessage "Build and deploy backend and frontend"
                 cmd="$(System.DefaultWorkingDirectory)/projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c $(CONFIGURATION_FILE) "
                 echo "##[command]$cmd"
-                eval "$cmd"                
+                eval "$cmd"  
 
 
   - stage: stage_load_test

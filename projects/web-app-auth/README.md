@@ -44,8 +44,9 @@ This service based on Azure Static Web App, Azure Function and Azure Storage cou
 *Download a [SVG file](./docs/img/load-testing-web-app-auth/architecture-scenario.svg) of this diagram.*
 
 This repository contains the code associated with:
+
 - the frontend: a basic HTML/Javascript application calling the backend REST API once the user is authentified, 
-- the backend: a REST API which record the visit in an Azure Storage table. Each record inn the table contains the user's Tenant Id and the user's mail address.
+- the backend: a REST API which record the visit in an Azure Storage table. Each record in the table contains the user's Tenant Id and the user's mail address.
 
 Moreover, it contains the code to run Azure Load Testing against the REST API which required a user authentication. 
 The Azure Load Testing infrastructure is extended with an Azure Key Vault which is used to store the user's Microsoft Entra Id tokens.
@@ -163,8 +164,8 @@ If you are not interested in running the load testing manually from the Dev Cont
 
 Below the list of arguments associated with 'load-testing-tool.sh':
 
-- -a  Sets iactool action {login, install, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
-- -c  Sets the iactool configuration file
+- -a  Sets action {login, install, createconfig, deploy, createapp, deployservices, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
+- -c  Sets the configuration file
 - -h  Azure Function Sku - by default B1 (B1, B2, B3, S1, S2, S3)
 - -r  Sets the Azure Region for the deployment
 
@@ -233,7 +234,18 @@ For instance run the following command to deploy an Azure Function with Standard
 
 After few minutes, the resources are visible on the Azure Portal.
 The infrastructure has been deployed with one Azure Static Web App, one Azure Function, one Azure Storage and one Azure Container Registry.
-Moreover, during this step the multi-tenant application has been created in the Microsoft Entra ID tenant associated with the infrastructure. The name of this application is 'sp-${AZURE_TEST_SUFFIX}-app'. This application has the following permissions:  
+
+#### Creating the Application in Microsoft Entra ID Tenant
+
+As we are building and deploying a Web Application, we need to create the Application in Microsoft Entra ID Tenant. Using load-testing-tool.sh and action 'createapp' the application will be created.
+
+For instance, the command below create the application for the 'web-storage-api-storage':
+
+```bash
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh -a createapp -c ./projects/web-app-auth/configuration/.default.env   
+```
+
+During this step the multi-tenant application has been created in the Microsoft Entra ID tenant associated with the infrastructure. The name of this application is 'sp-${AZURE_TEST_SUFFIX}-app'. This application has the following permissions:  
 - https://storage.azure.com/user_impersonation: used to allow the backend to access the table in Azure Storage  
 - https://graph.microsoft.com/User.Read: used to read user information through the Graph API  
 Morever, the application is associated with the following scope "https://\${TENANT_DNS_NAME}/\${appId}/user_impersonation".  
@@ -249,7 +261,75 @@ At least, the client application Azure CLI (ClientId: 04b07795-8ddb-461a-bbee-02
 ```
 
 Once the application has been created, the role "Storage Blob Data Contributor"  on Azure Storage Scope have been assigned to the new application. 
-After this step, the infrastructure to test is ready and we can deploy and run the load testing.
+
+The appId associated with the new application will be used for subsequent steps which will build the Web UI and Web API.
+
+**Note**:
+The creation of the Application in Microsoft Entra ID Tenant requires a redirect uri which is known once the infrastructure is deployed. This redirect Uri is a uri to an Azure Storage or an Azure Static Web App hosting the Web application. The creation of the Application in Microsoft Entra ID Tenant must be launched once the infrastructure is deployed. If you launch the creation of the Application inMicrosoft Entra ID Tenant before deploying the infrastructure it will fail.
+
+After this step, the frontend and backend can be built and deployed on the infrastructure.
+
+#### Building and deploying the services
+
+This sample includes the source code of:
+
+- the frontend: a basic HTML/Javascript application calling the backend REST API once the user is authentified, 
+- the backend: a REST API which record the visit in an Azure Storage table. Each record in the table contains the user's Tenant Id and the user's mail address.
+
+To build and deploy the frontend and the backend, you can use the load-testing-tool.sh script with the action 'deployservices'. 
+
+For instance, the command below build and deploy the services:
+
+```bash
+    vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c ./projects/web-app-auth/configuration/.default.env   
+```
+
+**Building and deploying the backend**
+
+The build task for the backend creates a container image which will be stored in the Azure Container Registry.
+This container image will be deployed towards the targeted infratructure (Azure Function).
+
+When the backend is deployed, the deployment script check if the following url is functioning:
+
+ ```json
+      https://func${AZURE_APP_PREFIX}.azurewebsites.net/version
+ ```  
+
+The version REST API is always accessible and doesn't require any authentication. This REST API returns the version of the service, for instance:
+
+ ```json
+    { "version": "220701.124641"}
+ ```
+The Load Testing process will use the REST API POST visit to create a new record and the REST API GET visit to get the list of visits.
+Each record contains the following information:
+
+- creationDate: UTC time when the record has been created or updated 
+- user: the user which calls this REST API POST visit  
+- tenantId: the tenantId associated with the user
+- information: string which contains information about the calling service, it could be the thread number, date, counter.
+- remoteIp: the IP address of the calling service
+- remotePort: the TCP port used by the calling service
+
+**Building and deploying the frontend**
+
+The build task for the frontend creates a container image which will be stored in the Azure Container Registry.
+As the frontend will be deployed on an Azure Static Web App, this container image won't be used. For instance, It could have been used for a  on Azure App Service.
+By default the script will deploy the frontend on an Azure Static Web App, if you set in the bash script the variable 'USE_STATIC_WEB_APP' to false, the frontend will be deployed on the Azure Storage used to host the Azure Table Storage.
+ 
+The HTML pages and javascript files will be copied to Azure Static Web App using swa tool. 
+When the frontend is deployed, the deployment script check if the following url is functioning:
+
+```text
+    https://[STATIC_WEB_APP_DNS_NAME]/config.json
+```
+
+Using your favorite browser, you can open the page 'https://[STATIC_WEB_APP_DNS_NAME]/', after few seconds, the home page below should be displayed.
+
+   ![Home page](./docs/img/load-testing-web-app-auth/admin-consent-login.png)  
+
+If you click on the Login menu, and enter your credentials, you'll be connected and have access to the Visit page
+
+After this step, the infrastructure and the services to test are ready and you can create a Microsoft Entra ID Test Tenant with users which will be used by the load testing engines.
 
 #### Creating users in a Microsoft Entra ID test tenant 
 
@@ -263,6 +343,7 @@ https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment
 **Creating users manually**
 
 Once you get the test tenant, if you are connected to the tenant using the Tenant Administrator account, you can create manually users which will be used for the load testing scenarios:
+
 https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment#populate-your-tenant-with-users
 
 You need to disable the MFA (Multi Factor Authentication) for each new user. If the MFA is not disabled, the script or the pipeline running the load testing scenario won't be able to get the Microsoft Entry ID token for the user.
@@ -277,17 +358,20 @@ The value of the variable LOAD_TESTING_USERS_CONFIGURATION is a json string with
         "pw":"*******",
         "tid":"a007455c-dcb3-****-****-***********"
       },
-      {...},
-      {...}
+      .
+      .
+      .
     ]
 ```
 
 where each user is defined with:  
+
 - 'adu' is the user's mail adress with the following format: {TEST_USER}@{TEST_TENANT_DNS_NAME}  
 - 'pw' is the user's password  
 - 'tid' is the tenant Id of the test tenant  
 
-Once the json string is fully defined, you can set the variable LOAD_TESTING_USERS_CONFIGURATION in the environment file. For instance, in the file ./projects/web-app-auth/configuration/.default.env:
+Once the json string is fully defined, you can set the variable LOAD_TESTING_USERS_CONFIGURATION in the environment file.  
+For instance, in the file ./projects/web-app-auth/configuration/.default.env:
 
 ```env
   LOAD_TESTING_USERS_CONFIGURATION='[{"adu":"automationtest@******.onmicrosoft.com","pw":"**************","tid":"a007455c-dcb3-4067-8a33-***********"}]'
@@ -298,6 +382,7 @@ Once the json string is fully defined, you can set the variable LOAD_TESTING_USE
 You can also use the script ./scripts/create-users.sh to automatically create the automation test users.
 
 1. From the devcontainer terminal, you can call the script create-users.sh with the following parameters:  
+
 - '-a': action either 'create' or 'delete'  
 - '-t': test tenant id  
 - '-p': user name prefix, the user's email address will be {PREFIX}{INDEX}@{TEST_TENANT_DNS_NAME}   
@@ -323,6 +408,7 @@ Creation done
 **Deleting users automatically**
 
 When all the tests are completed, using the same script you can also automatically delete the user accounts created for the tests. You can call the script create-users.sh with the following parameters:  
+
 - '-a': action 'delete'  
 - '-t': test tenant id   
 - '-p': user name prefix, the user's email address will be {PREFIX}{INDEX}@{TEST_TENANT_DNS_NAME}   
@@ -349,7 +435,7 @@ The tenant-wide admin consent URL follows the following format:
 where:  
 
 - {client-id} is the application's client ID (also known as app ID).  
-- {organization} is the tenant ID or any verified domain name of the tenant you want to consent the application in. You can use the value organizationsthat causes the consent to happen in the home tenant of the user you sign in with.
+- {organization} is the tenant ID or any verified domain name of the tenant you want to consent the application in. 
 
 1. Open the admin consent url using the Microsoft Entra ID Tenant admin login and password. 
 
@@ -365,7 +451,7 @@ where:
 
 #### Deploying the load testing infrastructure
 
-Once the infrastructure is deployed, you can deploy the load testing infrastructure, using the following arguments:
+Once the infrastructure and the services are deployed, you can deploy the load testing infrastructure, using the following arguments:
 
 ```bash
     vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a deploytest -c ./projects/web-app-auth/configuration/.default.env 
@@ -517,7 +603,7 @@ For instance the following command:
 
 In this chapter, you will use Azure DevOps pipeline and/or Github Action to automate the deployment of the infrastructure and the launch of the load test.  
 
-The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load testing includes the following steps:
+The pipelines (Azure DevOps pipelines and Github Actions) running Multi-Tenant load testing includes the following steps:
 
 - deploy the infrastructure to test
 - deploy the load testing infrastructure
@@ -532,7 +618,13 @@ If you want to use Azure DevOps pipelines or Github Actions, an authentication w
 
 In order to create this service principal you can use the following bash file: [scripts/create-rbac-sp.sh](../../scripts/create-rbac-sp.sh)
 
-This bash file assigns the role "Load Test Contributor" to the service principal, this role is mandatory to deploy and run Azure Load Testing from an Azure DevOps pipeline or a Github Action.
+This bash file assigns the role "Load Test Contributor" to the service principal, this role is mandatory to deploy and run Azure Load Testing from an Azure DevOps pipeline or a Github Action.  
+It also assigns the role "Contributor" to the service principal on the current Azure subscription scope.
+At least, it will create the custom role "Role Assignments Operator" with the following actions:
+
+- Microsoft.Authorization/roleAssignments/read 
+- Microsoft.Authorization/roleAssignments/write 
+This role will allow the service principal to assign role for the current Azure subscription.
 
 Before running this bash file you need to be connected with your Azure Account using Azure CLI. Run 'az login' in your linux environment or in your Dev Container Terminal
 
@@ -574,7 +666,12 @@ The bash file displays the following information in Json format:
 
 In the subsequent chapter, you'll see how to use this Json string to create the Github Action Secret AZURE_CREDENTIALS and how to use the clientId and clientSecret values to create the Azure DevOps Service Connection.
 
-The creation of this service principal with your Azure Account may fail with the following error: "insufficient privileges to complete the operation", in that case, you'll need to contact your Azure Active Directory Administrator to create the Service Principal for you.
+The creation of this service principal with your Azure Account may fail with the following error: "insufficient privileges to complete the operation". Usually this error occurs when assigning the role 'Contributor' or creating the Custom Role, but in that case the service principal has been created without the required roles.
+In that case, you have two options:  
+
+- either you contact your Microsoft Entra ID Administrator to create the Service Principal for you,  
+- or you use the minimal service principal. With this service principal, the pipeline won't be able to run all the pipeline steps. For instance, the steps which creates the Application in Microsoft Entra ID Tenant will probably fail. It may be possible to create the Application in Microsoft Entra ID Tenant manually.  
+You'll find further information in the [Troubleshooting](#troubleshooting) section.
 
 ### Azure DevOps pipeline
 
@@ -848,602 +945,516 @@ In order to activate this pipeline, follow the steps below:
 
     ![github-action-eventhub-completed](./docs/img/load-testing-web-app-auth/github-action-eventhub-completed.png)
 
+## Troubleshooting
+
+### When the Application Creation step fails in the pipeline 
+
+When you run the Load Testing pipeline, the Azure DevOps step called 'Step Get or Create ApplicationId' or Github action called 'createapp' may fail and the AZURE_APP_ID variable is not set.
+The variable AZURE_APP_ID contains the AppId of the Microsoft Entra ID application associated with the Web App.  
+
+  ![Troubleshooting-1](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-01.png)
+
+Usually this step fails if the service principal associated with the pipeline doesn't have enough privilege to create an Application.  
+
+A possible turn around consists in creating manually the Application from the Dev Container with the bash file iactool.sh.
+
+1. Copy the values of the variables AZURE_APP_PREFIX, AZURE_REGION in the variable group.  
+
+    ![Troubleshooting-2](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-02.png)
+
+2. In Visual Studio Code update the file ./configuration/.default.env and add or update the following variables:
+
+    ```bash
+    AZURE_REGION=eastus2
+    AZURE_APP_PREFIX=waa1908
+    AZURE_SUBSCRIPTION_ID=
+    AZURE_TENANT_ID=
+    ```
+
+    Set the variables AZURE_APP_PREFIX, AZURE_REGION with the values in the variables group.
+    Set the variable AZURE_SUBSCRIPTION_ID with the SubscriptionId of your Azure Subscription.
+    Set the variable AZURE_TENANT_ID with the TenantId of your Azure Tenant.
+
+    ![Troubleshooting-3](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-03.png)
+
+3. Once the file ./configuration/.default.env is updated, you can run the following command from the Dev Container:
+
+    ```bash
+        ./devops-pipelines/utils/iactool.sh -a createapp -c ./configuration/.default.env
+    ```
+
+    This command will create the Application and display the appId of the new application:
+
+    ![Troubleshooting-4](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-04.png)
+
+    **Note**:
+    The creation of the Application in Microsoft Entra ID Tenant requires a redirect uri which is known once the infrastructure is deployed. This redirect Uri is a uri to an Azure Static Web App hosting the frontend. The creation of the Application in Microsoft Entra ID Tenant must be launched once the infrastructure is deployed. If you launch the creation of the Application in Microsoft Entra ID Tenant before deploying the infrastructure it will fail.
+
+4. Copy the value of the appId in a new variable in the variable group called 'AZURE_APP_ID'
+
+    ![Troubleshooting-5](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-05.png)
+
+5. Run the Web App Load Testing pipeline with the variable 'AZURE_APP_ID' defined in the variable group. If this variable is defined, the step 'Step Get or Create ApplicationId' will not try to create an application and will use AZURE_APP_ID value as the value of the Application.
+
 ## Under the hood
 
-### Defining load testing parameters
+### Creating the custom role associated with the Service Princpal
 
-Currently you can create one Azure DevOps pipeline using the YAML file below:
+The service principal used to run the load testing pipeline is associated with a custom role called 'Role Assignments Operator'. This role allows the service principal to assign role.
+The script [scripts/create-rbac-sp.sh](../../scripts/create-rbac-sp.sh) is used to create this custom role with Azure CLI.
+Once the role 'Role Assignments Operator' is created, it's assigned to the service principal with a scope associated with the Azure subscription.
+Oftentimes this assignment failed with the error "Custom Role doesn't exist", though the custom role was created during the previous step (az role assignment create).
+When you run the command line "az role definition list" check whether the custom role exists is acutally not consistent during several minutes:
+If you launch several times the command line below ater the creation of your custom role, it will never return the same result. Sometimes the custom role is not found, sometimes the role is found. The result is consistent after several minutes.
 
-- EventHubs with restricted public access Load Testing pipeline: [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml)
+```bash
+      az role definition list --custom-role-only true --name "$2" --scope "/subscriptions/$1" | jq -r '[.[]|select(.roleType=="CustomRole"and.roleName=="$2")][0].roleName'
 
-You can create one Github Actions using the YAML file below:
+```
 
-- EventHubs with restricted public access Load Testing GitHub action: [github-action-load-testing-eventhub-restricted-public-access.yml](./devops-pipelines/github-action/github-action-load-testing.yml)
+The turnaround consists in testing the existence of the custom role several times, if the custom role is detected or nor detected 'N' times in a row, we can consider the role as created or not present. Following sveral tests, when 'N=10', the custom role creation and assignment is successful.
 
-Associated with each pipeline or GitHub action there are:
+Below the function used to check whether the custom role exists or not.
 
-- a YAML file which defines the Azure Load Testing configuration. EventHubs with restricted public access Load Testing configuration file: [scenarios/eventhub-restricted-public-access/load-testing.template.yaml](./scenarios/eventhub-restricted-public-access/load-testing.template.yaml)  
-- a JMX file which contains the JMeter project in XML format. EventHubs with restricted public access Load Testing JMX file: [load-testing.jmx](./scenarios/eventhub-restricted-public-access/load-testing.jmx)  
+```bash
+    #######################################################
+    #- get Custom Role confirmed existence
+    # $1 = Subscription
+    # $2 = Custom Role Name
+    # $3 = Test Counter with same result
+    # $4 = Timeout in seconds 
+    #######################################################
+    roleExists () {
+        cmd="az role definition list --custom-role-only true --name \"$2\" --scope \"/subscriptions/$1\" | jq -r '[.[]|select(.roleType==\"CustomRole\"and.roleName==\"$2\")][0].roleName'"
+        local COUNTER=0
+        local EXIST_COUNTER=0
+        local NOT_EXIST_COUNTER=0
+        while (( NOT_EXIST_COUNTER < $3 && EXIST_COUNTER < $3 && COUNTER < $4 ));
+        do
+            ROLE=$(eval "${cmd}")
+            if [ "${ROLE}" == "$2" ]; then
+                NOT_EXIST_COUNTER=0
+                ((EXIST_COUNTER=EXIST_COUNTER+1))    
+            else
+                EXIST_COUNTER=0
+                ((NOT_EXIST_COUNTER=NOT_EXIST_COUNTER+1)) 
+            fi
+            sleep 1
+            ((COUNTER=COUNTER+1))
+            # echo "$COUNTER $EXIST_COUNTER $NOT_EXIST_COUNTER"
+        done   
+        if (( EXIST_COUNTER >= $3 )); then
+            echo "true"
+        else
+            if (( NOT_EXIST_COUNTER >= $3 )); then
+                echo "false"
+            else
+                if (( NOT_EXIST_COUNTER >= EXIST_COUNTER  )); then
+                    echo "false"
+                fi
+            fi
+        fi
+    }
+```
 
-For each load test you can define:
+Below the shell script to create and assign the custom role:
 
-- the number of engine instances to use,  
-- the average response time in ms threshold which triggers an error and stop the pipeline, if the average response time is over this threshold,
-- the error percentage threshold which triggers an error and stop the pipeline, if the error percentage is over this threshold.
+```bash
+    CUSTOM_ROLE_NAME="Role Assignments Operator"
+    verboseMessage "Assign custom role \"${CUSTOM_ROLE_NAME}\" to service principal"
+    verboseMessage "Checking if custom role \"${CUSTOM_ROLE_NAME}\" exists wait up-to 600 seconds"
+    if [ $(roleExists "${subscription}" "${CUSTOM_ROLE_NAME}" "10" "600") == "false" ]; then
+        TEMPDIR=$(mktemp -d)
+        cat > "${TEMPDIR}/role.json" << EOF
+    {
+        "Name": "${CUSTOM_ROLE_NAME}",
+        "IsCustom": true,
+        "Description": "Can assign roles.",
+        "Actions": [
+            "Microsoft.Authorization/roleAssignments/write",
+            "Microsoft.Authorization/roleAssignments/read"
+        ],
+        "NotActions": [
+        ],
+        "AssignableScopes": [
+            "/subscriptions/${subscription}"
+        ]
+    }
+    EOF
+        verboseMessage "Creating custom role \"${CUSTOM_ROLE_NAME}\""
+        cmd="az role definition create --role-definition \"${TEMPDIR}/role.json\""
+        eval "${cmd}" 1> /dev/null
+        verboseMessage "Waiting 60 seconds before assigning the role: '${CUSTOM_ROLE_NAME}'" 
+        sleep 60  
+    else
+        verboseMessage "Custom role \"${CUSTOM_ROLE_NAME}\" already exists"
+    fi
 
-For instance, if the average response time is over 100 ms or if the error percentage is over 5%, an error will be generated.
+    verboseMessage "Checking if custom role \"${CUSTOM_ROLE_NAME}\" exists wait up-to 600 seconds"
+    if [ $(roleExists "${subscription}" "${CUSTOM_ROLE_NAME}" "10" "600") == "true" ]; then
+        verboseMessage "Assigning custom role \"${CUSTOM_ROLE_NAME}\" to service principal"    
+        cmd="az role assignment create --assignee \"${appId}\"  --role \"${CUSTOM_ROLE_NAME}\"  --scope \"/subscriptions/${subscription}\" --only-show-errors"
+        # echo "${cmd}"
+        eval "${cmd}" 1> /dev/null 
+    else
+        errorMessage "Custom role '${CUSTOM_ROLE_NAME}' not created"
+        exit 1
+    fi
+```
 
-You also need to define in the Load Testing Configuration file the subnetId of subnet the Load Testing service will be connected to. The pipeline or the GitHub action will automatically replace {subnetId} with the value of the subnetId.
+### Creating the load testing pipeline task configuration file (yml file)
 
-Moreover, you need to define the information related to the storage of Azure Event Hubs token in the Azure Key Vault. You need to define the secret name for the Event Hubs Token in the JMX file (currently 'eventhub_token'), the Azure Key Vault Name and the Key Vault secret name.
+When you want to run the load testing scenario from a pipeline (Github Action or Azure DevOps), you need to prepare a YAML configuration file which will be used to configure the load testing step.
 
-All those input parameters are defined in the Load Testing configuration file in the following variables:
+This configuration file must contain for each test user the reference to the secret in Azure Key Vault where the Microsoft Entra ID token will be stored.
+As the number of users is not known in advance, the YAML configuration file will be created from a YAML template file with a "variable" called '{azureADTokens}'.
+The YAML template below:
 
-- {engineInstances}
-- {responseTimeMs}
-- {errorPercentage}
-- {subnetId}
-- {loadTestSecretName}
-- {keyVaultName}
-- {keyVaultSecretName}
-
-```yml
+```yaml
+    ---
+    version: v0.1
+    testName: load-testing-web-app-auth-multi-users
+    testPlan: load-testing.jmx
+    description: 'load-testing-web-app-auth-multi-users Test Run'
     engineInstances: "{engineInstances}"
-    subnetId: "{subnetId}"
 
     failureCriteria:
         - "avg(response_time_ms) > {responseTimeMs}"
         - "percentage(error) > {errorPercentage}"
-
     secrets:
-        - name: "{loadTestSecretName}"
-          value: "https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}/"
+    {azureADTokens}
 ```
 
-The Azure DevOps pipeline and the GitHub action automatically replaces the values in the configuration file.
-For instance, below the Azure DevOps step which updates the Load Testing configuration file to take into account the values of "engineInstances", "responseTimeMs", "errorPercentage", "loadTestSecretName", "keyVaultName", "keyVaultSecretName", "subnetId":  
-
-```yml
-    - task: AzureCLI@2
-      displayName: 'Configure and display Load Testing Configuration for Eventhub'
-      name: configureloadtest
-      inputs:
-        azureSubscription: $(SERVICE_CONNECTION)
-        scriptType: "bash"
-        addSpnToEnvironment: "true"
-        scriptLocation: "inlineScript"
-        inlineScript: |
-          # Read variables from configuration file
-          set -o allexport
-          source "$(CONFIGURATION_FILE)"
-          set +o allexport
-
-          echo "AZURE_RESOURCE_EVENTHUBS_NAMESPACE: $(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
-          echo "AZURE_RESOURCE_EVENTHUB_INPUT1_NAME: $(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
-          echo "AZURE_RESOURCE_EVENTHUB_INPUT2_NAME: $(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
-          echo "DURATION: ${{ parameters.duration }}"
-          echo "THREADS: ${{ parameters.threads }}"
-          echo "ENGINE INSTANCES: ${{ parameters.engineInstances }}"
-          echo "ERROR PERCENTAGE: ${{ parameters.errorPercentage }}"
-          echo "RESPONSE TIME MS: ${{ parameters.responseTimeMs }}"
-          # Update Load Testing configuration file
-          TEMP_DIR=$(mktemp -d)
-          cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/eventhub-restricted-public-access/load-testing.jmx" "$TEMP_DIR/load-testing.jmx"
-          cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents1.csv" "$TEMP_DIR/load-testing-eventhubevents1.csv"
-          cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/eventhub-restricted-public-access/load-testing-eventhubevents2.csv" "$TEMP_DIR/load-testing-eventhubevents2.csv"
-          cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/eventhub-restricted-public-access/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.yaml"
-          sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing.yaml"
-
-          echo "load-testing.yaml content:"
-          cat "$TEMP_DIR/load-testing.yaml"
-
-          # Store the temporary directory in output variable
-          echo "##vso[task.setvariable variable=TEMP_DIR;issecret=false]$TEMP_DIR"
-          echo "##vso[task.setvariable variable=LOAD_TESTING_RESOURCE_GROUP;issecret=false]$LOAD_TESTING_RESOURCE_GROUP"
-          echo "##vso[task.setvariable variable=LOAD_TESTING_NAME;issecret=false]$LOAD_TESTING_NAME"
-```
-
-### Opening access to Azure Event Hubs and Azure Key Vault
-
-Before running the Load Test, we need to ensure the Azure Event Hubs and the Azure Key Vault are accessible from Azure Load Testing.
-
-For instance, below the Azure DevOps pipeline step in [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml) which calls iactoo.sh bash with the option 'opentest'.
-
-```yml
-    - task: AzureCLI@2
-      displayName: 'Open access to EventHub and KeyVault for the test'
-      name: openloadtest
-      inputs:
-        azureSubscription: $(SERVICE_CONNECTION)
-        scriptType: "bash"
-        addSpnToEnvironment: "true"
-        scriptLocation: "inlineScript"
-        inlineScript: |
-          cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a opentest -c $(CONFIGURATION_FILE)"
-          echo "$cmd"
-          eval "$cmd"
-```
-
-The bash file:
-
-- reads the variables in the configuration file (./projects/web-app-auth/configuration/.default.env)
-- adds the public IP address in the list of IP addresses allowed to access the Azure Event Hubs.
-- allows the Access to the Azure Key Vault where the Event Hubs token will be stored
+A bash script will replace all the variables in the YAML template file with their respectives values, see the code below:
 
 ```bash
-    readConfigurationFile "$CONFIGURATION_FILE"
+      cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.yaml" "$TEMP_DIR/load-testing.yaml"
+      sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$TEMP_DIR/load-testing.yaml"
+      sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$TEMP_DIR/load-testing.yaml"
+      sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$TEMP_DIR/load-testing.yaml"
 
-    printProgress "Open access to EventHubs '${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}' access for the load testing resource with public ip: ${LOAD_TESTING_PUBLIC_IP_ADDRESS}..."    
-    if [[ -n ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} ]]; then
-        if [[ -n $(az eventhubs namespace show --name "${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}" --resource-group "${RESOURCE_GROUP}" 2>/dev/null| jq -r .id) ]]; then
-            if [[ -n ${LOAD_TESTING_PUBLIC_IP_ADDRESS} ]]; then
-                cmd="az eventhubs namespace network-rule-set list  --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} | jq -r '.[].ipRules[]  |  select(.ipMask==\"${LOAD_TESTING_PUBLIC_IP_ADDRESS}\") ' | jq --slurp '.[0].action' | tr -d '\"'"
-                ALLOW=$(eval "${cmd}")
-                if [ ! "${ALLOW}" == "Allow" ]  
-                then
-                    # Get Agent IP address
-                    ip=$(curl -s https://ifconfig.me/ip) || true
-                    cmd="az eventhubs namespace network-rule-set update --namespace-name ${AZURE_RESOURCE_EVENTHUBS_NAMESPACE} -g ${RESOURCE_GROUP} --default-action Deny --public-network Enabled --ip-rules \"[{ip-mask:${ip},action:Allow},{ip-mask:${LOAD_TESTING_PUBLIC_IP_ADDRESS},action:Allow}]\"  "
-                    eval "${cmd}" >/dev/null
-                    checkError
-                    # Wait 30 seconds for the access to the eventhubs
-                    sleep 30
-                fi
-            fi
-        fi
-    fi
+      COUNTER=1
+      AZURE_AD_TOKENS=""
+      while read item; do     
+          ITEM="    - name: \"{loadTestSecretName}_${COUNTER}\"
+            value: \"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}-${COUNTER}/\""
+          # echo ITEM: "${ITEM}"
+          if [[ COUNTER -eq 1 ]]; then
+              AZURE_AD_TOKENS="${ITEM}"
+          else
+              AZURE_AD_TOKENS="${AZURE_AD_TOKENS}
+      ${ITEM}"
+          fi
+          (( COUNTER++ ))
+      done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+      
+      echo AZURE_AD_TOKENS: "${AZURE_AD_TOKENS}"
+      AZURE_AD_TOKENS_ESCAPE=$(echo "${AZURE_AD_TOKENS}" | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g' |  sed '$!s@$@\\@g')
+      echo AZURE_AD_TOKENS_ESCAPE: "${AZURE_AD_TOKENS_ESCAPE}"
+      sed -i "s/{azureADTokens}/${AZURE_AD_TOKENS_ESCAPE}/g" "$TEMP_DIR/load-testing.yaml"
+      sed -i "s/{loadTestSecretName}/token/g" "$TEMP_DIR/load-testing.yaml"
+      sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.yaml"
+      sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.yaml"
 
-    printProgress "Open access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
-    cmd="az keyvault update --default-action Allow --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
-    eval "${cmd}" >/dev/null
-    checkError
-    printMessage "Eventhub and Keyvault are now accessible from Azure Load Testing"
-
-```
-
-### Implementing the Azure Event Hubs authentication in the JMX files
-
-For the Azure Event Hubs Load Testing pipeline [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml), the authentication with Azure Event Hubs is required, the Load Testing platform sends the Event Hubs Shared Access Token in each http requests towards the endpoint for the authentication.
-
-In the step 'Get EventHub Token and store it in Key Vault', the pipeline create the Event Hubs Shared Access Token using the bash file [get-event-hub-token.sh](./scripts/get-event-hub-token.sh) and then store the token in the Azure Key Vault using the Azure CLI command line 'az keyvault secret set '.
-
-```bash
-    - task: AzureCLI@2
-      displayName: 'Get EventHub Token and store it in Key Vault'
-      name: getandstoretoken
-      inputs:
-        azureSubscription: $(SERVICE_CONNECTION)
-        scriptType: "bash"
-        addSpnToEnvironment: "true"
-        scriptLocation: "inlineScript"
-        inlineScript: |
-          # Read variables from configuration file
-          set -o allexport
-          source "$(CONFIGURATION_FILE)"
-          set +o allexport
-
-          cat "$(CONFIGURATION_FILE)"
-
-          # Get Event Hub Token
-          KEY=$(az eventhubs namespace authorization-rule keys list --resource-group "$(RESOURCE_GROUP)" --namespace-name "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)" --name RootManageSharedAccessKey | jq -r .primaryKey)
-          echo "KEY: $KEY"
-          EVENTHUB_TOKEN=$("$(System.DefaultWorkingDirectory)/scripts/get-event-hub-token.sh" "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)" RootManageSharedAccessKey "${KEY}")
-          echo "EVENTHUB_TOKEN: $EVENTHUB_TOKEN"
-
-          # store eventhub token into azure key vault secret
-          az keyvault secret set --vault-name "${LOAD_TESTING_KEY_VAULT_NAME}" --name "${LOAD_TESTING_SECRET_NAME}" --value "${EVENTHUB_TOKEN}" --output none
+      echo "load-testing.yaml content:"
+      cat "$TEMP_DIR/load-testing.yaml"
 
 ```
 
-The information related to the token stored in the Azure Key Vault are already defined in the file [load-testing-eventhub-restricted-public-access.template.yaml](./scenarios/eventhub-restricted-public-access/load-testing.template.yaml)
-
-```yml
-    secrets:
-        - name: "{loadTestSecretName}"
-          value: "https://{keyVaultName}.vault.azure.net/secrets/{keyVaultSecretName}/"
-```
-
-This configuration file is used to create the load test in the step: 'Step Run Load Testing EventHub'.
-This step shares the Event Hubs Shared Access Token with the load testing platform running the jmx file through the secret called 'eventhub_token':  
+And the new YAML configuration is created with the expected values:
 
 ```yaml
-    - task: AzureLoadTest@1
-      displayName: 'Step Run Load Testing EventHub'
-      inputs:
-        azureSubscription: $(SERVICE_CONNECTION)
-        loadTestConfigFile: '$(TEMP_DIR)/load-testing.yaml'
-        resourceGroup: $(LOAD_TESTING_RESOURCE_GROUP)
-        loadTestResource: $(LOAD_TESTING_NAME)
-        secrets: |
-          [
-          ]
-        env: |
-          [
-            {
-            "name": "eventhub_name_space",
-            "value": "$(AZURE_RESOURCE_EVENTHUBS_NAMESPACE)"
-            },
-            {
-            "name": "eventhub_input_1",
-            "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT1_NAME)"
-            },
-            {
-            "name": "eventhub_input_2",
-            "value": "$(AZURE_RESOURCE_EVENTHUB_INPUT2_NAME)"
-            },
-            {
-            "name": "duration",
-            "value": "${{ parameters.duration }}"
-            },
-            {
-            "name": "threads",
-            "value": "${{ parameters.threads }}"
-            }
-          ]
+    ---
+    version: v0.1
+    testName: load-testing-web-app-auth-multi-users
+    testPlan: load-testing.jmx
+    description: 'load-testing-web-app-auth-multi-users Test Run'
+    engineInstances: "1"
+
+    failureCriteria:
+        - "avg(response_time_ms) > 100"
+        - "percentage(error) > 5"
+    secrets:
+        - name: "token_1"
+          value: "https://kvwaa8593.vault.azure.net/secrets/AD-TOKEN-1/"
+        - name: "token_2"
+          value: "https://kvwaa8593.vault.azure.net/secrets/AD-TOKEN-2/"
+        - name: "token_3"
+          value: "https://kvwaa8593.vault.azure.net/secrets/AD-TOKEN-3/"
+        - name: "token_4"
+          value: "https://kvwaa8593.vault.azure.net/secrets/AD-TOKEN-4/"
+        - name: "token_5"
+          value: "https://kvwaa8593.vault.azure.net/secrets/AD-TOKEN-5/"
 ```
 
-The load testing service reads the secret called 'eventhub_token'and initialize the variable 'udv_token' with the token value.
+### Creating the load testing json files
 
-```xml
-    <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
-      <collectionProp name="Arguments.arguments">
-        <elementProp name="udv_namespace" elementType="Argument">
-          <stringProp name="Argument.name">udv_namespace</stringProp>
-          <stringProp name="Argument.value">${__BeanShell( System.getenv("eventhub_name_space") )}</stringProp>
-          <stringProp name="Argument.desc">Event Hubs Name Space</stringProp>
-          <stringProp name="Argument.metadata">=</stringProp>
-        </elementProp>
-        <elementProp name="udv_evinput1" elementType="Argument">
-          <stringProp name="Argument.name">udv_evinput1</stringProp>
-          <stringProp name="Argument.value">${__BeanShell( System.getenv("eventhub_input_1") )}</stringProp>
-          <stringProp name="Argument.desc">Event Hub input 1</stringProp>
-          <stringProp name="Argument.metadata">=</stringProp>
-        </elementProp> 
-        <elementProp name="udv_evinput2" elementType="Argument">
-          <stringProp name="Argument.name">udv_evinput2</stringProp>
-          <stringProp name="Argument.value">${__BeanShell( System.getenv("eventhub_input_2") )}</stringProp>
-          <stringProp name="Argument.desc">Event Hub input 2</stringProp>
-          <stringProp name="Argument.metadata">=</stringProp>
-        </elementProp>             
-        <elementProp name="udv_token" elementType="Argument">
-          <stringProp name="Argument.name">udv_token</stringProp>
-          <stringProp name="Argument.value">${__GetSecret(eventhub_token)}</stringProp>
-          <stringProp name="Argument.desc">Event Hub Token</stringProp>
-          <stringProp name="Argument.metadata">=</stringProp>
-        </elementProp>
-        <elementProp name="udv_duration" elementType="Argument">
-          <stringProp name="Argument.name">udv_duration</stringProp>
-          <stringProp name="Argument.value">${__BeanShell( System.getenv("duration") )}</stringProp>
-          <stringProp name="Argument.desc">Test Duration</stringProp>
-          <stringProp name="Argument.metadata">=</stringProp>
-        </elementProp>
-        <elementProp name="udv_threads" elementType="Argument">
-          <stringProp name="Argument.name">udv_threads</stringProp>
-          <stringProp name="Argument.value">${__BeanShell( System.getenv("threads") )}</stringProp>
-          <stringProp name="Argument.desc">Test number of threads</stringProp>
-          <stringProp name="Argument.metadata">=</stringProp>
-        </elementProp>                                           
-      </collectionProp>
-    </Arguments>
+When we run the load testing process from the Dev Container, we can't use the YAML configuration file used to configure the load testing pipeline task. Instead we use two different json templates. From those json templates, two json files will be generated and used to call the Load Testing REST API.
+It's the same template approach for the json files associated with the load testing scenario: in the repository there is a load-testing.template.json template file and a load-testing-run.template.json template file. Those two template file include the variables {users} and {azureADTokens}. The value of those 2 variables depends on the number of users.
+Below the file load-testing.template.json with {users} and {azureADTokens} variables.
+
+```json
+    {
+      "description": "{name} Test",
+      "displayName": "{name}",
+      "loadTestConfiguration": {
+        "engineInstances": "{engineInstances}",
+        "splitAllCSVs": false
+      },
+      "passFailCriteria": {
+        "passFailMetrics": {
+          "fefd759d-7fe8-4f83-8b6d-aeebe0f491fe": {
+            "clientMetric": "response_time_ms",
+            "aggregate": "avg",
+            "condition": ">",
+            "value":  "{responseTimeMs}",
+            "action": "continue"
+          },
+          "fefd759d-7fe8-4f83-8b6d-aeebe0f491ff": {
+            "clientMetric": "error",
+            "aggregate": "percentage",
+            "condition": ">",
+            "value": "{errorPercentage}",
+            "action": "continue"
+          }
+        }
+      },
+      "secrets": {
+        {azureADTokens}
+      },
+      "environmentVariables": {
+        {users},
+        "hostname": "{hostname}",
+        "path": "{path}",    
+        "duration": "{duration}",
+        "threads": "{threads}"
+      },
+      "keyvaultReferenceIdentityType": "SystemAssigned"
+    }
 ```
 
-And finally, the http header 'Authorization' is initialized with the value of the 'udv_token' variable.
-
-```xml
-    <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
-      <collectionProp name="HeaderManager.headers">
-        <elementProp name="" elementType="Header">
-          <stringProp name="Header.name">Content-Type</stringProp>
-          <stringProp name="Header.value">application/atom+xml;type=entry;charset=utf-8</stringProp>
-        </elementProp>
-        <elementProp name="" elementType="Header">
-          <stringProp name="Header.name">Authorization</stringProp>
-          <stringProp name="Header.value">${udv_token}</stringProp>
-        </elementProp>
-        <elementProp name="" elementType="Header">
-          <stringProp name="Header.name">Host</stringProp>
-          <stringProp name="Header.value">${udv_namespace}.servicebus.windows.net</stringProp>
-        </elementProp>
-        <elementProp name="" elementType="Header">
-          <stringProp name="Header.name">BrokerProperties</stringProp>
-          <stringProp name="Header.value">{"PartitionKey": "${appid}${hostname}"}</stringProp>
-        </elementProp>
-      </collectionProp>
-    </HeaderManager>
-```
-
-### Streaming events from two different CSV files simultaneously
-
-For this scenario, the infrastructure supports two input Event Hubs receiving different kind of events:
-
-The input 1 receives events generated from the content in file [load-testing-eventhubevents1.csv](./devops-pipelines/load-testing/load-testing-eventhubevents1.csv)
-
-```csv
-      index,appid,hostname,ts,severity,http_status,domain,application
-      0,loadtest0,evhasa,2022-05-13T15:04:35.7602665,W,204,com.some.logger,MAIN
-      1,loadtest1,evhasa,2022-05-13T15:04:35.6517124,W,200,com.some.logger,MAIN
-      2,loadtest2,evhasa,2022-05-13T15:06:35.4017622,W,200,com.some.logger,MAIN
-      3,loadtest3,evhasa,2022-05-13T15:08:35.2924317,W,202,com.some.logger,MAIN
-      4,loadtest4,evhasa,2022-05-13T15:10:35.2924317,W,202,com.some.logger,MAIN
-      .
-      .
-```
-
-The input 2 receives events generated from the content in file [load-testing-eventhubevents2.csv](./devops-pipelines/load-testing/load-testing-eventhubevents2.csv)
-
-```csv
-      index,appid,hostname,ts,time_ms,resp_time,failed_trans
-      0,loadtest0,evhasa,2022-05-13T15:00:35.6517124,395,160,134
-      1,loadtest1,evhasa,2022-05-13T15:01:35.4017622,216,386,32
-      2,loadtest2,evhasa,2022-05-13T15:02:35.2924317,168,163,24
-      3,loadtest3,evhasa,2022-05-13T15:03:34.8030526,91,121,52
-      .
-      .
-```
-
-These two CSV source files don't contain the same kind of data, the columns are different, the file [load-testing-eventhub-restricted-public-access.jmx](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access.jmx) has been updated to support the different models.
-
-Input 1 with the declaration of each variable associated with the columns in the first CSV file:
-
-```xml
-    <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Logs" enabled="true">
-      <stringProp name="delimiter">,</stringProp>
-      <stringProp name="fileEncoding">UTF-8</stringProp>
-      <stringProp name="filename">load-testing-eventhubevents1.csv</stringProp>
-      <boolProp name="ignoreFirstLine">true</boolProp>
-      <boolProp name="quotedData">true</boolProp>
-      <boolProp name="recycle">true</boolProp>
-      <stringProp name="shareMode">shareMode.all</stringProp>
-      <boolProp name="stopThread">true</boolProp>
-      <stringProp name="variableNames">index,appid,hostname,ts,severity,http_status,domain,application</stringProp>
-    </CSVDataSet> 
-```
-
-Input 2 with the declaration of each variable associated with the columns in the second CSV file:
-
-```xml
-    <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Metrics" enabled="true">
-      <stringProp name="delimiter">,</stringProp>
-      <stringProp name="fileEncoding">UTF-8</stringProp>
-      <stringProp name="filename">load-testing-eventhubevents2.csv</stringProp>
-      <boolProp name="ignoreFirstLine">true</boolProp>
-      <boolProp name="quotedData">true</boolProp>
-      <boolProp name="recycle">true</boolProp>
-      <stringProp name="shareMode">shareMode.all</stringProp>
-      <boolProp name="stopThread">true</boolProp>
-      <stringProp name="variableNames">index,appid,hostname,ts,time_ms,resp_time,failed_trans</stringProp>
-    </CSVDataSet>  
-```
-
-Once the format of the source files is defined, the file [load-testing.jmx](./scenarios/eventhub-restricted-public-access/load-testing.jmx) is updated to define the format of the HTTP request body towards the Event Hub.
-
-HTTP request for Input 1:
-
-```xml
-    <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Logs Request" enabled="true">
-      <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
-      <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-        <collectionProp name="Arguments.arguments">
-          <elementProp name="" elementType="HTTPArgument">
-            <boolProp name="HTTPArgument.always_encode">false</boolProp>
-            <stringProp name="Argument.value">{&quot;ts&quot;: &quot;${__time(yyyy-MM-dd)}T${__time(HH:mm:ss:SSS)}&quot;, &quot;appid&quot;:&quot;${appid}&quot;,&quot;hostname&quot;: &quot;${hostname}&quot;,&quot;severity&quot;:&quot;${severity}&quot;,&quot;http_status&quot;:&quot;${http_status}&quot;,&quot;domain&quot;:&quot;${domain}&quot;,&quot;application&quot;:&quot;${application}&quot; }&#xd;</stringProp>
-            <stringProp name="Argument.metadata">=</stringProp>
-          </elementProp>
-        </collectionProp>
-      </elementProp>
-      <stringProp name="HTTPSampler.domain">${udv_namespace}.servicebus.windows.net</stringProp>
-      <stringProp name="HTTPSampler.port">443</stringProp>
-      <stringProp name="HTTPSampler.protocol">https</stringProp>
-      <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-      <stringProp name="HTTPSampler.path">${udv_evinput1}/messages?timeout=60&amp;api-version=2014-01</stringProp>
-      <stringProp name="HTTPSampler.method">POST</stringProp>
-      <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-      <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
-      <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-      <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
-      <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
-      <stringProp name="HTTPSampler.connect_timeout"></stringProp>
-      <stringProp name="HTTPSampler.response_timeout"></stringProp>
-    </HTTPSamplerProxy>
-```
-
-HTTP request for Input 2:
-
-```xml
-    <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Metrics Request" enabled="true">
-      <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
-      <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
-        <collectionProp name="Arguments.arguments">
-          <elementProp name="" elementType="HTTPArgument">
-            <boolProp name="HTTPArgument.always_encode">false</boolProp>
-            <stringProp name="Argument.value">{&quot;ts&quot;: &quot;${__time(yyyy-MM-dd)}T${__time(HH:mm:ss:SSS)}&quot;, &quot;appid&quot;:&quot;${appid}&quot;,&quot;hostname&quot;: &quot;${hostname}&quot;,&quot;time_ms&quot;:&quot;${time_ms}&quot;,&quot;resp_time&quot;:&quot;${resp_time}&quot;,&quot;failed_trans&quot;:&quot;${failed_trans}&quot; }&#xd;</stringProp>
-            <stringProp name="Argument.metadata">=</stringProp>
-          </elementProp>
-        </collectionProp>
-      </elementProp>
-      <stringProp name="HTTPSampler.domain">${udv_namespace}.servicebus.windows.net</stringProp>
-      <stringProp name="HTTPSampler.port">443</stringProp>
-      <stringProp name="HTTPSampler.protocol">https</stringProp>
-      <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-      <stringProp name="HTTPSampler.path">${udv_evinput2}/messages?timeout=60&amp;api-version=2014-01</stringProp>
-      <stringProp name="HTTPSampler.method">POST</stringProp>
-      <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-      <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
-      <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-      <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
-      <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
-      <stringProp name="HTTPSampler.connect_timeout"></stringProp>
-      <stringProp name="HTTPSampler.response_timeout"></stringProp>
-    </HTTPSamplerProxy>
-```
-<!-- markdown-link-check-disable -->
-Moreover, the ts value (Timestamp) in the body of the POST HTTP request is updated with the current time.
-
-At least, when the test is completed, you can check in the result file whether both Event Hub inputs did receive the HTTP Request:
-
-| timeStamp  | elapsed | label | responseCode | responseMessage | threadName | dataType | URL | Latency | IdleTime | Connect|
-|:----------:|:-------:|:-----:|:-------------:|:----------------:|:-----------:|:---------:|:----|:-------:|:---------:|:-------:|
-|1.67395E+12 | 122   | Logs  Request | 201     | Created   | 10.1.1.4-Thread Group 1-1 | text | "https://evhevhubxxxx.servicebus.windows.net/evinput1/messages?timeout=60&api-version=2014-01" | 122 | 0 | 63|
-| 1.67395E+12 | 39 | Metrics Request | 201 | Created | 10.1.1.4-Thread Group 1-1 | text | "https://evhevhubxxxx.servicebus.windows.net/evinput2/messages?timeout=60&api-version=2014-01" | 39 | 0 | 0|
-| 1.67395E+12 | 44 | Logs Request | 201 | Created | 10.1.1.4-Thread Group 1-1 | text | "https://evhevhubxxxx.servicebus.windows.net/evinput1/messages?timeout=60&api-version=2014-01" | 44 | 0 | 0|
-| 1.67395E+12 | 40 | Metrics Request | 201 | Created | 10.1.1.4-Thread Group 1-1 | text | "https://evhevhubxxxx.servicebus.windows.net/evinput2/messages?timeout=60&api-version=2014-01"  | 40  | 0 | 0|
-<!-- markdown-link-check-enable -->
-
-### Using Data Plane Load Test Administration and Load Test Run REST API
-
-When you use load-testing-tool.sh bash file with the option 'runtest' to run the load tests, it uses Data Plane Load Test Administration and Load Test Run REST APIs to create the test, run the test and monitor the test.
-
-Before calling the REST API, you need to get the Load Testing Token. First you need to retrieve the Load Testing Hostname from the Load Testing Azure resource. Once you can get the hostname, you can get the token using the Azure CLI command 'az account get-access-token' see below:
+below the bash script to create the json file used to create the load testing scenario through the Azure Load Testing REST API.
 
 ```bash
-    LOAD_TESTING_HOSTNAME=$(az load  show --name "${LOAD_TESTING_RESOURCE_NAME}" --resource-group "${LOAD_TESTING_RESOURCE_GROUP}" | jq -r ".dataPlaneURI")
-    LOAD_TESTING_TOKEN=$(az account get-access-token --resource "${LOAD_TESTING_HOSTNAME}" --scope "https://cnt-prod.loadtesting.azure.com/.default" | jq -r '.accessToken')
-```
-
-Once you get the token, you can call the load test administration REST API to create a new test filling the values in the template file [./scenarios/eventhub-restricted-public-access/load-testing.template.json](./scenarios/eventhub-restricted-public-access/load-testing.template.json). This json file is used as the body of the REST API call. 
-
-Further information about the load test administration REST API on this page: [https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-administration](https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-administration)
-
-Below the code to create the load test:
-
-```bash
-    LOAD_TESTING_TEST_ID=$(cat /proc/sys/kernel/random/uuid)
-
-    printProgress ""
-    printProgress "Creating/Updating test ${LOAD_TESTING_TEST_NAME} ID:${LOAD_TESTING_TEST_ID}..."    
-    # Update Load Testing configuration file
-    TEMP_DIR=$(mktemp -d)
     cp  "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.template.json"  "$TEMP_DIR/load-testing.json"
     sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing.json"
     sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing.json"
     sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing.json"
     sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing.json"
-    sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing.json"
-    sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.json"
-    sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.json"
-    sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing.json"
-    sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing.json"
-    sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing.json"
+    sed -i "s/{hostname}/$(echo ${LOAD_TESTING_TARGET_HOSTNAME} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.json"
+    sed -i "s/{path}/$(echo ${LOAD_TESTING_TARGET_PATH} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.json"
     sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing.json"
     sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing.json"
-    sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing.json"
+    
+    COUNTER=1
+    AZURE_AD_TOKENS=""
+    while read item; do     
+        ITEM="\"token_${COUNTER}\":{\"value\":\"https://{keyVaultName}.vault.azure.net/secrets/{keyVaultAzureADTokenSecretName}-${COUNTER}/\",\"type\":\"AKV_SECRET_URI\"}"
+        # echo "ITEM: ${ITEM}"
+        if [[ COUNTER -eq 1 ]]; then
+            AZURE_AD_TOKENS="${ITEM}"
+        else
+            AZURE_AD_TOKENS="${AZURE_AD_TOKENS},${ITEM}"
+        fi
+        (( COUNTER++ ))
+    done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+    # echo "AZURE_AD_TOKENS: ${AZURE_AD_TOKENS}"
+    sed -i "s/{azureADTokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.json"
+
+    COUNTER=1
+    USERS=""
+    while read item; do 
+        VALUE=$(jq -r '.adu' <<< "$item");
+        ITEM="\"user_${COUNTER}\":\"${VALUE}\""
+        # echo "ITEM: ${ITEM}"
+        if [[ COUNTER -eq 1 ]]; then
+            USERS="${ITEM}"
+        else
+            USERS="${USERS},${ITEM}"
+        fi
+        (( COUNTER++ ))
+    done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+    # echo "USERS: ${USERS}"
+    sed -i "s/{users}/$(echo ${USERS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.json"
+
+    sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing.json"
+    sed -i "s/{keyVaultAzureADTokenSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing.json"
+    
+```
+
+Below the bash script which call the load testing REST API to create the new test scenario with the json file:
+
+```bash
 
     cmd="curl -s -X PATCH \
     \"https://$LOAD_TESTING_HOSTNAME/tests/$LOAD_TESTING_TEST_ID?api-version=2022-11-01\" \
     -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer $LOAD_TESTING_TOKEN' \
     -d \"@$TEMP_DIR/load-testing.json\" "
     eval "$cmd" >/dev/null
+
 ```
 
-Once the load test is created you need to upload the jmx and csv files associated with the load test using the code below:
+### Creating the load testing jmx file
 
-```bash
-    cmd="curl -s -X PUT \
-    \"https://${LOAD_TESTING_HOSTNAME}/tests/${LOAD_TESTING_TEST_ID}/files/load-testing.jmx?fileType=JMX_FILE&api-version=2022-11-01\" \
-    -H 'Content-Type: application/octet-stream' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-    --data-binary  \"@$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing.jmx\" "
-    eval "$cmd" >/dev/null
+It's the same template approach for the jmx file associated with the load testing scenario: in the repository there is a JMX template file for each load testing scenario with variables {users} and {tokens}. The value of those 2 variables depends on the number of users used for the tests.
+Below an extract of the JMX template file:  
+
+```xml
+        <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+          <collectionProp name="Arguments.arguments">
+            <elementProp name="udv_hostname" elementType="Argument">
+              <stringProp name="Argument.name">udv_hostname</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("hostname") )}</stringProp>
+              <stringProp name="Argument.desc">API hostname</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="udv_path" elementType="Argument">
+              <stringProp name="Argument.name">udv_path</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("path") )}</stringProp>
+              <stringProp name="Argument.desc">API request path</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>                        
+            <elementProp name="udv_duration" elementType="Argument">
+              <stringProp name="Argument.name">udv_duration</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("duration") )}</stringProp>
+              <stringProp name="Argument.desc">Test Duration</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="udv_threads" elementType="Argument">
+              <stringProp name="Argument.name">udv_threads</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("threads") )}</stringProp>
+              <stringProp name="Argument.desc">Test number of threads</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>                         
+            {users}
+            {tokens}                                                                                 
+          </collectionProp>
+        </Arguments>
+
 ```
 
-Once the jmx file and the 2 csv files are uploaded, you can run the load test using the load test run REST API. Further information about this REST API on this page:
-[https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-run](https://learn.microsoft.com/en-us/rest/api/loadtesting/dataplane(2022-11-01)/load-test-run).
-
-You need to fill the values in the template file [./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access-run.template.json](./devops-pipelines/load-testing/load-testing-eventhub-restricted-public-access-run.template.json) before calling the API to run the test. This json file is used as the body of the REST API call. 
+Below the bash script used to generate the JMX file for the test:
 
 ```bash
-    LOAD_TESTING_TEST_RUN_ID=$(cat /proc/sys/kernel/random/uuid)
-    printProgress "Launching test ${LOAD_TESTING_TEST_NAME} RunID:${LOAD_TESTING_TEST_RUN_ID}..."    
-    # Update Load Testing configuration file
-    LOAD_TESTING_DATE=$(date +"%y%m%d-%H%M%S")
-    TEMP_DIR=$(mktemp -d)
-    cp  "$SCRIPTS_DIRECTORY/../../../projects/web-app-auth/scenarios/${LOAD_TESTING_SCENARIO}/load-testing-run.template.json"  "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{name}/${LOAD_TESTING_TEST_NAME}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{id}/${LOAD_TESTING_TEST_ID}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{date}/${LOAD_TESTING_DATE}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{engineInstances}/${LOAD_TESTING_ENGINE_INSTANCES}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{errorPercentage}/${LOAD_TESTING_ERROR_PERCENTAGE}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{responseTimeMs}/${LOAD_TESTING_RESPONSE_TIME}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{loadTestSecretName}/eventhub_token/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{keyVaultName}/${LOAD_TESTING_KEY_VAULT_NAME}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{keyVaultSecretName}/${LOAD_TESTING_SECRET_NAME}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{eventhubNameSpace}/${AZURE_RESOURCE_EVENTHUBS_NAMESPACE}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{eventhubInput1}/${AZURE_RESOURCE_EVENTHUB_INPUT1_NAME}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{eventhubInput2}/${AZURE_RESOURCE_EVENTHUB_INPUT2_NAME}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{duration}/${LOAD_TESTING_DURATION}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{threads}/${LOAD_TESTING_THREADS}/g" "$TEMP_DIR/load-testing-run.json"
-    sed -i "s/{subnetId}/${LOAD_TESTING_SUBNET_ID////\\/}/g" "$TEMP_DIR/load-testing-run.json"
+      printMessage "Preparing load-testing.jmx for test ${LOAD_TESTING_TEST_NAME}..." 
+      cp "$(System.DefaultWorkingDirectory)/projects/web-app-auth/scenarios/web-app-auth-multi-users/load-testing.template.jmx" "$TEMP_DIR/load-testing.jmx"
+      COUNTER=1
+      AZURE_AD_TOKENS=""
+      while read item; do     
+          ITEM="<elementProp name=\"udv_token_${COUNTER}\" elementType=\"Argument\"><stringProp name=\"Argument.name\">udv_token_${COUNTER}</stringProp><stringProp name=\"Argument.value\">\${__GetSecret(token_${COUNTER})}</stringProp><stringProp name=\"Argument.desc\">Azure AD or SAS Token Token ${COUNTER}</stringProp><stringProp name=\"Argument.metadata\">=</stringProp></elementProp>"
+          if [[ COUNTER -eq 1 ]]; then
+              AZURE_AD_TOKENS="${ITEM}"
+          else
+              AZURE_AD_TOKENS="${AZURE_AD_TOKENS},${ITEM}"
+          fi
+          (( COUNTER++ ))
+      done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
+      sed -i "s/{tokens}/$(echo ${AZURE_AD_TOKENS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
 
-    # Wait 10 seconds to be sure the JMX file is validated
-    sleep 10
+      COUNTER=1
+      USERS=""
+      while read item; do 
+          VALUE=$(jq -r '.adu' <<< "$item");
+          ITEM="<elementProp name=\"udv_user_${COUNTER}\" elementType=\"Argument\"><stringProp name=\"Argument.name\">udv_user_${COUNTER}</stringProp><stringProp name=\"Argument.value\">\${__BeanShell( System.getenv(\"user_${COUNTER}\") )}</stringProp><stringProp name=\"Argument.desc\">User ${COUNTER}</stringProp><stringProp name=\"Argument.metadata\">=</stringProp></elementProp>"
+          if [[ COUNTER -eq 1 ]]; then
+              USERS="${ITEM}"
+          else
+              USERS="${USERS},${ITEM}"
+          fi
+          (( COUNTER++ ))
+      done <<< $(echo "${LOAD_TESTING_USERS_CONFIGURATION}" | jq -c -r ".[]" ); 
 
-    cmd="curl -s -X PATCH  \
-    \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' \
-    -d \"@$TEMP_DIR/load-testing-run.json\" "
-    eval "$cmd"  >/dev/null
+      sed -i "s/{users}/$(echo ${USERS} | sed -e 's/\\/\\\\/g; s/\//\\\//g; s/&/\\\&/g')/g" "$TEMP_DIR/load-testing.jmx"
+      (( COUNTER-- ))
+      sed -i "s/{count}/${COUNTER}/g" "$TEMP_DIR/load-testing.jmx"
+
+      echo "$TEMP_DIR/load-testing.jmx content:"
+      cat "$TEMP_DIR/load-testing.jmx"
 ```
 
-Once the load test is launched, you can monitor the status of the load test using the REST API below.
+Below the generated JMX file with the properties "udv_user_x" and "udv_token_x":
 
-```bash
-    statuscmd="curl -s -X GET \
-    \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
-    # echo "$statuscmd"
-    LOAD_TESTING_STATUS="unknown"
-    while [ "${LOAD_TESTING_STATUS}" != "DONE" ] && [ "${LOAD_TESTING_STATUS}" != "FAILED" ] && [ "${LOAD_TESTING_STATUS}" != "null" ]
-    do
-        sleep 10
-        LOAD_TESTING_STATUS=$(eval "$statuscmd" | jq -r '.status')
-        printProgress "Current status: ${LOAD_TESTING_STATUS}" 
-    done
+```xml
+        <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+          <collectionProp name="Arguments.arguments">
+            <elementProp name="udv_hostname" elementType="Argument">
+              <stringProp name="Argument.name">udv_hostname</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("hostname") )}</stringProp>
+              <stringProp name="Argument.desc">API hostname</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="udv_path" elementType="Argument">
+              <stringProp name="Argument.name">udv_path</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("path") )}</stringProp>
+              <stringProp name="Argument.desc">API request path</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>                        
+            <elementProp name="udv_duration" elementType="Argument">
+              <stringProp name="Argument.name">udv_duration</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("duration") )}</stringProp>
+              <stringProp name="Argument.desc">Test Duration</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="udv_threads" elementType="Argument">
+              <stringProp name="Argument.name">udv_threads</stringProp>
+              <stringProp name="Argument.value">${__BeanShell( System.getenv("threads") )}</stringProp>
+              <stringProp name="Argument.desc">Test number of threads</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>                         
+            <elementProp name="udv_user_1" elementType="Argument"><stringProp name="Argument.name">udv_user_1</stringProp><stringProp name="Argument.value">${__BeanShell( System.getenv("user_1") )}</stringProp><stringProp name="Argument.desc">User 1</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>,<elementProp name="udv_user_2" elementType="Argument"><stringProp name="Argument.name">udv_user_2</stringProp><stringProp name="Argument.value">${__BeanShell( System.getenv("user_2") )}</stringProp><stringProp name="Argument.desc">User 2</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>,<elementProp name="udv_user_3" elementType="Argument"><stringProp name="Argument.name">udv_user_3</stringProp><stringProp name="Argument.value">${__BeanShell( System.getenv("user_3") )}</stringProp><stringProp name="Argument.desc">User 3</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>,<elementProp name="udv_user_4" elementType="Argument"><stringProp name="Argument.name">udv_user_4</stringProp><stringProp name="Argument.value">${__BeanShell( System.getenv("user_4") )}</stringProp><stringProp name="Argument.desc">User 4</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>,<elementProp name="udv_user_5" elementType="Argument"><stringProp name="Argument.name">udv_user_5</stringProp><stringProp name="Argument.value">${__BeanShell( System.getenv("user_5") )}</stringProp><stringProp name="Argument.desc">User 5</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+            <elementProp name="udv_token_1" elementType="Argument"><stringProp name="Argument.name">udv_token_1</stringProp><stringProp name="Argument.value">${__GetSecret(token_1)}</stringProp><stringProp name="Argument.desc">Azure AD or SAS Token Token 1</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>,<elementProp name="udv_token_2" elementType="Argument"><stringProp name="Argument.name">udv_token_2</stringProp><stringProp name="Argument.value">${__GetSecret(token_2)}</stringProp><stringProp name="Argument.desc">Azure AD or SAS Token Token 2</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>,<elementProp name="udv_token_3" elementType="Argument"><stringProp name="Argument.name">udv_token_3</stringProp><stringProp name="Argument.value">${__GetSecret(token_3)}</stringProp><stringProp name="Argument.desc">Azure AD or SAS Token Token 3</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>,<elementProp name="udv_token_4" elementType="Argument"><stringProp name="Argument.name">udv_token_4</stringProp><stringProp name="Argument.value">${__GetSecret(token_4)}</stringProp><stringProp name="Argument.desc">Azure AD or SAS Token Token 4</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>,<elementProp name="udv_token_5" elementType="Argument"><stringProp name="Argument.name">udv_token_5</stringProp><stringProp name="Argument.value">${__GetSecret(token_5)}</stringProp><stringProp name="Argument.desc">Azure AD or SAS Token Token 5</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>                                                                                 
+          </collectionProp>
+        </Arguments>
 
-    # echo "$statuscmd"
-    LOAD_TESTING_RESULT=$(eval "$statuscmd" | jq -r '.testResult')
-    if [ "${LOAD_TESTING_STATUS}" == "FAILED" ] || [ "${LOAD_TESTING_STATUS}" == "null" ]
-    then
-        printError "Running load testing failed"
-    else
-        printMessage "Running load testing successful"
-    fi
 ```
 
-This REST API returns the status of the load test:
+### Downloading the result file and logs file
 
-- ACCEPTED: The load testing configuration with the JMX file and CSV files has been accepted
-- PROVISIONING: The load testing service is provisioning the resources for the test
-- CONFIGURING: The load testing service is configuring the resources
-- EXECUTING: The load testing service is executing the test
-- DONE: the test is completed
+When a load testing scenario is completed, it's still possible to download the result CSV files and the logs files using the load testing REST API 'test-runs'.
+This API returns the url associated with the result file which is actually a zip file. Once the zip file is downloaded, you can unzip the file and read the different csv file included in the zip file. There a result csv file for each load testing engine.
 
-As soon as the status of the load test is 'DONE', you can check the status of testResult. When the value is 'PASSED' the load test results are available.
+See the bash script below:
 
 ```bash
-    LOAD_TESTING_RESULT="NOT_APPLICABLE"
-    while [ "${LOAD_TESTING_RESULT}" == "NOT_APPLICABLE" ] 
-    do
-        sleep 10
-        LOAD_TESTING_RESULT=$(eval "$statuscmd" | jq -r '.testResult')
-        printProgress "Current results status: ${LOAD_TESTING_RESULT}" 
-    done
-    # Renewing the token
-    LOAD_TESTING_TOKEN=$(az account get-access-token --resource "${LOAD_TESTING_HOSTNAME}" --scope "https://cnt-prod.loadtesting.azure.com/.default" | jq -r '.accessToken')
-    statuscmd="curl -s -X GET \
-    \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
-    -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
-    LOAD_TESTING_RESULTS=$(eval "$statuscmd")
-    # printMessage "Result: $LOAD_TESTING_RESULTS"
-    LOAD_TESTING_STATISTICS=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testRunStatistics')
-    LOAD_TESTING_RESULTS_CSV_URL=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.url')
-    LOAD_TESTING_RESULTS_CSV_FILE=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.fileName')
-    LOAD_TESTING_RESULTS_LOGS_URL=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.url')
-    LOAD_TESTING_RESULTS_LOGS_FILE=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.fileName') 
+      statuscmd="curl -s -X GET \
+      \"https://${LOAD_TESTING_HOSTNAME}/test-runs/${LOAD_TESTING_TEST_RUN_ID}?api-version=2022-11-01\" \
+      -H 'accept: application/merge-patch+json'  -H 'Content-Type: application/merge-patch+json' -H 'Authorization: Bearer ${LOAD_TESTING_TOKEN}' "
+      LOAD_TESTING_RESULTS=$(eval "$statuscmd")
+      LOAD_TESTING_STATISTICS=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testRunStatistics')
+      LOAD_TESTING_RESULTS_CSV_URL=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.url')
+      LOAD_TESTING_RESULTS_CSV_FILE=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.resultFileInfo.fileName')
+      LOAD_TESTING_RESULTS_LOGS_URL=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.url')
+      LOAD_TESTING_RESULTS_LOGS_FILE=$(echo "${LOAD_TESTING_RESULTS}" | jq -r '.testArtifacts.outputArtifacts.logsFileInfo.fileName')
+
+      if [[ ! -z "${LOAD_TESTING_RESULTS_CSV_FILE}"  && "${LOAD_TESTING_RESULTS_CSV_FILE}" != "null" ]]
+      then
+          printProgress "Downloading CSV file: ${LOAD_TESTING_RESULTS_CSV_FILE}..."    
+          downloadcmd="curl -s -X GET \"${LOAD_TESTING_RESULTS_CSV_URL}\" --output \"${LOAD_TESTING_RESULTS_CSV_FILE}\""
+          $(eval "$downloadcmd")
+          unzip -o "${LOAD_TESTING_RESULTS_CSV_FILE}" 
+          INDEX=1
+          while (( INDEX <= LOAD_TESTING_ENGINE_INSTANCES )); do     
+              echo "Result file for engine ${INDEX}: engine${INDEX}_results.csv"
+              # Uncomment the line below if you want to display the results for each engine in the stdout
+              # cat engine${INDEX}_results.csv
+              (( INDEX++ ))
+          done 
+      else
+          printWarning "Result zip file not available through the Azure Load Testing REST API" 
+          echo "statuscmd: ${statuscmd}"
+          echo "LOAD_TESTING_RESULTS: ${LOAD_TESTING_RESULTS}"
+      fi
+
+      if [[ ! -z "${LOAD_TESTING_RESULTS_LOGS_FILE}"  && "${LOAD_TESTING_RESULTS_LOGS_FILE}" != "null" ]]
+      then
+          printProgress "Downloading Logs file: ${LOAD_TESTING_RESULTS_LOGS_FILE}..."    
+          downloadcmd="curl -s -X GET \"${LOAD_TESTING_RESULTS_LOGS_URL}\" --output \"${LOAD_TESTING_RESULTS_LOGS_FILE}\""
+          $(eval "$downloadcmd")
+      else
+          printWarning "Logs zip file not available through the Azure Load Testing REST API" 
+          echo "statuscmd: ${statuscmd}"
+          echo "LOAD_TESTING_RESULTS: ${LOAD_TESTING_RESULTS}"
+      fi
 ```
 
 ## Contribute

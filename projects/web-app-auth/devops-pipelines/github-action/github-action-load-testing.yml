@@ -137,6 +137,16 @@ jobs:
             echo "LOAD_TESTING_USERS_CONFIGURATION=$(printf '%q\n' ${LOAD_TESTING_USERS_CONFIGURATION})"
             echo "RESOURCE_GROUP=${RESOURCE_GROUP}"
           } >> "$GITHUB_OUTPUT"
+         
+      - name: Get or Create ApplicationId
+        id: createapp
+        run: |
+          # include common.sh
+          source "scripts/common.sh"
+
+          printMessage "Read variables from the deployment"
+          # Read new variables set after the deployment in configuration file
+          readConfigurationFile "${{ env.CONFIGURATION_FILE }}"
 
           printMessage "Create Application if not already created"
           if [[ -z "${AZURE_APP_ID}" || "${AZURE_APP_ID}" == "null" ]]; then
@@ -145,17 +155,32 @@ jobs:
             AZURE_APP_ID=$(readConfigurationFileValue "$(CONFIGURATION_FILE)" "AZURE_APP_ID")
             AZURE_TENANT_DNS_NAME=$(readConfigurationFileValue "$(CONFIGURATION_FILE)" "AZURE_TENANT_DNS_NAME")
           fi
-
           {
             echo "AZURE_TENANT_DNS_NAME=${AZURE_TENANT_DNS_NAME}"
             echo "AZURE_APP_ID=${AZURE_APP_ID}"
           } >> "$GITHUB_OUTPUT"
 
+          if [[ -z "${AZURE_APP_ID}" ]]; then
+              echo "Variable AZURE_APP_ID is not defined, do you have enough privilege to create an application?"
+              exit 1
+          fi   
+
+
+      - name: Build and Deploy Services
+        id: builddeployservices
+        run: |
+          # include common.sh
+          source "scripts/common.sh"
+
+          printMessage "Read variables from the deployment"
+          # Read new variables set after the deployment in configuration file
+          readConfigurationFile "${{ env.CONFIGURATION_FILE }}"
+
           printMessage "Build and deploy backend and frontend"
           cmd="projects/web-app-auth/scripts/load-testing-tool.sh -a deployservices -c $(CONFIGURATION_FILE) "
           printProgress "##[command]$cmd"
           eval "$cmd" 
-         
+
 
   stage-load-test:
     runs-on: ubuntu-20.04
