@@ -1,4 +1,4 @@
-# Using Azure Load Testing to test services based on Azure Event Hubs with restricted public access  
+# Using Azure Load Testing to test services running on Azure  
 
 ## Table of Contents
 
@@ -6,7 +6,7 @@
 - [Repository folder structure](#repository-folder-structure)
 - [Getting started](#getting-started)
 - [Using Azure DevOps pipelines and Github Actions](#using-azure-devops-pipelines-and-github-actions)
-- [List of sample projects](#list-of-sample-project)
+- [List of sample projects](#list-of-sample-projects)
 - [Contribute](#contribute)
 
 ## Introduction
@@ -712,7 +712,6 @@ In order to activate this pipeline, follow the steps below:
 5. After few minutes, the pipeline has been completed and you can download the load testing artifacts.  
 
     ![github-action-eventhub-completed](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/github-action-eventhub-completed.png)
-
 
 ## List of sample projects
 
