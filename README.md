@@ -13,21 +13,20 @@
 
 This repository includes several Azure Load Testing sample projects. Each project contains:
 
-- bash files and ARM templates to:
+- bash files, ARM templates or Bicep files or Terraform files to:
   - deploy/undeploy the infrastructure to test,
+  - create the application and deploy the services on the infrastructure to test (optional),
   - deploy/undeploy the load testing infrastructure
-  - open/close the access to Azure EventHubs from Azure Load Testing
+  - open/close the access to Azure Key Vault from Azure Load Testing
   - run the load test
-- an Azure DevOps pipeline and a Github Action to automate the load testing scenario.
-
-The pipelines (Azure DevOps pipelines and Github Actions) running load testing includes the following steps:
-
-- deploy the infrastructure to test
-- deploy the load testing infrastructure
-- update the infrastructure for the load test
-- run the load testing
-- update the infrastructure after the load test
-- publish the load testing results  
+- an Azure DevOps pipeline and a Github Action to automate the load testing scenario. The pipelines (Azure DevOps pipelines and Github Actions) running load testing includes the following steps:  
+  - deploy the infrastructure to test
+  - create the application and deploy the services on the infrastructure to test (optional),
+  - deploy the load testing infrastructure
+  - update the infrastructure for the load test
+  - run the load testing
+  - update the infrastructure after the load test
+  - publish the load testing results  
 
 ## Repository folder structure
 
@@ -37,9 +36,9 @@ This chapter describes the repository folder structure. The repository contains 
 - .github: contains github markdown files 
 - docs: contains the image files used by the documentation  
 - scripts: contains the common bash files used to deploy and run the different tests:
-  - common.sh: this file include the functions used to deploy and run the different tests
-  - : this file is used to create the service principal associated with the pipelines
-  - createazdoresources.sh: this file is used to create the Azure DevOps resources
+  - common.sh: this file include the common functions used to deploy and run the different tests
+  - create-rbac-sp.sh : this file is used to create the service principal used by the pipelines
+  - create-users.sh: this file is used to create user account in a Microsoft Entra ID Test Tenant
   - get-event-hub-token.sh: this file is used to get EventHubs token
 
 The folder 'projects' contains subfolders which are associated with a specific project.
@@ -150,7 +149,7 @@ Below the repository folder hierachy:
 This chapter describes how to :
 
 1. Install the pre-requisites including Visual Studio Code, Dev Container
-2. Create, deploy and run the load tests for any project called [projectName]
+2. Create, deploy and run the load tests for any project called [projectName] from the Dev Container
   
 This repository contains the following resources :
 
@@ -313,9 +312,28 @@ Once the pre-requisites are installed and the configuration ready, you can deplo
 
 After few minutes, the resources are visible on the Azure Portal.
 
+#### Deploying the application and services
+
+This step "deploying the application and services" is optional, it's only required if the infrastructure and services to tests require the deployment of application and services on the Azure infrastructure.
+For instance, for a REST API based service, an Application must be created in the Microsoft Entra Id Tenant and the services must be built from the source code and finally deployed on the infrastructure. 
+First, the application must be created using the action "createapp":
+
+```bash
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a createapp -c ./projects/[projectName]/configuration/.default.env 
+```
+After this step, the envrionment variable  AZURE_APP_ID is set with the Application Id of the newly created application.
+
+Once the application is created, the services can be built and deployed using the action "deployservices".
+
+```bash
+    vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a deployservices -c ./projects/[projectName]/configuration/.default.env 
+```
+
+After few minutes, the services are deployed on the Azure infrastructure and the endpoints associated with the services are fully functioning.
+
 #### Deploying the load testing infrastructure
 
-Once the infrastructure is deployed, you can deploy the load testing infrastructure, using the following arguments:
+Once the infrastructure and the services are deployed, you can deploy the load testing infrastructure, using the following arguments:
 
 ```bash
     vscode ➜ /workspace $ ./projects/[projectName]/scripts/load-testing-tool.sh  -a deploytest -c ./projects/[projectName]/configuration/.default.env 
@@ -465,9 +483,9 @@ For instance the following command:
 
 ## Using Azure DevOps pipelines and Github Actions
 
-In this chapter, you will use Azure DevOps pipeline and/or Github Action to automate the deployment of the infrastructure and the launch of the load test for a project called [projectName].  
+This chapter describes how to use Azure DevOps pipeline and/or Github Action to automate the deployment of the infrastructure and the launch of the load test for a project called [projectName].  
 
-The pipelines (Azure DevOps pipelines and Github Actions) running Event Hub load testing includes the following steps:
+The pipelines (Azure DevOps pipelines and Github Actions) running the load testing includes the following steps:
 
 - deploy the infrastructure to test
 - deploy the load testing infrastructure
@@ -540,70 +558,20 @@ The diagram below describes the architecture for this test with with Azure DevOp
 
 *Download a [SVG file](./docs/img/README/architecture-scenario-load-testing-azdo.svg) of this diagram.*
 
-#### **Link your Azure DevOps project with the GitHub repository**
-<!-- markdown-link-check-disable -->
-1. Navigate on your Azure DevOps organization "https://dev.azure.com/YOUR_ORG"
+#### Creating Azure DevOps Service Connection, Variable Group and Pipeline
 
-    ![azure-devops-org](./docs/img/README/azure-devops-org.png)
-<!-- markdown-link-check-enable -->
-2. Click on the button '+ New project'
+Once the service principal has been created you can follow the steps below to run the test from your Azure DevOps organization.
+For each project, all thoses steps will described in details.
 
-3. On the 'Create new project' page enter the name of your project and click on the button 'Create'
+1. Once you are connected to your Azure DevOps organization "https://dev.azure.com/YOUR_ORG", you can create a new project "YOUR_PROJECT".
 
-    ![azure-devops-newproject](./docs/img/README/azure-devops-newproject.png)
+2. From your project "YOUR_PROJECT", you can import the source code of this Azure Sample project (https://github.com/Azure-Samples/load-testing-restricted-public-access.git).
 
-4. On the main page of your project on Azure DevOps portal, select 'Repos' -> 'Files' page.
+3. Once the source code is imported, select the "main" branch.
 
-    ![azure-devops-project-repo](./docs/img/README/azure-devops-project-repo.png)
+4. As Azure DevOps pipeline will use Load Testing Task, you need to install the Azure Load Testing for Azure DevOps component from the Azure DevOps market place.
 
-5. On this page, click on the 'import' button in the'Import a repository' section.
-
-6. On the Import a Git repository page, enter the url of the git repository where you stored the source code of this project.
-
-    ![azure-devops-project-git](./docs/img/README/azure-devops-project-git.png)
-
-7. Click on the button 'Import', after few seconds the repository is imported.
-
-    ![azure-devops-project-git-imported](./docs/img/README/azure-devops-project-git-imported.png)
-
-#### **Install Azure Load Testing from the Azure DevOps Market Place**
-
-As the new pipeline runs Azure Load Testing, you need to install the Azure Load Testing for Azure DevOps.
-
-1. Click on the Market Place icon to browse the market place  
-![azure-devops-market-1](./docs/img/README/azure-devops-market-1.png)
-
-2. Search for the Azure Load Testing component  
-![azure-devops-market-2](./docs/img/README/azure-devops-market-2.png)
-
-3. On the Azure Load Testing page click on the button "Get it Free"  
-![azure-devops-market-3](./docs/img/README/azure-devops-market-3.png)
-
-4. On the Market Place page click on the button "Install"  
-![azure-devops-market-4](./docs/img/README/azure-devops-market-4.png)
-
-5. After few seconds the component is installed, Go back to Azure DevOps portal clicking on button "Proceed to organization"  
-![azure-devops-market-5](./docs/img/README/azure-devops-market-5.png)
-
-You can now create the service connection for the authentication with your Azure Account, the Variable Group and the Azure DevOps pipeline.
-
-#### **Create Azure DevOps Service Connection, Variable Group and pipeline**
-
-In order to create the service connection, Variable Group and pipeline you can use the following bash file: [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh)  
-This bash file creates:
-
-- the service connection for the authentication with Azure Subscription. The name of this service connection is the name of the service principal created in the previous step with the prefix "sc-".
-- the variable group which contains the parameters of the pipeline like AZURE_TEST_SUFFIX, AZURE_REGION, SERVICE_CONNECTION. By default the name of this variable group is "load-testing-vg". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh) and the pipeline file [azure-pipelines-load-testing.yml](./projects/eventhub/devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml).
-- the Azure DevOps pipeline to run the load testing. By default, the name of the pipeline is "Load-Testing-EventHubs". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
-By default, the pipeline file should be present in the "main" branch, if it's not the case, you also need to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
-  
-Before running this bash file you need to be connected with your Azure Account using Azure CLI. Run 'az login' in your linux environment or in your Dev Container Terminal
-
-```bash
-    vscode ➜ /workspace $ az login
-```
-
-Once you are connected with Azure, you can run the following bash to create the Service Principal:
+5. Now, you can automatically create the Azure DevOps Service connection, Variable Group and pipeline using the bash script in  [projects/YOUR_PROJECT/scripts/create-azdo-resources.sh](./projects/eventhub/scripts/create-azdo-resources.sh). For instance, once you are connected using Azure CLI to your tenant associated with your Azure Subscription and your Azure DevOps organization, you can run the command line below :
 
 ```bash
     vscode ➜ /workspace $ ./scripts/create-azdo-resources.sh -o "<MyORG>" -p "<MyProject>" -y "<MyRepository>" -s "<Azure-Subscription-Id>"  -t "<Azure-Tenant-Id>" -i "<ServicePrincipalId>" -k "<ServicePrincipalKey>"
@@ -612,8 +580,8 @@ Once you are connected with Azure, you can run the following bash to create the 
 where:
 
 - \<MyORG\> is the name of your DevOps organization,
-- \<MyProject\> is the name of your project,
-- \<MyRepository\> is the name of your repository where the pipeline is stored,
+- \<MyProject\> is the name of your DevOps project,
+- \<MyRepository\> is the name of your DevOps repository where the pipeline is stored,
 - \<Azure-Subscription-Id\> is the subscriptionId of your Azure Account,
 - \<Azure-Tenant-Id\> is the Tenant Id of your Azure AD Tenant,
 - \<ServicePrincipalId\> is the value "clientId" of your Service Principal created with the bash file [scripts/create-rbac-sp.sh](./scripts/create-rbac-sp.sh),
@@ -625,44 +593,22 @@ For instance:
         vscode ➜ /workspace $ ./scripts/create-azdo-resources.sh -o "TestAzDO" -p "load-testing-sharing" -y "load-testing-restricted-public-access" -s "d3814ade-afe8-4260-9b5f-xxxxxxxxxxxx"  -t "6a13df32-a807-43c4-8277-xxxxxxxxxxxx" -i "1d736738-9c5f-4de7-84f9-xxxxxxxxxxxx" -k "ok-8Q~Rsxxxxxxxxxxxx"
 ```
 
-Once completed, this bash file displays the information about the different resources created.
+If the Tenant associated with your Azure Subscription is different from the tenant assosiated with your Azure DevOps organization, you need to add the -n option to use the Azure DevOps Token for the authentication with Azure DevOps.
+
+For instance:
 
 ```bash
-  Creating Service Connection for:
-    Subscription: d3814ade-afe8-4260-9b5f-xxxxxxxxxxxx
-    Tenant: 6a13df32-a807-43c4-8277-xxxxxxxxxxxx
-    Service Principal Id: 1d736738-9c5f-4de7-84f9-xxxxxxxxxxxx
-  Creating Service Connection...
-  Updating Service Connection to allow all pipelines...
-  Creating Variables Group 'load-testing-vg' for:
-    Organization: 'https://dev.azure.com/TestAzDO/'
-    Project: 'load-testing-sharing'
-  Creating Variables Group...
-  Creating Pipeline 'Load-Testing-EventHubs' for:
-    Organization: 'https://dev.azure.com/TestAzDO/'
-    Project: 'load-testing-sharing'
-  Creating Pipeline...
-  Pipeline 'Load-Testing-EventHubs' created.
+        vscode ➜ /workspace $ ./scripts/create-azdo-resources.sh -o "TestAzDO" -p "load-testing-sharing" -y "load-testing-restricted-public-access" -s "d3814ade-afe8-4260-9b5f-xxxxxxxxxxxx"  -t "6a13df32-a807-43c4-8277-xxxxxxxxxxxx" -i "1d736738-9c5f-4de7-84f9-xxxxxxxxxxxx" -k "ok-8Q~Rsxxxxxxxxxxxx" -n "******"
 ```
 
-You can now check whether the service connection, the variable group and pipeline have been created.
+#### Running the Pipeline
 
-1. On the main page of your project on Azure DevOps portal, select 'Project Settings' -> 'Service Connections' page. You should see the new service  connection with the prefix "sc-".  
+Now, you can run the Load Testing pipeline from the Azure DevOps portal. 
 
-    ![azure-devops-service-connection](./docs/img/README/azure-devops-service-connection.png)
-
-2. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Library' page. You should see the new variable group "load-testing-vg".  
-
-    ![azure-devops-service-variable-group](./docs/img/README/azure-devops-variable-group.png)
-
-3. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Pipelines' page. You should see the new pipeline "Load-Testing-EventHubs".  
-
-    ![azure-devops-service-pipeline](./docs/img/README/azure-devops-pipeline.png)
-
-4. You can now click on the "Run pipeline" button to run manually the pipeline.
-5. On the dialog box 'Run pipeline',  
+1. On the Azure DevOps portal, click on the "Run pipeline" button to run manually the pipeline.
+2. On the dialog box 'Run pipeline',  
     - select the 'main' branch,  
-    - select the EventHubs Sku "Basic", "Standard", "Premium" ("Standard" by default),  
+    - select the resource sku,  
     - enter the duration of the test in seconds (60 seconds by default),  
     - enter the number of threads for the load testing (1 by default),  
     - enter the number of engine instances for the load testing (1 by default),  
@@ -670,25 +616,16 @@ You can now check whether the service connection, the variable group and pipelin
     - enter the average response time in milliseconds threshold for the load testing (100 by default),  
   Then click on the button "Run"
 
-    ![azure-devops-pipeline-eventhub-02](./docs/img/README/azure-devops-pipeline-eventhub-02.png)
+    ![azure-devops-pipeline-eventhub-02](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-pipeline-eventhub-02.png)
 
-6. After few minutes, the pipeline is completed and you can download and visualize the results on the Azure Portal.
+3. After few minutes, the pipeline is completed and you can download and visualize the results on the Azure Portal.
 
-    ![azure-devops-pipeline-eventhub-03](./docs/img/README/azure-devops-pipeline-eventhub-03.png)
+    ![azure-devops-pipeline-eventhub-03](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-pipeline-eventhub-03.png)
 
-7. On the Azure Load Testing result page, you can see the requests/sec and the response time for the Event Hubs REST API requests towards both Event Hub inputs.
+4. On the Azure Load Testing result page, you can see the requests/sec and the response time for the Event Hubs REST API requests towards both Event Hub inputs.
 
-    ![azure-devops-pipeline-eventhub-04](./docs/img/README/azure-devops-pipeline-eventhub-04.png)
+    ![azure-devops-pipeline-eventhub-04](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/azure-devops-pipeline-eventhub-04.png)
 
-    **Note:**
-    As the Azure Load Testing resource has been created in the pipeline, by default, you don't have access to this resource.
-    The Azure Load Testing resource is present in the resource group whose name starts with "rgldtestevhub".  
-    You will probably see the message below:  
-
-    ![azure-devops-pipeline-eventhub-05](./docs/img/README/azure-devops-pipeline-eventhub-05.png)
-
-    You need to assign the role "Load Test Contributor" to your Azure AD Account for the Azure Load Testing scope.  
-    After few minutes you should have access to the page which displays the test results.
 
 ### Github Action
 
@@ -710,15 +647,15 @@ First, you need to create the Github Action Secret AZURE_CREDENTIALS for the aut
 
 1. On the GitHub portal where you store your project, navigate on the the page 'Settings' and select the submenu 'Actions' in the menu 'Secrets and variables' and select the tab 'Secrets' on the page 'Actions secrets and variables'.
 
-    ![github-action-secrets](./docs/img/README/github-action-secrets.png)
+    ![github-action-secrets](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/github-action-secrets.png)
 
 2. Click on 'New repository secret' button, enter 'AZURE_CREDENTIALS' in the Name field and copy/paste the JSON value associated with the service principal created with create-rbac-sp.sh.
 
-    ![github-action-add-secret](./docs/img/README/github-action-add-secret.png)
+    ![github-action-add-secret](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/github-action-add-secret.png)
 
 3. Click on 'Add secret' button. The new secret will be accessible on the Secret page.  
 
-    ![github-action-added-secret](./docs/img/README/github-action-added-secret.png)
+    ![github-action-added-secret](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/github-action-added-secret.png)
 
 #### **Create Github Action configuration variables**
 
@@ -736,13 +673,13 @@ You can use the command line below to generate a value which will avoid any conf
 
 1. On the GitHub portal page associated with your project, navigate on the the page 'Settings' and select the submenu 'Actions' in the menu 'Secrets and variables' and select the tab 'Variables' on the page 'Actions secrets and variables'.
 
-    ![github-action-variables](./docs/img/README/github-action-variables.png)
+    ![github-action-variables](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/github-action-variables.png)
 
 2. Click on 'New repository variable' button, enter 'AZURE_REGION' in the 'Name' field and the Azure region in the 'Value' field and click on the 'Add variable' button.
 
 3. Click on 'New repository variable' button, enter 'AZURE_TEST_SUFFIX' in the 'Name' field and enter the suffix in the 'Value' field and click on the 'Add variable'
 
-    ![github-action-added-variable](./docs/img/README/github-action-added-variable.png)
+    ![github-action-added-variable](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/github-action-added-variable.png)
 
 #### **Create Github Action pipeline for Event Hubs with restricted public access Load Testing**
 
@@ -752,29 +689,29 @@ The Load Testing Github Action pipeline is [github-action-load-testing.yml](proj
 In order to activate this pipeline, follow the steps below:
 
 1. Create a folder '.github/workflows' in your repository
-2. Copy the file github-action-load-testing.yml in the folder '.github/workflows'
+2. Copy the file ./projects/YOUR_PROJECT/devops-pipelines/github-action/github-action-load-testing.yml in the folder '.github/workflows'
 3. Commit and push this modification in your "main" branch
 
     ```bash
       git add  .github/workflows/github-action-load-testing.yml
-      git commit -m "Create Eventhub Load with restricted public access Testing Github Action"
+      git commit -m "Create Github Action"
       git push
     ```
 
 4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the GitHub portal, on the 'Action' page, select the workflow 'load-testing-eventhub-restricted-public-access' and click on the button 'Run workflow'. If required you can change the following input parameters:
 
    - Github branch: main by default
-   - Azure Eventhub Sku: Standard by default
+   - Azure resource Sku
    - Load Testing duration: 60 seconds by default
    - Load Testing number of threads: 1 by default
    - Load Testing number of engine instances: 1 by default  
    - Load Testing error percentage threshold: 5% by default  
    - Load Testing average response time in milliseconds threshold: 100 ms by default  
-   ![github-action-eventhub-start](./docs/img/README/github-action-eventhub-start.png)
+   ![github-action-eventhub-start](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/github-action-eventhub-start.png)
 
 5. After few minutes, the pipeline has been completed and you can download the load testing artifacts.  
 
-    ![github-action-eventhub-completed](./docs/img/README/github-action-eventhub-completed.png)
+    ![github-action-eventhub-completed](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/github-action-eventhub-completed.png)
 
 
 ## List of sample projects
@@ -787,17 +724,17 @@ This service based on Azure Event Hubs could be for instance used to analyze eve
 The events and metrics are analyzed using different possible Azure Resources like Azure Stream Analytics, Azure Data Factory, Synapse Analytics, Azure Machine Learning, containers running on Azure Kubernetes Service, ...
 Once the events and metrics are analyzed, an event could be raised and sent to the Azure Event Hub output.
 
-  ![eventhub-architecture-restricted-public-access](./projects/eventhub/docs/img/README/architecture-scenario.png)
+  ![eventhub-architecture-restricted-public-access](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario.png)
 
-*Download a [SVG file](./projects/eventhub/docs/img/README/architecture-scenario.svg) of this diagram.*
+*Download a [SVG file](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario.svg) of this diagram.*
 
 Moreover, this project subfolder contains the code to run Azure Load Testing against Azure Event Hubs whose public network access is restricted. In that case, the load testing infrastructure is extended with an Azure Virtual Network and an Azure NAT Gateway to use the same source public IP address for the requests coming from the load testing infrastructure.
 This source public IP address is added in the Event Hub firewall configuration before running the tests and removed once the tests are completed.
 The infrastructure is also extended with an Azure Key Vault which is used to store the secrets like the EventHubs tokens.
 
-  ![eventhub-architecture-restricted-public-access-load-testing](./projects/eventhub/docs/img/README/architecture-scenario-load-testing.png)
+  ![eventhub-architecture-restricted-public-access-load-testing](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing.png)
 
-*Download a [SVG file](./projects/eventhub/docs/img/README/architecture-scenario-load-testing.svg) of this diagram.*
+*Download a [SVG file](./projects/eventhub/docs/img/load-testing-event-hubs-restricted-public-access/architecture-scenario-load-testing.svg) of this diagram.*
 
 Project documentation in this file: [README.md](./projects/eventhub/README.md) 
 
@@ -812,15 +749,15 @@ The targeted infrastructure and services are based on:
 To run this load testing scenario, a Microsoft Entra ID Test Tenant with test user accounts could be used. Before each user could call the REST API, the Microsoft Entra ID Tenant Administrator will accept the permissions to allow the application to sign in and maintain access to data. Moreover, the Administrator will consent the permissions on behalf of the organization to allow the connection for each test user.
 The load testing scenario will first store the Microsoft Entra ID Token of each user in the Azure Key Vault associated with the load testing Azure resource. Once the tokens are stored in the Azure Key Vault, the load testing engine will read the tokens from the Key Vault and call the targeted REST API for each user using the respective token.
 
-  ![web-app-auth-architecture](./projects/web-app-auth/docs/img/README/architecture-scenario.png)
+  ![web-app-auth-architecture](./projects/web-app-auth/docs/img/load-testing-web-app-auth/architecture-scenario.png)
 
-*Download a [SVG file](./projects/web-app-auth/docs/img/README/architecture-scenario.svg) of this diagram.*
+*Download a [SVG file](./projects/web-app-auth/docs/img/load-testing-web-app-auth/architecture-scenario.svg) of this diagram.*
 
 Moreover, this project subfolder contains the code to run Azure Load Testing against Azure App Service. In that case, the load testing infrastructure is extended with only one Azure Key Vault where the Microsoft Entra ID tokens are stored.
 
-  ![wen-app-auth-architecture-load-testing](./projects/web-app-auth/docs/img/README/architecture-scenario-load-testing.png)
+  ![wen-app-auth-architecture-load-testing](./projects/web-app-auth/docs/img/load-testing-web-app-auth/architecture-scenario-load-testing.png)
 
-*Download a [SVG file](./projects/web-app-auth/docs/img/README/architecture-scenario-load-testing.svg) of this diagram.*
+*Download a [SVG file](./projects/web-app-auth/docs/img/load-testing-web-app-auth/architecture-scenario-load-testing.svg) of this diagram.*
 
 Project documentation in this file: [README.md](./projects/web-app-auth/README.md) 
 
