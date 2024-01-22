@@ -130,7 +130,6 @@ stages:
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING}"
                 echo "##vso[task.setvariable variable=AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY;isOutput=true]${AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY}"
                 echo "##vso[task.setvariable variable=RESOURCE_GROUP;isOutput=true]${RESOURCE_GROUP}"
-                echo "##vso[task.setvariable variable=LOAD_TESTING_USERS_CONFIGURATION;isOutput=true]$(printf '%q\n' $(LOAD_TESTING_USERS_CONFIGURATION))"
                                 
           - task: AzureCLI@2
             displayName: 'Step Create Application'
@@ -201,14 +200,13 @@ stages:
       AZURE_RESOURCE_WEB_APP_DOMAIN: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_WEB_APP_DOMAIN'] ]
       AZURE_RESOURCE_FUNCTION_DOMAIN: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_FUNCTION_DOMAIN'] ]
       AZURE_RESOURCE_STATIC_WEBAPP_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STATIC_WEBAPP_NAME'] ]
-      AZURE_APP_ID: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_APP_ID'] ]
-      AZURE_TENANT_DNS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_TENANT_DNS_NAME'] ]
-      LOAD_TESTING_USERS_CONFIGURATION: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.LOAD_TESTING_USERS_CONFIGURATION'] ]
       AZURE_RESOURCE_STORAGE_ACCOUNT_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_STORAGE_ACCOUNT_NAME'] ]
       AZURE_RESOURCE_APP_INSIGHTS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_NAME'] ]
       AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_CONNECTION_STRING'] ]
       AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.AZURE_RESOURCE_APP_INSIGHTS_INSTRUMENTATION_KEY'] ]                 
       RESOURCE_GROUP: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.RESOURCE_GROUP'] ]
+      AZURE_APP_ID: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepCreateApplication.AZURE_APP_ID'] ]
+      AZURE_TENANT_DNS_NAME: $[ stageDependencies.stage_deploy_infrastructure.JobDeployInfrastructure.outputs['StepCreateApplication.AZURE_TENANT_DNS_NAME'] ]
 
     condition: succeeded()
     jobs:
