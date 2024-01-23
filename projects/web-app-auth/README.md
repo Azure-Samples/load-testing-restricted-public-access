@@ -358,9 +358,9 @@ The value of the variable LOAD_TESTING_USERS_CONFIGURATION is a json string with
         "pw":"*******",
         "tid":"a007455c-dcb3-****-****-***********"
       },
-      .
-      .
-      .
+      
+      
+      
     ]
 ```
 
@@ -828,9 +828,10 @@ You can now check whether the service connection, the variable group and pipelin
 
 4. The variable LOAD_TESTING_USERS_CONFIGURATION must be initialized with the JSON string which contains the list of user in the Microsoft Entra ID Test Tenant. This list of users can be created with the bash script: './scripts/create-users.sh'
 
-```text
-'[{"adu":"automationtest1@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"},........{"adu":"automationtest5@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"}]'
-```
+    ```text
+    '[{"adu":"automationtest1@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"},........{"adu":"automationtest5@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"}]'
+    ```
+
     ![azure-devops-service-variable-group](./docs/img/load-testing-web-app-auth/azure-devops-user-configuration.png)
 
 5. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Pipelines' page. You should see the new pipeline "Load-Testing-EventHubs".  
