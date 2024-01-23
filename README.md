@@ -32,7 +32,7 @@ This repository includes several Azure Load Testing sample projects. Each projec
 
 This chapter describes the repository folder structure. The repository contains the following common folders:
 
-- .devcontainer: contains all the files required for devcontainer 
+- .devcontainer: contains all the files required for devcontainer  
 - .github: contains github markdown files 
 - docs: contains the image files used by the documentation  
 - scripts: contains the common bash files used to deploy and run the different tests:
@@ -254,8 +254,8 @@ If you are not interested in running the load testing manually from the Dev Cont
 
 Below the list of arguments associated with 'load-testing-tool.sh':
 
-- -a  Sets iactool action {login, install, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
-- -c  Sets the iactool configuration file
+- -a  Sets load-testing-tool action {login, install, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
+- -c  Sets the load-testing-tool configuration file
 - -r  Sets the Azure Region for the deployment
 
 #### Installing the pre-requisites on the host machine
