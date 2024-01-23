@@ -1022,10 +1022,10 @@ A possible turn around consists in creating manually the Application from the De
     This command will create the Application and display the application name and application Id when the command is completed:
     For instance:  
 
-    ```
+    ```bash
     Create/Update Azure AD Application name: sp-waa4791-app  appId: ********-****-****-****-************ done
     ```
-    
+
     Moreover, the file ./projects/web-app-auth/configuration/.default.env has been updated with the values of AZURE_APP_ID and AZURE_TENANT_DNS_NAME. 
 
     ```bash
@@ -1047,7 +1047,13 @@ A possible turn around consists in creating manually the Application from the De
 
     ![Troubleshooting-5](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-05.png)
 
-5. Run the Web App Load Testing pipeline with the variables 'AZURE_APP_ID' and 'AZURE_TENANT_DNS_NAME' defined in the variable group. If this variable is defined, the step 'Step Get or Create ApplicationId' will not try to create an application and will use AZURE_APP_ID value as the value of the Application.
+5. Run the Web App Load Testing pipeline with the variables 'AZURE_APP_ID' and 'AZURE_TENANT_DNS_NAME' defined in the variable group. If these variables are defined, the step 'Step Get or Create Application' will not try to create an application.
+
+6. After the minutes, the subsequent pipeline run should be successful.
+
+    ![Troubleshooting-success](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-success.png)
+
+
 
 ## Under the hood
 

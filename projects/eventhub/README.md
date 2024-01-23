@@ -68,7 +68,7 @@ This repository contains the following resources :
 - A Dev container under '.devcontainer' folder
 - The Azure configuration for a deployment under 'configuration' folder
 - The pipelines (Azure DevOps pipeline, Github Action) used to run the load testing scenarios and the bash files used to create and run the pipelines under 'devops-pipeline' folder
-- The ARM templates used to deploy the target infrastructure and the load testing resources under 'infra' folder
+- The ARM templates used to deploy the target infrastructure and the load testing resources under 'infrastructure' subfolder
 
 ### Installing the pre-requisites
 
@@ -165,8 +165,8 @@ If you are not interested in running the load testing manually from the Dev Cont
 
 Below the list of arguments associated with 'load-testing-tool.sh':
 
-- -a  Sets iactool action {login, install, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
-- -c  Sets the iactool configuration file
+- -a  Sets load-testing-tool action {login, install, createconfig, deploy, undeploy, deploytest, undeploytest, opentest, runtest, closetest}
+- -c  Sets the load-testing-tool configuration file
 - -h  Event Hub Sku - Azure Event Hub Sku - by default Standard (Basic, Standard, Premium)
 - -r  Sets the Azure Region for the deployment
 
