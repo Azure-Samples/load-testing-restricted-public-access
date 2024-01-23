@@ -820,16 +820,25 @@ You can now check whether the service connection, the variable group and pipelin
 
     ![azure-devops-service-connection](./docs/img/load-testing-web-app-auth/azure-devops-service-connection.png)
 
-2. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Library' page. You should see the new variable group "load-testing-vg".  
+2. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Library' page. You should see the new variable group "load-testing-web-app-auth-vg".  
 
     ![azure-devops-service-variable-group](./docs/img/load-testing-web-app-auth/azure-devops-variable-group.png)
 
-3. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Pipelines' page. You should see the new pipeline "Load-Testing-EventHubs".  
+3. The variables AZURE_REGION, AZURE_TEST_SUFFIX and SERVICE_CONNECTION should be already correctly set. The variables AZURE_APP_ID and AZURE_TENANT_DNS_NAME should be set to 'null', the pipeline will automatically initialize those variables when creating the Application in Microsoft Entra ID Tenant. 
+
+4. The variable LOAD_TESTING_USERS_CONFIGURATION must be initialized with the JSON string which contains the list of user in the Microsoft Entra ID Test Tenant. This list of users can be created with the bash script: './scripts/create-users.sh'
+
+```text
+'[{"adu":"automationtest1@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"},........{"adu":"automationtest5@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"}]'
+```
+    ![azure-devops-service-variable-group](./docs/img/load-testing-web-app-auth/azure-devops-user-configuration.png)
+
+5. On the main page of your project on Azure DevOps portal, select 'Pipelines' -> 'Pipelines' page. You should see the new pipeline "Load-Testing-EventHubs".  
 
     ![azure-devops-service-pipeline](./docs/img/load-testing-web-app-auth/azure-devops-pipeline.png)
 
-4. You can now click on the "Run pipeline" button to run manually the pipeline.
-5. On the dialog box 'Run pipeline',  
+6. You can now click on the "Run pipeline" button to run manually the pipeline.
+7. On the dialog box 'Run pipeline',  
     - select the 'main' branch,  
     - select the Azure App Service Sku "B1", "B2", "B3", "S1", "S2", "S3",... ("B1" by default),  
     - enter the duration of the test in seconds (60 seconds by default),  
@@ -839,25 +848,33 @@ You can now check whether the service connection, the variable group and pipelin
     - enter the average response time in milliseconds threshold for the load testing (100 by default),  
   Then click on the button "Run"
 
-    ![azure-devops-pipeline-eventhub-02](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-02.png)
+    ![azure-devops-pipeline-web-app-02](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-web-app-02.png)
 
-6. After few minutes, the pipeline is completed and you can download and visualize the results on the Azure Portal.
+8. The pipeline will first deploy the infrastructure to test, create the application and deploy the services. When you run the pipeline for the first time, the Microsoft Entra test tenant admin must explicitly grant consent for the requested permissions to the multi-tenant application. The tenant administrator can open the following url:
 
-    ![azure-devops-pipeline-eventhub-03](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-03.png)
+```bash
+    https://login.microsoftonline.com/{organization}/adminconsent?client_id={client-id}
+```
+where:  
+    - {client-id} is the application's client ID (also known as application ID).  
+    - {organization} is the tenant ID or any verified domain name of the tenant you want to consent the application in.
 
-7. On the Azure Load Testing result page, you can see the requests/sec and the response time for the Event Hubs REST API requests towards both Event Hub inputs.
+The browser will automatically open the url of the frontend hosted on the Azure Static Web App. Click on the 'Login' button. 
 
-    ![azure-devops-pipeline-eventhub-04](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-04.png)
+![admin-consent-01](./docs/img/load-testing-web-app-auth/azure-devops-admin-consent-01.png)
 
-    **Note:**
-    As the Azure Load Testing resource has been created in the pipeline, by default, you don't have access to this resource.
-    The Azure Load Testing resource is present in the resource group whose name starts with "rgldtestevhub".  
-    You will probably see the message below:  
+9. Enter the login password of the Microsoft Entra Test Tenant administrator, the following page will be displayed  to grant consent for the requested permissions on behalf of the organization. 
 
-    ![azure-devops-pipeline-eventhub-05](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-eventhub-05.png)
+    ![admin-consent-01](./docs/img/load-testing-web-app-auth/azure-devops-admin-consent-02.png)
 
-    You need to assign the role "Load Test Contributor" to your Azure AD Account for the Azure Load Testing scope.  
-    After few minutes you should have access to the page which displays the test results.
+10. After few minutes, the pipeline is completed and you can download and visualize the results on the Azure Portal.
+
+    ![azure-devops-pipeline-web-app-03](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-web-app-03.png)
+
+11. On the Azure Load Testing result page, you can see the requests/sec and the response time for the Event Hubs REST API requests towards both Event Hub inputs.
+
+    ![azure-devops-pipeline-web-app-04](./docs/img/load-testing-web-app-auth/azure-devops-pipeline-web-app-04.png)
+
 
 ### Github Action
 
