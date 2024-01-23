@@ -331,11 +331,11 @@ If you click on the Login menu, and enter your credentials, you'll be connected 
 
 After this step, the infrastructure and the services to test are ready and you can create a Microsoft Entra ID Test Tenant with users which will be used by the load testing engines.
 
-#### Creating users in a Microsoft Entra ID test tenant 
+#### Creating users in a Microsoft Entra ID test tenant  
 
 **Creating the test tenant**
 
-As the REST API ( HTTPS POST/GET/PUT/DELETE visit, HTTPS GET time) hosted on the backend requires and authenticated calls, we need to create temporary users in a Microsoft Entra ID test tenant.
+As the REST API ( HTTPS POST/GET/PUT/DELETE visit, HTTPS GET time) hosted on the backend requires authenticated calls, we need to create temporary users in a Microsoft Entra ID test tenant.
 
 You can get a test tenant in joining the Microsoft 365 Developer Program:
 https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment#get-a-test-tenant
