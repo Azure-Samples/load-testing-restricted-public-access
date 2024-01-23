@@ -511,6 +511,9 @@ function updateConfigurationFile(){
         ESCAPED_REPLACE=$(printf '%s\n' "${value}" | sed -e 's/[\/&]/\\&/g')
         sed -i "s/${variable}=.*/${variable}=${ESCAPED_REPLACE}/g" "${configFile}"         
     elif [ "${count}" == 0 ]; then
+        if [[ $(tail -c1 "${configFile}" | wc -l) -eq 0 ]]; then
+            echo "" >> "${configFile}"
+        fi
         echo "${variable}=${value}" >> "${configFile}"
     fi
 }

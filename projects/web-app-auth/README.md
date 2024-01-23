@@ -740,8 +740,8 @@ In order to create the service connection, Variable Group and pipeline you can u
 This bash file creates:
 
 - the service connection for the authentication with Azure Subscription. The name of this service connection is the name of the service principal created in the previous step with the prefix "sc-".
-- the variable group which contains the parameters of the pipeline like AZURE_TEST_SUFFIX, AZURE_REGION, SERVICE_CONNECTION. By default the name of this variable group is "load-testing-vg". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](../../projects/web-app-auth/scripts/create-azdo-resources.sh) and the pipeline file [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml).
-- the Azure DevOps pipeline to run the load testing. By default, the name of the pipeline is "Load-Testing-EventHubs". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
+- the variable group which contains the parameters of the pipeline like AZURE_TEST_SUFFIX, AZURE_REGION, SERVICE_CONNECTION, AZURE_APP_ID and AZURE_TENANT_DNS_NAME. By default the name of this variable group is "load-testing-web-app-auth-vg". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](../../projects/web-app-auth/scripts/create-azdo-resources.sh) and the pipeline file [azure-pipelines-load-testing.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing.yml).
+- the Azure DevOps pipeline to run the load testing. By default, the name of the pipeline is "Load-Testing-web-app-auth". If you want to change this name, you'll have to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
 By default, the pipeline file should be present in the "main" branch, if it's not the case, you also need to update the file [scripts/create-azdo-resources.sh](./scripts/create-azdo-resources.sh).
   
 Before running this bash file you need to be connected with your Azure Account using Azure CLI. Run 'az login' in your linux environment or in your Dev Container Terminal
@@ -893,13 +893,13 @@ The diagram below describes the architecture for this test with Github Action:
 
 First, you need to create the Github Action Secret AZURE_CREDENTIALS for the authentication with Azure.
 
-#### **Create Github Action Secret AZURE_CREDENTIALS**
+#### **Create Github Action Secrets AZURE_CREDENTIALS and LOAD_TESTING_USERS_CONFIGURATION**
 
 1. On the GitHub portal where you store your project, navigate on the the page 'Settings' and select the submenu 'Actions' in the menu 'Secrets and variables' and select the tab 'Secrets' on the page 'Actions secrets and variables'.
 
     ![github-action-secrets](./docs/img/load-testing-web-app-auth/github-action-secrets.png)
 
-2. Click on 'New repository secret' button, enter 'AZURE_CREDENTIALS' in the Name field and copy/paste the JSON value associated with the service principal created with create-rbac-sp.sh.
+2. Click on 'New repository secret' button, enter 'AZURE_CREDENTIALS' in the Name field and copy/paste the JSON value associated with the service principal created with the bash script create-rbac-sp.sh.
 
     ![github-action-add-secret](./docs/img/load-testing-web-app-auth/github-action-add-secret.png)
 
@@ -907,12 +907,22 @@ First, you need to create the Github Action Secret AZURE_CREDENTIALS for the aut
 
     ![github-action-added-secret](./docs/img/load-testing-web-app-auth/github-action-added-secret.png)
 
+4. Click on 'New repository secret' button, enter 'LOAD_TESTING_USERS_CONFIGURATION' in the Name field. This secret LOAD_TESTING_USERS_CONFIGURATION must be initialized with the JSON string which contains the list of user in the Microsoft Entra ID Test Tenant. This list of users can be created with the bash script: './scripts/create-users.sh'.  
+For instance:  
+
+    ```text
+    '[{"adu":"automationtest1@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"},........{"adu":"automationtest5@63whhf.onmicrosoft.com","pw":"******","tid":"a007455c-dcb3-4067-8a33-************"}]'
+    ```
+    ![github-action-added-secret-bis](./docs/img/load-testing-web-app-auth/github-action-added-secret-bis.png)
+
 #### **Create Github Action configuration variables**
 
 Before installing the Github Action, you need to create the configuration variables which will be used by the Github Action:
 
 - AZURE_REGION: The Azure region where the service will be deployed, for instance: 'eastus2'
 - AZURE_TEST_SUFFIX: The suffix which it used to give a name to all the Azure resources.
+- AZURE_APP_ID: The application Id, by default the value should be set to 'null', the pipeline will automatically initialize those variables when creating the Application in Microsoft Entra ID Tenant. If the service principal which runs the pipeline doesn't have enough privilege to create the application, the application will be created manually and the variable AZURE_APP_ID will be set manually.
+- AZURE_TENANT_DNS_NAME: The DNS of the tenant where the application has been created. By default the value should be set to 'null', the pipeline will automatically initialize those variables when creating the Application in Microsoft Entra ID Tenant. If the service principal which runs the pipeline doesn't have enough privilege to create the application, the application will be created manually and the variable AZURE_TENANT_DNS_NAME will be set manually. 
 
 When you enter the value of AZURE_TEST_SUFFIX, select a value which will not generate an Azure resource name which already exists.
 You can use the command line below to generate a value which will avoid any conflict with existing Azure Storage, Azure Key Vault and Azure Events Hubs:
@@ -935,7 +945,7 @@ You can use the command line below to generate a value which will avoid any conf
 
     ![github-action-added-variable](./docs/img/load-testing-web-app-auth/github-action-added-variable.png)
 
-#### **Create Github Action pipeline for Event Hubs with restricted public access Load Testing**
+#### **Create Github Action pipeline for multi-tenant web application**
 
 By default, all the Github Action pipelines are stored under 'devops-pipelines/github-action'.
 The Load Testing Github Action pipeline is [github-action-load-testing.yml](devops-pipelines/github-action/github-action-load-testing.yml)
@@ -955,17 +965,17 @@ In order to activate this pipeline, follow the steps below:
 4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the GitHub portal, on the 'Action' page, select the workflow 'load-testing-multi-tenant-web-app' and click on the button 'Run workflow'. If required you can change the following input parameters:
 
    - Github branch: main by default
-   - Azure Eventhub Sku: Standard by default
+   - Azure App Service Sku: B1 by default
    - Load Testing duration: 60 seconds by default
    - Load Testing number of threads: 1 by default
    - Load Testing number of engine instances: 1 by default  
    - Load Testing error percentage threshold: 5% by default  
    - Load Testing average response time in milliseconds threshold: 100 ms by default  
-   ![github-action-eventhub-start](./docs/img/load-testing-web-app-auth/github-action-eventhub-start.png)
+   ![github-action-web-app-auth-start](./docs/img/load-testing-web-app-auth/github-action-web-app-auth-start.png)
 
 5. After few minutes, the pipeline has been completed and you can download the load testing artifacts.  
 
-    ![github-action-eventhub-completed](./docs/img/load-testing-web-app-auth/github-action-eventhub-completed.png)
+    ![github-action-web-app-auth-completed](./docs/img/load-testing-web-app-auth/github-action-web-app-auth-completed.png)
 
 ## Troubleshooting
 
@@ -978,45 +988,66 @@ The variable AZURE_APP_ID contains the AppId of the Microsoft Entra ID applicati
 
 Usually this step fails if the service principal associated with the pipeline doesn't have enough privilege to create an Application.  
 
-A possible turn around consists in creating manually the Application from the Dev Container with the bash file iactool.sh.
+A possible turn around consists in creating manually the Application from the Dev Container with the bash file ./projects/web-app-auth/scripts/load-testing-tool.sh.
 
 1. Copy the values of the variables AZURE_APP_PREFIX, AZURE_REGION in the variable group.  
 
     ![Troubleshooting-2](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-02.png)
 
-2. In Visual Studio Code update the file ./configuration/.default.env and add or update the following variables:
+2. In Visual Studio Code update the file ./projects/web-app-auth/configuration/.default.env and add or update the following variables:
 
     ```bash
-    AZURE_REGION=eastus2
-    AZURE_APP_PREFIX=waa1908
-    AZURE_SUBSCRIPTION_ID=
-    AZURE_TENANT_ID=
+    AZURE_REGION="eastus2"
+    AZURE_TEST_SUFFIX=waa4791
+    AZURE_SUBSCRIPTION_ID=********-****-****-****-************
+    AZURE_TENANT_ID=********-****-****-****-************
+    RESOURCE_GROUP=rgwaa4791
+    AZURE_RESOURCE_WEB_APP_SERVER=https://******************.azurestaticapps.net
+    AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=sawaa4791
     ```
 
     Set the variables AZURE_APP_PREFIX, AZURE_REGION with the values in the variables group.
     Set the variable AZURE_SUBSCRIPTION_ID with the SubscriptionId of your Azure Subscription.
     Set the variable AZURE_TENANT_ID with the TenantId of your Azure Tenant.
+    set the variable AZURE_RESOURCE_WEB_APP_SERVER with the url of the Azure Static Web App. This variable is used as the redirect uri of the application.
+    set the variable AZURE_RESOURCE_STORAGE_ACCOUNT_NAME with the Storage Account name. This variable is used to allow the application to read and write record in the Table Storage.
 
-    ![Troubleshooting-3](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-03.png)
 
-3. Once the file ./configuration/.default.env is updated, you can run the following command from the Dev Container:
+3. Once the file ./projects/web-app-auth/configuration/.default.env is updated, you can run the following command from the Dev Container:
 
     ```bash
-        ./devops-pipelines/utils/iactool.sh -a createapp -c ./configuration/.default.env
+        ./projects/web-app-auth/scripts/load-testing-tool.sh -a createapp ./projects/web-app-auth/configuration/.default.env
     ```
 
-    This command will create the Application and display the appId of the new application:
+    This command will create the Application and display the application name and application Id when the command is completed:
+    For instance:  
 
-    ![Troubleshooting-4](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-04.png)
+    ```
+    Create/Update Azure AD Application name: sp-waa4791-app  appId: ********-****-****-****-************ done
+    ```
+    
+    Moreover, the file ./projects/web-app-auth/configuration/.default.env has been updated with the values of AZURE_APP_ID and AZURE_TENANT_DNS_NAME. 
+
+    ```bash
+    AZURE_REGION="eastus2"
+    AZURE_TEST_SUFFIX=waa4791
+    AZURE_SUBSCRIPTION_ID=********-****-****-****-************
+    AZURE_TENANT_ID=********-****-****-****-************
+    RESOURCE_GROUP=rgwaa4791
+    AZURE_RESOURCE_WEB_APP_SERVER=https://******************.azurestaticapps.net
+    AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=sawaa4791
+    AZURE_TENANT_DNS_NAME=*******.onmicrosoft.com
+    AZURE_APP_ID=********-****-****-****-************
+    ```
 
     **Note**:
     The creation of the Application in Microsoft Entra ID Tenant requires a redirect uri which is known once the infrastructure is deployed. This redirect Uri is a uri to an Azure Static Web App hosting the frontend. The creation of the Application in Microsoft Entra ID Tenant must be launched once the infrastructure is deployed. If you launch the creation of the Application in Microsoft Entra ID Tenant before deploying the infrastructure it will fail.
 
-4. Copy the value of the appId in a new variable in the variable group called 'AZURE_APP_ID'
+4. Copy the value of the appId in the variable called 'AZURE_APP_ID' and the tenant dns name in the variable AZURE_TENANT_DNS_NAME
 
     ![Troubleshooting-5](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-05.png)
 
-5. Run the Web App Load Testing pipeline with the variable 'AZURE_APP_ID' defined in the variable group. If this variable is defined, the step 'Step Get or Create ApplicationId' will not try to create an application and will use AZURE_APP_ID value as the value of the Application.
+5. Run the Web App Load Testing pipeline with the variables 'AZURE_APP_ID' and 'AZURE_TENANT_DNS_NAME' defined in the variable group. If this variable is defined, the step 'Step Get or Create ApplicationId' will not try to create an application and will use AZURE_APP_ID value as the value of the Application.
 
 ## Under the hood
 
