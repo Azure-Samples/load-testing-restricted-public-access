@@ -180,7 +180,8 @@ then
         vgJsonResult=$(az pipelines variable-group create --org "https://dev.azure.com/${organization}/" --project "${project}"  --name "${variableGroup}" --authorize true --variables AZURE_TEST_SUFFIX=waa"$(shuf -i 1000-9999 -n 1)" AZURE_REGION="${region}" SERVICE_CONNECTION="${scName}" AZURE_APP_ID="null" AZURE_TENANT_DNS_NAME="null" )
         vgid=$(az pipelines variable-group list --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-name "${variableGroup}"  | jq -r '.[] | select(.name=="'${variableGroup}'").id')
         if [ ! -z "${vgid}" ]
-            vgJsonResult=$(az pipelines variable-group variable add --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "LOAD_TESTING_USERS_CONFIGURATION" --value "[]" --secret true)
+        then
+            vgJsonResult=$(az pipelines variable-group variable add --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "LOAD_TESTING_USERS_CONFIGURATION" --value "'[]'" --secret true)
         fi
     else
         infoMessage "Updating Variables Group..." 
@@ -190,7 +191,7 @@ then
         # echo "$vgJsonResult"
         vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "SERVICE_CONNECTION" --value "${scName}" )
         # echo "$vgJsonResult"
-        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "LOAD_TESTING_USERS_CONFIGURATION" --value "[]" --secret true)
+        vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "LOAD_TESTING_USERS_CONFIGURATION" --value "'[]'" --secret true)
         # echo "$vgJsonResult"
         vgJsonResult=$(az pipelines variable-group variable update --org "https://dev.azure.com/${organization}/" --project "${project}"  --group-id "${vgid}"  --name "AZURE_APP_ID" --value "null" )
         # echo "$vgJsonResult"
