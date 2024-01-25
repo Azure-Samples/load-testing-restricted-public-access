@@ -26,7 +26,44 @@ This repository includes several Azure Load Testing sample projects. Each projec
   - update the infrastructure for the load test
   - run the load testing
   - update the infrastructure after the load test
-  - publish the load testing results  
+  - publish the load testing results 
+
+The list of available projects is defined in the chapter [List of sample projects](#list-of-sample-projects).
+
+Each project is delivered with a detailed documentation:
+- Using Azure Load Testing to test [Azure Event Hubs with public access restriction](./projects/eventhub/README.md)
+- Using Azure Load Testing to test [Multi-Tenant Web Application](./projects/web-app-auth/README.md)
+
+## Features and architectures
+
+Usually each infrastructure to test and service are deployed in a single resource group.
+Moreover, each service to test expose an endpoint. 
+This endpoint could be a:
+- public endpoint
+- public endpoint with restricted access
+- private endpoint
+
+Before running the load tests, those endpoint will be configured to be accessible from the load testing infrastructure.
+
+  ![architecture-to-test](./docs/img/README/architecture-scenario.png)
+
+*Download a [SVG file](./docs/img/README/architecture-scenario.svg) of this diagram.*
+
+The load testing infrastructure is deployed in another resource group. Usually this infrastructure includes at least:
+- Azure Load Testing
+- Azure Key Vault
+
+Before running the load tests, the infrastructure configuration will be updated to allow the load testing infrastructure to reach the endpoint to test.
+This configuration update could be:
+
+- a VNET Integration between the test infrastructure and the targeted infratructure
+- a Firewall configuration update on the endpoint 
+
+
+  ![load-testing-architecture](./docs/img/README/architecture-scenario-load-testing.png)
+
+*Download a [SVG file](./docs/img/README/architecture-scenario-load-testing.svg) of this diagram.*
+
 
 ## Repository folder structure
 
