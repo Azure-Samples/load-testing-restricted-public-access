@@ -1,0 +1,13 @@
+---
+version: v0.1
+testName: load-testing-web-app-auth-multi-users
+testPlan: load-testing.jmx
+description: 'load-testing-web-app-auth-multi-users Test Run'
+engineInstances: "{engineInstances}"
+
+failureCriteria:
+    - "avg(response_time_ms) > {responseTimeMs}"
+    - "percentage(error) > {errorPercentage}"
+secrets:
+{azureADTokens}
+

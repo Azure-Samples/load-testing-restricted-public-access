@@ -1,0 +1,129 @@
+<div id="visit" class="container">
+    <h3>Visit Page</h3>
+    <!-- Modal -->
+    <div class="modal fade" id="removeVisitModal" tabindex="-1" role="dialog" aria-labelledby="removeModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="removeModalLabel">Remove Visit</h5>
+
+            </div>
+            <div class="modal-body">
+                <label id="removeMessage" class="col-form-label">Are you sure you want to remove Visit(s)?</label>
+            </div>
+            <div class="modal-footer">
+            <button type="button" class="mini-button mini-button-text" id="removeCancel">Cancel</button>
+            <button type="button" class="mini-button mini-button-text" id="removeOk">Remove</button>
+            </div>
+        </div>
+        </div>
+    </div>
+    <div class="modal fade" id="addVisitModal" tabindex="-1" role="dialog" aria-labelledby="addModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="addModalLabel">Add Visit</h5>
+
+            </div>
+            <div class="modal-body">
+                <!--<form>-->
+                    <div class="form-group">
+                        <label for="addVisitUser" class="col-form-label">User:</label>
+                        <input type="text" class="form-control" id="addVisitUser">                       
+                    </div>
+                    <div class="form-group">
+                        <label for="addVisitInformation" class="col-form-label">Information:</label>
+                        <input type="text" class="form-control" id="addVisitInformation">                       
+                    </div>                    
+            </div>  
+            <div class="modal-body">
+                <label id="addMessage" class="col-form-label">Are you sure you want to add Visit(s)?</label>
+                <div class="invalid-feedback">
+                    Name already exists.
+                </div>  
+            </div>            
+            <div class="modal-footer">
+            <button type="button" class="mini-button mini-button-text" id="addCancel">Cancel</button>
+            <button type="button" class="mini-button mini-button-text" id="addOk">Add</button>
+            </div>
+        </div>
+        </div>
+    </div>        
+    <div class="modal fade" id="updateVisitModal" tabindex="-1" role="dialog" aria-labelledby="updateModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="updateModalLabel">Update Visit</h5>
+
+
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="updateVisitId" class="col-form-label">Guid:</label>
+                    <input type="text" class="form-control" id="updateVisitId" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="updateVisitUser" class="col-form-label">User:</label>
+                    <input type="text" class="form-control" id="updateVisitUser">                       
+                </div>
+                <div class="form-group">
+                    <label for="updateVisitInformation" class="col-form-label">Information:</label>
+                    <input type="text" class="form-control" id="updateVisitInformation">                       
+                </div>                    
+                <div class="form-group">
+                    <label for="updateVisitLocalIp" class="col-form-label">Local IP:</label>
+                    <input type="text" class="form-control" id="updateVisitLocalIp" readonly>                       
+                </div>                    
+                <div class="form-group">
+                    <label for="updateVisitLocalPort" class="col-form-label">Local IP:</label>
+                    <input type="text" class="form-control" id="updateVisitLocalPort" readonly>                       
+                </div> 
+                <div class="form-group">
+                    <label for="updateVisitRemoteIp" class="col-form-label">Local IP:</label>
+                    <input type="text" class="form-control" id="updateVisitRemoteIp" readonly>                       
+                </div>                    
+                <div class="form-group">
+                    <label for="updateVisitRemotePort" class="col-form-label">Local IP:</label>
+                    <input type="text" class="form-control" id="updateVisitRemotePort" readonly>                       
+                </div> 
+            </div>  
+            <div class="modal-body">
+                <label id="updateMessage" class="col-form-label">Are you sure you want to update Visit(s)?</label>
+                <div class="invalid-feedback">
+                    Name already exists.
+                </div>  
+            </div>                        
+            <div class="modal-footer">
+            <button type="button" class="mini-button mini-button-text" id="updateCancel">Cancel</button>
+            <button type="button" class="mini-button mini-button-text" id="updateOk" >Update</button>
+            </div>
+        </div>
+        </div>
+    </div>     
+         
+    <div class='row container'>
+        <label class='col-sm-2' >
+            <strong>Version: </strong>
+        </label>
+        <div class='col-sm-4'><button id="versionButton"  class="mini-button mini-button-version" ></button>
+        </div>
+        <div id="visitWaiting">
+            <label id="visitMessage" class="col-form-label"></label>
+            <label id="visitError" class="col-form-label mini-text-color-red"></label>
+        </div>
+
+    </div>    
+    <div class="container">
+        <div class="row">
+
+            <button type="button" id="addVisit" class="mini-button  mini-button-text"  data-toggle="modal"  >Add</button>
+            <button type="button" id="updateVisit" class="mini-button  mini-button-text" data-toggle="modal" >Update</button>
+            <button type="button" id="removeVisit" class="mini-button  mini-button-text" data-toggle="modal"  >Remove</button>
+            <div class="col-12">
+                <table id="visitTableId">
+                </table>
+            </div>           
+        </div>  
+    </div>  
+</div>
+<script src="visit-bundle.js"></script>

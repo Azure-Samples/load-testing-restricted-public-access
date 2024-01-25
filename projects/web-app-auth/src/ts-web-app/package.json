@@ -1,0 +1,37 @@
+{
+  "private": true,
+  "scripts": {
+    "tsc": "tsc",
+    "tscw": "tsc --watch",
+    "wp": "webpack",
+    "wpw": "webpack --watch",
+    "serve": "http-server build"
+  },
+  "dependencies": {
+    "@azure/identity": "^2.1.0",
+    "@azure/msal-browser": "^2.28.1",
+    "@azure/storage-blob": "^12.11.0",
+    "@microsoft/applicationinsights-web": "^2.8.6",
+    "bootstrap": "^5.2.0",
+    "bootstrap-table": "^1.21.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "http-server": "^14.1.1",
+    "jquery": "^3.6.0",
+    "jquery-resizable-columns": "^0.2.3",
+    "@popperjs/core": "^2.11.6",
+    "ts-loader": "^9.3.1",
+    "typescript": "^4.7.4",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.2",
+    "@types/jquery": "^3.5.14"
+  },
+  "name": "ts-web-app",
+  "version": "1.0.0",
+  "main": "webpack.config.js",
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

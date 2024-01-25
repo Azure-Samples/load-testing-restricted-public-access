@@ -1,0 +1,38 @@
+{
+  "version": "240112.081335",
+  "clientId": "786e637c-11c6-4b14-9f62-bb4a0999f6a9",
+  "authority": "https://login.microsoftonline.com/common",
+  "redirectUri": "https://sawaa7737.z20.web.core.windows.net/",
+  "cacheLocation": "sessionStorage",
+  "storeAuthStateInCookie": false,
+  "loginRequest": {
+    "scopes": [
+      "openid",
+      "profile",
+      "User.Read"
+    ]
+  },
+  "tokenStorageRequest": {
+    "scopes": [
+      "User.Read",
+      "Mail.Read",
+      "https://storage.azure.com/user_impersonation"
+    ]
+  },
+  "tokenAPIRequest": {
+    "scopes": [
+      "https://fdpo.onmicrosoft.com/786e637c-11c6-4b14-9f62-bb4a0999f6a9/user_impersonation"
+    ]
+  },
+  "graphMeEndpoint": "https://graph.microsoft.com/v1.0/me",
+  "graphMailEndpoint": "https://graph.microsoft.com/v1.0/me/messages",
+  "tenantId": "16b3c013-d300-468d-ac64-7eda0820b6d3",
+  "storageAccountName": "sawaa7737",
+  "storageInputContainerName": "inputwaa7737",
+  "storageOutputContainerName": "outputwaa7737",
+  "storageSASToken": "",
+  "apiEndpoint": "https://funcwaa7737.azurewebsites.net/",
+  "logLevel": "debug",
+  "appInsightsKey": "fa7375bd-046c-4029-aac7-14d767cbf1e9",
+  "authorizationDisabled": false
+}

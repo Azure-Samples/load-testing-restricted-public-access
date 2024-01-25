@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "suffix": {
+          "type": "string"
+      },
+      "location": {
+          "type": "string"
+      },
+      "tags": {
+          "type": "object"
+      }        
+  },
+  "variables": {
+    "loadTestName": "[concat('ldtest', parameters('suffix'))]",
+    "akvName": "[concat('kv', parameters('suffix'))]"  
+  },
+  "resources": [
+      {
+          "type": "Microsoft.LoadTestService/loadTests",
+          "apiVersion": "2022-12-01",
+          "name": "[variables('loadTestName')]",
+          "location": "[parameters('location')]",
+          "tags": "[parameters('tags')]",
+          "identity": {
+              "type": "SystemAssigned"
+          }
+      },
+      {
+          "type": "Microsoft.KeyVault/vaults",
+          "apiVersion": "2022-07-01",
+          "name": "[variables('akvName')]",
+          "location": "[parameters('location')]",
+          "properties": {
+              "accessPolicies": [],
+              "enableRbacAuthorization": true,
+              "enableSoftDelete": false,
+              "enabledForDeployment": false,
+              "enabledForDiskEncryption": false,
+              "enabledForTemplateDeployment": false,
+              "tenantId": "[subscription().tenantId]",       
+              "sku": {
+                  "family": "A",
+                  "name": "standard"
+              },
+              "networkAcls": {
+                  "defaultAction": "Deny",
+                  "bypass": "AzureServices"
+              }
+          }
+      }
+  ],    
+  "outputs": {
+    "LOAD_TESTING_KEY_VAULT_NAME": {
+      "type": "string",
+      "value": "[variables('akvName')]"
+    }, 
+    "LOAD_TESTING_NAME": {
+      "type": "string",
+      "value": "[variables('loadTestName')]"
+    }       
+  }    
+}
+ 

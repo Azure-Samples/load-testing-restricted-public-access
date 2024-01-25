@@ -1,0 +1,1099 @@
+/**************************************************************************/
+/* Global customization                                                   */
+/**************************************************************************/
+
+body {
+  padding-top: 5rem;
+}
+.mini-template {
+  padding: 3rem 1.5rem;
+  text-align: left;
+}
+
+
+/**************************************************************************/
+/* COLORS customization                                                   */
+/**************************************************************************/
+
+
+:root {
+  --red: 4.1;
+  --blue: 206.6;
+  --green: 122.4;
+  --purple: 280;
+  --yellow: 60; 
+  --orange: 36.8;
+  --white: 360;
+  --black: 0;
+
+  --mini-button-bg-red-color: hsl(var(--red),89.6%,58.4%);
+  --mini-button-text-red-color: hsl(var(--white),100%,100%);
+  --mini-button-bg-focus-red-color: hsl(var(--red),89.6%,53.4%);
+  --mini-button-bg-hover-red-color: hsl(var(--red),89.6%,48.4%);
+  --mini-button-bg-active-red-color: hsl(var(--red),89.6%,53.4%);
+  --mini-button-bg-disabled-red-color: hsl(0,0%,90.6%);
+
+  --mini-button-bg-blue-color: hsl(var(--blue),89.7%,54.1%);
+  --mini-button-text-blue-color: hsl(var(--blue),100%,100%);
+  --mini-button-bg-focus-blue-color: hsl(var(--blue),89.7%,49.1%);
+  --mini-button-bg-hover-blue-color: hsl(var(--blue),89.7%,44.1%);
+  --mini-button-bg-active-blue-color: hsl(var(--blue),89.7%,49.1%);
+  --mini-button-bg-disabled-blue-color: hsl(0,0%,90.6%);
+
+  --mini-button-bg-green-color: hsl(var(--green),39.4%,49.2%);
+  --mini-button-text-green-color: hsl(var(--white),100%,100%);
+  --mini-button-bg-focus-green-color: hsl(var(--green),39.4%,44.2%);
+  --mini-button-bg-hover-green-color: hsl(var(--green),39.4%,40.2%);
+  --mini-button-bg-active-green-color: hsl(var(--green),39.4%,44.2%);
+  --mini-button-bg-disabled-green-color: hsl(0,0%,90.6%);
+
+  --mini-button-bg-orange-color: hsl(var(--orange),100%,50%);
+  --mini-button-text-orange-color: hsl(var(--white),100%,100%);
+  --mini-button-bg-focus-orange-color: hsl(var(--orange),100%,45%);
+  --mini-button-bg-hover-orange-color: hsl(var(--orange),100%,40%);
+  --mini-button-bg-active-orange-color: hsl(var(--orange),100%,45%);
+  --mini-button-bg-disabled-orange-color: hsl(0,0%,90.6%);
+
+  --mini-button-bg-purple-color: hsl(var(--purple),100%,40%);
+  --mini-button-text-purple-color: hsl(var(--white),100%,100%);
+  --mini-button-bg-focus-purple-color: hsl(var(--purple),100%,35%);
+  --mini-button-bg-hover-purple-color: hsl(var(--purple),100%,30%);
+  --mini-button-bg-active-purple-color: hsl(var(--purple),100%,35%);
+  --mini-button-bg-disabled-purple-color: hsl(0,0%,90.6%);
+
+  --mini-button-bg-yellow-color: hsl(var(--yellow),100%,40%);
+  --mini-button-text-yellow-color: hsl(var(--white),100%,100%);
+  --mini-button-bg-focus-yellow-color: hsl(var(--yellow),100%,30%);
+  --mini-button-bg-hover-yellow-color: hsl(var(--yellow),100%,35%);
+  --mini-button-bg-active-yellow-color: hsl(var(--yellow),100%,25%);
+  --mini-button-bg-disabled-yellow-color: hsl(0,0%,90.6%);
+}
+
+:root[theme='red'] {
+  --red-hue: 4.1;
+  --blue-hue: 206.6;
+  --green-hue: 122.4;
+  --purple-hue: 280;
+  --yellow-hue: 60; 
+  --orange-hue: 36.8;
+  --white-hue: 360;
+  --black-hue: 0;
+  --mini-button-hue: var(--red-hue);
+  --mini-button-text-hue: var(--white-hue);
+  --mini-button-bg-color: hsl(var(--mini-button-hue),89.6%,58.4%);
+  --mini-button-text-color: hsl(var(--mini-button-text-hue),100%,100%);
+  --mini-button-bg-focus-color: hsl(var(--mini-button-hue),89.6%,53.4%);
+  --mini-button-bg-hover-color: hsl(var(--mini-button-hue),89.6%,48.4%);
+  --mini-button-bg-active-color: hsl(var(--mini-button-hue),89.6%,53.4%);
+  --mini-button-bg-disabled-color: hsl(0,0%,90.6%);
+}
+:root[theme='blue'] {
+  --red-hue: 4.1;
+  --blue-hue: 206.6;
+  --green-hue: 122.4;
+  --purple-hue: 280;
+  --yellow-hue: 60; 
+  --orange-hue: 36.8;
+  --white-hue: 360;
+  --black-hue: 0;
+  --mini-button-hue: var(--blue-hue);
+  --mini-button-text-hue: var(--white-hue);
+  --mini-button-bg-color: hsl(var(--mini-button-hue),89.7%,54.1%);
+  --mini-button-text-color: hsl(var(--mini-button-text-hue),100%,100%);
+  --mini-button-bg-focus-color: hsl(var(--mini-button-hue),89.7%,49.1%);
+  --mini-button-bg-hover-color: hsl(var(--mini-button-hue),89.7%,44.1%);
+  --mini-button-bg-active-color: hsl(var(--mini-button-hue),89.7%,49.1%);
+  --mini-button-bg-disabled-color: hsl(0,0%,90.6%);
+}
+:root[theme='green'] {
+  --red-hue: 4.1;
+  --blue-hue: 206.6;
+  --green-hue: 122.4;
+  --purple-hue: 280;
+  --yellow-hue: 60; 
+  --orange-hue: 36.8;
+  --white-hue: 360;
+  --black-hue: 0;
+  --mini-button-hue: var(--green-hue);
+  --mini-button-text-hue: var(--white-hue);
+  --mini-button-bg-color: hsl(var(--mini-button-hue),39.4%,49.2%);
+  --mini-button-text-color: hsl(var(--mini-button-text-hue),100%,100%);
+  --mini-button-bg-focus-color: hsl(var(--mini-button-hue),39.4%,44.2%);
+  --mini-button-bg-hover-color: hsl(var(--mini-button-hue),39.4%,39.2%);
+  --mini-button-bg-active-color: hsl(var(--mini-button-hue),39.4%,44.2%);
+  --mini-button-bg-disabled-color: hsl(0,0%,90.6%);
+}
+:root[theme='orange'] {
+  --red-hue: 4.1;
+  --blue-hue: 206.6;
+  --green-hue: 122.4;
+  --purple-hue: 280;
+  --yellow-hue: 60; 
+  --orange-hue: 36.8;
+  --white-hue: 360;
+  --black-hue: 0;
+  --mini-button-hue: var(--orange-hue);
+  --mini-button-text-hue: var(--white-hue);
+  --mini-button-bg-color: hsl(var(--mini-button-hue),100%,50%);
+  --mini-button-text-color: hsl(var(--mini-button-text-hue),100%,100%);
+  --mini-button-bg-focus-color: hsl(var(--mini-button-hue),100%,45%);
+  --mini-button-bg-hover-color: hsl(var(--mini-button-hue),100%,40%);
+  --mini-button-bg-active-color: hsl(var(--mini-button-hue),100%,45%);
+  --mini-button-bg-disabled-color: hsl(0,0%,90.6%);
+}
+:root[theme='purple'] {
+  --red-hue: 4.1;
+  --blue-hue: 206.6;
+  --green-hue: 122.4;
+  --purple-hue: 280;
+  --yellow-hue: 60; 
+  --orange-hue: 36.8;
+  --white-hue: 360;
+  --black-hue: 0;
+  --mini-button-hue: var(--purple-hue);
+  --mini-button-text-hue: var(--white-hue);
+  --mini-button-bg-color: hsl(var(--mini-button-hue),100%,40%);
+  --mini-button-text-color: hsl(var(--mini-button-text-hue),100%,100%);
+  --mini-button-bg-focus-color: hsl(var(--mini-button-hue),100%,35%);
+  --mini-button-bg-hover-color: hsl(var(--mini-button-hue),100%,30%);
+  --mini-button-bg-active-color: hsl(var(--mini-button-hue),100%,35%);
+  --mini-button-bg-disabled-color: hsl(0,0%,90.6%);
+}
+:root[theme='yellow'] {
+  --red-hue: 4.1;
+  --blue-hue: 206.6;
+  --green-hue: 122.4;
+  --purple-hue: 280;
+  --yellow-hue: 60; 
+  --orange-hue: 36.8;
+  --white-hue: 360;
+  --black-hue: 0;
+  --mini-button-hue: var(--yellow-hue);
+  --mini-button-text-hue: var(--white-hue);
+  --mini-button-bg-color: hsl(var(--mini-button-hue),100%,40%);
+  --mini-button-text-color: hsl(var(--mini-button-text-hue),100%,100%);
+  --mini-button-bg-focus-color: hsl(var(--mini-button-hue),100%,35%);
+  --mini-button-bg-hover-color: hsl(var(--mini-button-hue),100%,40%);
+  --mini-button-bg-active-color: hsl(var(--mini-button-hue),100%,35%);
+  --mini-button-bg-disabled-color: hsl(0,0%,90.6%);
+}
+
+
+
+
+/**************************************************************************/
+/* Media Button customization                                             */
+/**************************************************************************/
+
+/*
+.mini-button {
+  color: var(--mini-button-text-color);
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 900;
+  margin: 2px 2px;
+  border-radius: 25px;
+  font-family: Font Awesome\ 5 Free;
+  cursor: pointer; 
+  display: inline-flex; 
+  position: relative; 
+  vertical-align: middle;
+  width: 40px;
+  height: 40px;
+}
+*/
+.mini-dropdown-button {
+  background-color: var(--mini-button-bg-hover-color);
+  border: 1px solid var(--mini-button-bg-hover-color);
+  border-bottom: none; /* Prevent double borders */
+  color: var(--mini-button-text-color);
+ /* padding: 10px;*/
+  text-align: center;
+  text-decoration: none;
+  font-size: 16px;
+  /*/font-weight: 900;*/
+  margin: 2px 2px;
+  border-radius: 25px;
+ /* width: 100%;*/
+ /* font-family: Font Awesome\ 5 Free;*/
+  /*font: 1em/1.2 Helvetica, arial, sans-serif;*/
+  cursor: pointer; /* Pointer/hand icon */
+  display: inline-flex; /* Make the buttons appear below each other */
+  position: relative; 
+  vertical-align: middle;
+  width: auto;
+  height: auto;
+  padding:  10px 20px;
+  
+}
+.mini-menu-button {
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-bottom: none; /* Prevent double borders */
+  color: var(--mini-button-text-color);
+ /* padding: 10px;*/
+  text-align: center;
+  text-decoration: none;
+  font-size: 16px;
+  /*/font-weight: 900;*/
+  margin: 2px 2px;
+  border-radius: 25px;
+ /* width: 100%;*/
+ /* font-family: Font Awesome\ 5 Free;*/
+  /*font: 1em/1.2 Helvetica, arial, sans-serif;*/
+  cursor: pointer; /* Pointer/hand icon */
+  display: inline-flex; /* Make the buttons appear below each other */
+  position: relative; 
+  vertical-align: middle;
+  width: auto;
+  height: auto;
+  padding:  10px 20px;
+
+  
+}
+
+.mini-menu-button:not(:last-child) {
+  border-bottom: none; /* Prevent double borders */
+}
+
+/* Add a background color on hover */
+.mini-menu-button:hover {
+  background-color: var(--mini-button-bg-hover-color);
+}
+
+.mini-menu-button:focus {
+  background-color: var(--mini-button-bg-focus-color);
+  outline: none;
+}
+.mini-menu-button:active {
+  background-color: var(--mini-button-bg-active-color);
+  /*border: 20px solid rgb(70, 0, 128); *//* Green border */
+  outline: none;
+}
+.mini-menu-button:disabled {
+  background-color: var(--mini-button-bg-disabled-color);
+  /*border: 20px solid rgb(70, 0, 128); *//* Green border */
+  border: 1px solid var(--mini-button-bg-disabled-color);
+  outline: none;
+}
+
+
+
+.mini-tab-button {
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-bottom: none; /* Prevent double borders */
+  color: var(--mini-button-bg-color);
+ /* padding: 10px;*/
+  text-align: center;
+  text-decoration: none;
+  font-size: 16px;
+  /*/font-weight: 900;*/
+  margin: 2px 2px;
+  border-radius: 25px;
+ /* width: 100%;*/
+ /* font-family: Font Awesome\ 5 Free;*/
+  /*font: 1em/1.2 Helvetica, arial, sans-serif;*/
+  cursor: pointer; /* Pointer/hand icon */
+  display: inline-flex; /* Make the buttons appear below each other */
+  position: relative; 
+  vertical-align: middle;
+  width: auto;
+  height: auto;
+  padding:  10px 20px;
+
+  
+}
+
+.mini-tab-button:not(:last-child) {
+  border-bottom: none; /* Prevent double borders */
+}
+
+/* Add a background color on hover */
+.mini-tab-button:hover {
+  background-color: var(--mini-button-bg-hover-color);
+  color: var(--mini-button-text-color);
+ 
+}
+.mini-tab-button:focus {
+  background-color: var(--mini-button-bg-focus-color);
+  outline: none;
+  color: var(--mini-button-text-color);
+}
+.mini-tab-button:active {
+  background-color: var(--mini-button-bg-active-color);
+  /*border: 20px solid rgb(70, 0, 128); *//* Green border */
+  outline: none;
+  color: var(--mini-button-text-color);
+}
+.mini-tab-button:disabled {
+  background-color: var(--mini-button-bg-disabled-color);
+  /*border: 20px solid rgb(70, 0, 128); *//* Green border */
+  border: 1px solid var(--mini-button-bg-disabled-color);
+  outline: none;
+  color: var(--mini-button-text-color);
+}
+
+
+
+
+
+
+
+
+
+
+.mini-navbar-toggler{
+  background-color: var(--mini-button-bg-active-color);
+  border: 1px solid var(--mini-button-bg-active-color);
+  color: var(--mini-button-text-color);
+  border-color: var(--mini-button-bg-active-color) ;
+  padding: .3em;
+  font-size: 1.25rem;
+  line-height: 1;
+  border-radius: 0.25rem;
+  outline: none!important;
+}
+/*
+.container {
+  padding: 0;
+}
+
+.navbar-header {
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
+.navbar-collapse {
+  background: #fff;
+  padding-left: 0px;
+  padding-right: 400px;
+  border: none;
+}
+
+.navbar-collapse ul {
+  background: #000;
+}
+
+.navbar-collapse {
+  margin: 0;
+}
+*/
+.mini-navbar-toggler:hover, .mini-navbar-toggler:focus, .mini-navbar-toggler:enabled {
+  text-decoration: none;
+  color: var(--mini-button-text-color);
+  border-color: var(--mini-button-bg-active-color) ;
+}
+
+.mini-navbar-toggler:not(:disabled):not(.disabled) {
+  cursor: pointer;
+  color: var(--mini-button-text-color);
+  border-color: var(--mini-button-bg-active-color) ;
+}
+
+/*************************************************/
+/* mini-slider                                  */
+/*************************************************/
+.mini-slider-container {
+  /* Width of the outside container */
+ left: 40px; 
+ right: 75px; 
+ width: auto;
+ display: inline-flex;
+ position: absolute;  
+}
+
+.mini-slider {
+ -webkit-appearance: none;
+ width: 100%;
+ height: 5px;
+ border-radius: 5px;  
+ background:var(--mini-button-bg-color);;
+ outline: none;
+ -webkit-transition: .2s;
+ transition: opacity .2s;
+}
+
+.mini-slider::-webkit-slider-thumb {
+ -webkit-appearance: none;
+ appearance: none;
+ width: 15px;
+ height: 15px;
+ border-radius: 10px; 
+ background:var(--mini-button-bg-focus-color);
+ cursor: pointer;
+}
+
+.mini-slider::-moz-range-thumb {
+ width: 15px;
+ height: 15px;
+ border-radius: 10px;
+ background:var(--mini-button-bg-focus-color);
+ cursor: pointer;
+}
+/*************************************************/
+/* mini-button                                  */
+/*************************************************/
+.mini-button-group-vertical  {
+  position: relative; 
+  display: inline-block;
+}
+.mini-button-group-vertical button {
+  background-color: var(--mini-button-bg-color);
+  border: 1px solid var(--mini-button-bg-color);
+  color: var(--mini-button-text-color); /* White text */
+  padding: 15px 18px;
+  cursor: pointer; /* Pointer/hand icon */
+  width: 100%; /* Set a width if needed */
+  display: inline-block;
+}
+
+
+.mini-button-group-horizontal  {
+  position: relative; 
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.mini-button-group-horizontal button {
+  background-color: var(--mini-button-bg-color);
+  border: 1px solid var(--mini-button-bg-color);
+  color: var(--mini-button-text-color); /* White text */
+  cursor: pointer; /* Pointer/hand icon */
+  /*width: 100%; *//** Set a width if needed */
+  display: inline-flex;
+}
+.mini-button-group-right  {
+  position: absolute; 
+  float: right;
+  right: 0px;
+}
+
+.mini-button {
+  background-color: var(--mini-button-bg-color);
+  border: 1px solid var(--mini-button-bg-color);
+  border-bottom: none; /* Prevent double borders */
+  color: var(--mini-button-text-color);
+  padding: 4px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 900;
+  margin: 2px 2px;
+  border-radius: 25px;
+ /* width: 100%;*/
+  font-family: Font Awesome\ 5 Free;
+  /*font: 1em/1.2 Helvetica, arial, sans-serif;*/
+  cursor: pointer; /* Pointer/hand icon */
+  display: inline-flex; /* Make the buttons appear below each other */
+  position: relative; 
+  vertical-align: middle;
+  width: 28px;
+  height: 28px;
+  line-height: normal;
+}
+.mini-button-text {
+  font-family: inherit;
+  font: inherit;
+  width: auto;
+  height: auto;
+  font-weight: normal;
+  padding: 10px 20px;
+}
+.mini-button-version {
+  font-family: inherit;
+  font: inherit;
+  width: auto;
+  height: auto;
+  font-weight: normal;
+  padding: 2px 10px;
+}
+.mini-button-right{
+  float: right;
+  position: absolute; 
+  vertical-align: baseline;
+  right: 0px;
+}
+.mini-button-top{
+  top: 0px;
+}
+.mini-button-hidden{
+  visibility: hidden;
+}
+.mini-button-small{
+  width: 20px;
+  height: 20px;
+  padding: 0px;
+  vertical-align: middle; 
+  margin: 0px;
+  display: inline-flex;
+  align-items: center; 
+}
+.mini-button-big{
+  width: 40px;
+  height: 40px;
+  padding: 10px;
+  vertical-align: middle; 
+  margin: 0px;
+  display: inline-flex;
+  align-items: center; 
+}
+
+.mini-button:not(:last-child) {
+  border-bottom: none; /* Prevent double borders */
+}
+
+/* Add a background color on hover */
+.mini-button:hover {
+  background-color: var(--mini-button-bg-hover-color);
+}
+.mini-button:focus {
+  background-color: var(--mini-button-bg-focus-color);
+  outline: none;
+}
+.mini-button:active {
+  background-color: var(--mini-button-bg-active-color);
+  /*border: 20px solid rgb(70, 0, 128); *//* Green border */
+  outline: none;
+}
+.mini-button:disabled {
+  background-color: var(--mini-button-bg-disabled-color);
+  /*border: 20px solid rgb(70, 0, 128); *//* Green border */
+  border: 1px solid var(--mini-button-bg-disabled-color);
+  outline: none;
+}
+
+/*************************************************/
+/* mini-button color                            */
+/*************************************************/
+
+.mini-button.mini-button-red {
+  background-color: var(--mini-button-bg-red-color);
+  border: 1px solid var(--mini-button-bg-red-color);
+}
+.mini-button.mini-button-red:default{
+  background-color: var(--mini-button-bg-red-color);
+}
+.mini-button.mini-button-red:hover {
+  background-color: var(--mini-button-bg-hover-red-color) ;
+}
+.mini-button.mini-button-red:focus {
+  background-color: var(--mini-button-bg-focus-red-color);
+  outline: none;
+}
+.mini-button.mini-button-red:active {
+  background-color: var(--mini-button-bg-active-red-color);
+  outline: none; 
+}
+.mini-button.mini-button-red:disabled {
+  background-color: var(--mini-button-bg-disabled-red-color);
+  border: 1px solid var(--mini-button-bg-disabled-red-color);
+  outline: none;
+}
+
+
+.mini-button.mini-button-blue {
+  background-color: var(--mini-button-bg-blue-color);
+  border: 1px solid var(--mini-button-bg-blue-color);
+}
+.mini-button.mini-button-blue:default{
+  background-color: var(--mini-button-bg-blue-color);
+}
+.mini-button.mini-button-blue:hover {
+  background-color: var(--mini-button-bg-hover-blue-color) ;
+}
+.mini-button.mini-button-blue:focus {
+  background-color: var(--mini-button-bg-focus-blue-color);
+  outline: none;
+}
+.mini-button.mini-button-blue:active {
+  background-color: var(--mini-button-bg-active-blue-color);
+  outline: none; 
+}
+.mini-button.mini-button-blue:disabled {
+  background-color: var(--mini-button-bg-disabled-blue-color);
+  outline: none;
+}
+
+
+.mini-button.mini-button-green {
+  background-color: var(--mini-button-bg-green-color);
+  border: 1px solid var(--mini-button-bg-green-color);
+}
+.mini-button.mini-button-green:default{
+  background-color: var(--mini-button-bg-green-color);
+}
+.mini-button.mini-button-green:hover {
+  background-color: var(--mini-button-bg-hover-green-color) ;
+}
+.mini-button.mini-button-green:focus {
+  background-color: var(--mini-button-bg-focus-green-color);
+  outline: none;
+}
+.mini-button.mini-button-green:active {
+  background-color: var(--mini-button-bg-active-green-color);
+  outline: none; 
+}
+.mini-button.mini-button-green:disabled {
+  background-color: var(--mini-button-bg-disabled-green-color);
+  outline: none;
+}
+
+.mini-button.mini-button-purple {
+  background-color: var(--mini-button-bg-purple-color);
+  border: 1px solid var(--mini-button-bg-purple-color);
+}
+.mini-button.mini-button-purple:default{
+  background-color: var(--mini-button-bg-purple-color);
+}
+.mini-button.mini-button-purple:hover {
+  background-color: var(--mini-button-bg-hover-purple-color) ;
+}
+.mini-button.mini-button-purple:focus {
+  background-color: var(--mini-button-bg-focus-purple-color);
+  outline: none;
+}
+.mini-button.mini-button-purple:active {
+  background-color: var(--mini-button-bg-active-purple-color);
+  outline: none; 
+}
+.mini-button.mini-button-purple:disabled {
+  background-color: var(--mini-button-bg-disabled-purple-color);
+  outline: none;
+}
+
+.mini-button.mini-button-yellow {
+  background-color: var(--mini-button-bg-yellow-color);
+  border: 1px solid var(--mini-button-bg-yellow-color);
+}
+.mini-button.mini-button-yellow:default{
+  background-color: var(--mini-button-bg-yellow-color);
+}
+.mini-button.mini-button-yellow:hover {
+  background-color: var(--mini-button-bg-hover-yellow-color) ;
+}
+.mini-button.mini-button-yellow:focus {
+  background-color: var(--mini-button-bg-focus-yellow-color);
+  outline: none;
+}
+.mini-button.mini-button-yellow:active {
+  background-color: var(--mini-button-bg-active-yellow-color);
+  outline: none; 
+}
+.mini-button.mini-button-yellow:disabled {
+  background-color: var(--mini-button-bg-disabled-yellow-color);
+  outline: none;
+}
+
+.mini-button.mini-button-orange {
+  background-color: var(--mini-button-bg-orange-color);
+  border: 1px solid var(--mini-button-bg-orange-color);
+}
+.mini-button.mini-button-orange:default{
+  background-color: var(--mini-button-bg-orange-color);
+}
+.mini-button.mini-button-orange:hover {
+  background-color: var(--mini-button-bg-hover-orange-color) ;
+}
+.mini-button.mini-button-orange:focus {
+  background-color: var(--mini-button-bg-focus-orange-color);
+  outline: none;
+}
+.mini-button.mini-button-orange:active {
+  background-color: var(--mini-button-bg-active-orange-color);
+  outline: none; 
+}
+.mini-button.mini-button-orange:disabled {
+  background-color: var(--mini-button-bg-disabled-orange-color);
+  outline: none;
+}
+
+/*************************************************/
+/* media gradient                                */
+/*************************************************/
+
+#mini-gradient {
+  /*height: 200px;*/
+  background-image: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,1)); 
+}
+
+.img-gradient{
+  position:relative;
+  display:inline-block;
+}
+.img-gradient:after {
+  content:'';
+  position:absolute;
+  left:0; top:0;
+  width:100%; height:100%;
+  display:inline-block;
+  background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.8)); /* W3C */
+}
+.img-gradient img{
+  display:block;
+}
+
+.mini-gradientoverlap{
+  top: 0px;
+  position: relative;
+  left: 0px;
+  padding: 8px;
+}
+
+/*************************************************/
+/* media items                                   */
+/*************************************************/
+
+.mini-title {
+  font-size: 24px;
+  color: var(--mini-button-text-color);
+  text-align: left;
+  text-decoration: none;
+  margin-bottom: 0px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/*************************************************/
+/* mini-title                                   */
+/*************************************************/
+/*
+.mini-title{
+  position: absolute; 
+  right: 42px;
+  left: 0px;
+}
+*/
+.mini-artist {
+  font-size: 12px;
+  color: var(--mini-button-text-color);
+  text-align: left;
+  text-decoration: none;
+  margin-bottom: 0px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mini-album {
+  font-size: 12px;
+  color: var(--mini-button-text-color);
+  text-align: left;
+  text-decoration: none;
+  margin-bottom: 0px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mini-time {
+  color: var(--mini-button-text-color);
+  text-align: left;
+  text-decoration: none;
+  font-size: 12px;
+  margin-bottom: 0px;
+  margin-right: 2px;
+  vertical-align: baseline;
+  position: relative; 
+}
+.mini-duration {
+  color: var(--mini-button-text-color);
+  text-align: left;
+  text-decoration: none;
+  font-size: 12px;
+  margin-bottom: 0px;
+  margin-left: 2px;
+  vertical-align: baseline;
+  float: right; 
+  position: absolute;
+  right: 35px;  
+}
+
+/*************************************************/
+/* media div                                     */
+/*************************************************/
+
+.mini-div{
+  position: relative;
+  display:flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 10px;
+}
+.mini-playback-div{
+  padding: 0px 10px;
+}
+.mini-slider-div{
+  position: relative;
+  display:flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 0px;
+}
+.mini-play-div{
+  position: relative;
+  display:block;
+  width: 100%;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+/*************************************************/
+/* footer                                        */
+/*************************************************/
+
+footer {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+footer p {
+  margin-bottom: .25rem;
+}
+
+
+.embed-responsive .card-img-top {
+  object-fit: cover;
+  }
+
+/*************************************************/
+/* alert                                        */
+/*************************************************/
+.mini-alert-information {
+    position: fixed;
+    display: none;
+    z-index: 2;
+    cursor: pointer;
+    border-radius: 25px;
+    padding: 10px 40px;  
+    background-color: var(--mini-button-bg-color);
+    border: 1px solid var(--mini-button-bg-color);
+    color: var(--mini-button-text-color);
+  }
+.mini-alert-error {
+  position: fixed;
+  display: none;
+  z-index: 2;
+  cursor: pointer;
+  border-radius: 25px;
+  padding: 10px 40px;  
+  color: var(--mini-button-text-color);
+  background-color: var(--mini-button-bg-active-red-color);
+  border: 1px solid var(--mini-button-bg-active-red-color);
+}
+
+.mini-video-hidden{
+  visibility: hidden;
+}
+.mini-video-background{
+  z-index: 9;
+  background-image: url('assets/img/Screen169.png');
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+}
+.mini-video{
+  z-index: 10;
+}
+.mini-video-container {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+}
+/* Add Media Checkbox*/
+.custom-checkbox .custom-control-input:checked ~ .custom-control-label::before {
+  background-color: var(--mini-button-bg-active-color)
+}
+
+.custom-checkbox .custom-control-input:checked:focus ~ .custom-control-label::before {
+  box-shadow: 0 0 0 1px #fff, 0 0 0 0.2rem var(--mini-button-bg-focus-color)
+}
+.custom-checkbox .custom-control-input:focus ~ .custom-control-label::before {
+  box-shadow: 0 0 0 1px #fff, 0 0 0 0.2rem rgba(0, 0, 0, 0.25)
+}
+.custom-checkbox .custom-control-input:active ~ .custom-control-label::before {
+  background-color: var(--mini-button-bg-hover-color) 
+}
+.mini-background-checkbox{
+  background-color: var(--mini-button-bg-color)
+}
+
+.mini-text-background-color{
+  color: var(--mini-button-bg-color)
+}
+.mini-background-color{
+  background-color: var(--mini-button-bg-color)
+}
+
+.mini-hide{
+  display:none;
+}
+.mini-show{
+  display:block;
+}
+.mini-no-bottom-margin{
+  margin-bottom: 0px;
+}
+.mini-color-red{
+  background-color:var(--mini-button-bg-red-color);
+}
+.mini-text-color-red{
+  color:var(--mini-button-bg-red-color);
+}
+
+.mini-color-green{
+  background-color:var(--mini-button-bg-green-color);
+}
+.mini-text-color-green{
+  color:var(--mini-button-bg-green-color);
+}
+
+.mini-color-blue{
+  background-color:var(--mini-button-bg-blue-color);
+}
+.mini-text-color-blue{
+  color:var(--mini-button-bg-blue-color);
+}
+
+.mini-color-yellow{
+  background-color:var(--mini-button-bg-yellow-color);
+}
+.mini-text-color-yellow{
+  color:var(--mini-button-bg-yellow-color);
+}
+
+.mini-color-purple{
+  background-color:var(--mini-button-bg-purple-color);
+}
+.mini-text-color-purple{
+  color:var(--mini-button-bg-purple-color);
+}
+
+.mini-color-orange{
+  background-color:var(--mini-button-bg-orange-color);
+}
+.mini-text-color-orange{
+  color:var(--mini-button-bg-orange-color);
+}
+
+.mini-color-light{
+  background-color:var(--white-hue);
+}
+.mini-text-color-ligth{
+  color:var(--white-hue);
+}
+
+.mini-color-dark{
+  background-color:var(--black-hue);
+}
+.mini-text-color-dark{
+  color:var(--black-hue);
+}
+.mini-spinner {
+  padding: 8px;
+  margin: 4px 4px;
+  color: var(--mini-button-bg-color)
+}
+.mini-button-spinner {
+  padding: 8px;
+  margin: 4px 4px;
+  color: var(--mini-button-text-color)
+}
+.mini-table-header{
+  background-color: var(--mini-button-bg-color);
+  color: var(--mini-button-text-color)
+}
+table.table tr th {
+  background-color:var(--mini-button-bg-color) !important; 
+  color:var(--mini-button-text-color) !important;
+}
+
+
+/*
+.table-fixed tbody {
+  display:block;
+  height:65vh;
+  overflow:auto;
+}
+
+.table-fixed thead, .table-fixed tbody tr {
+  display:table;
+  width:100%;
+}
+*/
+/*
+.page-item .active .page-link {
+    z-index: 3;
+    color: var(--mini-button-text-color);
+    background-color: var(--mini-button-bg-color);
+    border-color: var(--mini-button-bg-color);
+}
+
+.page-item .disabled .page-link {
+    color: var(--mini-button-bg-color);
+    pointer-events: none;
+    cursor: auto;
+    background-color: var(--mini-button-text-color);
+    border-color: var(--mini-button-bg-color);
+}
+*/
+.page-link {
+  position: relative;
+  display: block;
+  padding: .5rem .75rem;
+  margin-left: -1px;
+  line-height: 1.25;
+  color: var(--mini-button-bg-color) ;
+  background-color: var(--mini-button-text-color);
+  border: 1px solid var(--mini-button-bg-color);
+}
+.page-link:hover {
+      z-index: 2;
+      color: var(--mini-button-text-color);
+      text-decoration: none;
+      background-color: var(--mini-button-bg-color);
+      border-color: var(--mini-button-bg-color);
+}
+.page-item.active .page-link {
+  z-index: 3;
+  color: var(--mini-button-text-color);
+  background-color: var(--mini-button-bg-color);
+  border-color: var(--mini-button-bg-color);
+}
+.dropdown-item.active, .dropdown-item:active {
+  color: var(--mini-button-text-color);
+  text-decoration: none;
+  background-color: var(--mini-button-bg-color);
+}
+/*
+ The section below set the background color and color for check box.
+*/
+input[type='checkbox']{
+  width: 14px !important;
+  height: 14px !important;
+  margin: 5px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  -o-appearance: none;
+  appearance: none;
+  outline: 1px solid var(--mini-button-bg-color);
+  box-shadow: none;
+  font-size: 0.8em;
+  text-align: center;
+  line-height: 1em;
+  background: var(--mini-button-text-color);
+}
+
+input[type='checkbox']:checked:after {
+  content: '✔';
+  color: var(--mini-button-text-color);
+  background: var(--mini-button-bg-color);
+}
+.modal-large-dialog {
+  max-width: 800px;
+  margin: 1.75rem auto;
+}

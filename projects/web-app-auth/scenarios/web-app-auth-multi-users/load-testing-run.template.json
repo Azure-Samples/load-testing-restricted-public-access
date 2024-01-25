@@ -1,0 +1,39 @@
+{
+  "description": "{name}-{date} Run",
+  "testId": "{id}",
+  "displayName": "{name}-{date}",
+  "loadTestConfiguration": {
+    "engineInstances": "{engineInstances}",
+    "splitAllCSVs": false
+  },
+  "passFailCriteria": {
+    "passFailMetrics": {
+      "fefd759d-7fe8-4f83-8b6d-aeebe0f491fe": {
+        "clientMetric": "response_time_ms",
+        "aggregate": "avg",
+        "condition": ">",
+        "value":  "{responseTimeMs}",
+        "action": "continue"
+      },
+      "fefd759d-7fe8-4f83-8b6d-aeebe0f491ff": {
+        "clientMetric": "error",
+        "aggregate": "percentage",
+        "condition": ">",
+        "value": "{errorPercentage}",
+        "action": "continue"
+      }
+    }
+  },
+  "secrets": {
+    {azureADTokens}
+  },
+  "environmentVariables": {
+    {users},    
+    "hostname": "{hostname}",
+    "path": "{path}",
+    "duration": "{duration}",
+    "threads": "{threads}"
+  },
+  "keyvaultReferenceIdentityType": "SystemAssigned"
+}
+
