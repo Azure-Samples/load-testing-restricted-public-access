@@ -292,7 +292,7 @@ This container image will be deployed towards the targeted infratructure (Azure 
 When the backend is deployed, the deployment script check if the following url is functioning:
 
  ```json
-      https://func${AZURE_APP_PREFIX}.azurewebsites.net/version
+      https://func${AZURE_TEST_SUFFIX}.azurewebsites.net/version
  ```  
 
 The version REST API is always accessible and doesn't require any authentication. This REST API returns the version of the service, for instance:
@@ -410,7 +410,7 @@ Creation done
 When all the tests are completed, using the same script you can also automatically delete the user accounts created for the tests. You can call the script create-users.sh with the following parameters:  
 
 - '-a': action 'delete'  
-- '-t': test tenant id   
+- '-t': test tenant id  
 - '-p': user name prefix, the user's email address will be {PREFIX}{INDEX}@{TEST_TENANT_DNS_NAME}   
 - '-c': the number of users to delete  
 
@@ -801,6 +801,7 @@ In that case, you need to use the bash file create-azdo-resources.sh with a new 
 ```
 
 To create the PAT Token:
+
 1. Open the url "https://dev.azure.com/YOUR_ORG/_usersSettings/tokens" with you Internet Browser 
 2. Click on the link "+ New Token".
 3. On the Dialog Box 'Create a new personal access token', enter the name of the token, select Read/Write/Execute permissions for all the scopes (WorkItems, Code, Build, ...)
@@ -990,7 +991,7 @@ Usually this step fails if the service principal associated with the pipeline do
 
 A possible turn around consists in creating manually the Application from the Dev Container with the bash file ./projects/web-app-auth/scripts/load-testing-tool.sh.
 
-1. Copy the values of the variables AZURE_APP_PREFIX, AZURE_REGION in the variable group.  
+1. Copy the values of the variables AZURE_TEST_SUFFIX, AZURE_REGION in the variable group.  
 
     ![Troubleshooting-2](./docs/img/load-testing-web-app-auth/troubleshooting-web-app-02.png)
 
@@ -1006,7 +1007,7 @@ A possible turn around consists in creating manually the Application from the De
     AZURE_RESOURCE_STORAGE_ACCOUNT_NAME=sawaa4791
     ```
 
-    Set the variables AZURE_APP_PREFIX, AZURE_REGION with the values in the variables group.
+    Set the variables AZURE_TEST_SUFFIX, AZURE_REGION with the values in the variables group.
     Set the variable AZURE_SUBSCRIPTION_ID with the SubscriptionId of your Azure Subscription.
     Set the variable AZURE_TENANT_ID with the TenantId of your Azure Tenant.
     set the variable AZURE_RESOURCE_WEB_APP_SERVER with the url of the Azure Static Web App. This variable is used as the redirect uri of the application.
