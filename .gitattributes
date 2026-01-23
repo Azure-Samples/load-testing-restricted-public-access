@@ -1,0 +1,5 @@
+# Normalize everything by default
+* text=auto
+
+# Force all shell scripts to use LF on checkout (Windows or Linux)
+*.sh text eol=lf

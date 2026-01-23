@@ -588,8 +588,8 @@ function buildWebAppContainer() {
 
     # Build the image
     echo "Building the docker image for '$imageName:$imageTag'"
-    cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Production\" . --only-show-errors 2> /dev/null"
-    #cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Development\" . --only-show-errors 2> /dev/null"
+    # cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Production\" . --only-show-errors 2> /dev/null"
+    cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Development\" . --only-show-errors 2> /dev/null"
     printProgress "$cmd"
     eval "$cmd"
 
