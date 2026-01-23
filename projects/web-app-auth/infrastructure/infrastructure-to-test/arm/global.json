@@ -77,7 +77,8 @@
           "signedPermission": "rwdlacu",
           "signedExpiry": "[dateTimeAdd(parameters('baseTime'), concat('P',parameters('offsetDay'),'D'))]",
           "signedResourceTypes": "sco"    
-    }
+    },
+    "functionOutboundIps": "[split(reference(resourceId('Microsoft.Web/sites', variables('functionName')), '2021-02-01').outboundIpAddresses, ',')]"
   },
   "resources": [
     {
@@ -130,6 +131,27 @@
           },
           "keySource": "Microsoft.Storage"
         },
+        "networkAcls": {
+              "bypass": "AzureServices",
+              "defaultAction": "Deny",
+              "ipRules": [
+                {
+                  "action": "Allow",
+                  "value": "[parameters('ipAddress')]"
+                },
+                {
+                  "copy": "functionIps",
+                  "count": "[length(variables('functionOutboundIps'))]",
+                  "input": {
+                    "action": "Allow",
+                    "value": "[variables('functionOutboundIps')[copyIndex('functionIps')]]"
+                  }
+                }
+
+              ],
+              "resourceAccessRules": [],
+              "virtualNetworkRules": []
+        },        
         "accessTier": "Hot"
       }
     },
