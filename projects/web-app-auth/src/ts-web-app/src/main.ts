@@ -21,13 +21,6 @@ const globalConfig = globalThis.globalConfiguration;
 // Initialize azureADClient used for the authentication
 const azureADClient = globalThis.globalClient.getAzureADClient();
 
-// Initialize the StorageClient used for the access to Azure Storage
-const storageClient = globalThis.globalClient.getStorageClient();
-
-// Initialize APIClient
-const apiClient = globalThis.globalClient.getAPIClient();
-
-
 const manager: NavigationManager = new NavigationManager();
 
 function openPage(nav: NavigationManager, pageId: string) {
@@ -94,6 +87,12 @@ async function signOut(nav: NavigationManager, pageId: string) {
   }
 }
 
+async function bootstrap() {
+  await azureADClient.initAuthAsync();
+}
+
+
+
 const pageConfiguration: Array<PageConfiguration> = [
   {
     pageId: "home",
@@ -145,6 +144,7 @@ const result = manager.initialization(
   globalThis.globalVars.getGlobalColor(),
   pageConfiguration
 );
+bootstrap();
 
 if (result == true) {
   manager.navigate();

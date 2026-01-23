@@ -22,7 +22,7 @@ RUN dotnet publish --self-contained -r linux-x64 -c Release -o out ${ARG_WEB_API
 # stage 2
 FROM mcr.microsoft.com/dotnet/aspnet:6.0  AS release-image
 ARG ARG_PORT_HTTP
-ENV PORT_HTTP ${ARG_PORT_HTTP}
+ENV PORT_HTTP=${ARG_PORT_HTTP}
 
 ARG ARG_APP_VERSION
 ENV APP_VERSION=${ARG_APP_VERSION}

@@ -64,7 +64,7 @@ globalThis.globalConfiguration = {
         auth: {
             clientId: config.clientId,
             authority: config.authority,
-            redirectUri: config.redirectUri,
+            redirectUri: window.location.origin,
         },
         cache: {
             cacheLocation: "sessionStorage", // This configures where your cache will be stored

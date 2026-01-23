@@ -27,6 +27,10 @@
         "S1",
         "S2",
         "S3",
+        "P0v4",
+        "P1v4",
+        "P2v4",
+        "P3v4",
         "P1V2",
         "P2V2",
         "P3V2",
@@ -174,7 +178,7 @@
     },
     {
       "type": "Microsoft.Web/sites",
-      "apiVersion": "2020-06-01",
+      "apiVersion": "2023-12-01",
       "name": "[variables('functionName')]",
       "location": "[parameters('location')]",
       "kind": "functionapp,linux,container",
@@ -189,19 +193,16 @@
       "properties": {
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
         "siteConfig": {
-          "appSettings": [
-              {
-                  "name": "AzureWebJobsStorage",
-                  "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2019-06-01').keys[0].value)]"
-              },
+          "alwaysOn": true,
+          "appSettings": [          
               {
                   "name": "FUNCTIONS_WORKER_RUNTIME",
-                  "value": "python"
+                  "value": "dotnet-isolated"
               },
               {
-                  "name": "FUNCTIONS_EXTENSION_VERSION",
-                  "value": "~3"
-              },
+                  "name": "WEBSITE_RUN_FROM_PACKAGE",
+                  "value": "0"
+              },              
               {
                   "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
                   "value": "false"
@@ -211,7 +212,8 @@
                 "value": "[reference(resourceId('microsoft.insights/components/', variables('appInsightsName')), '2015-05-01').InstrumentationKey]"
               }              
           ]
-        }        
+                   
+        }    
       }
     },    
     {
