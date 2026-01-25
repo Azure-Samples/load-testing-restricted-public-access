@@ -197,6 +197,8 @@ Usually this step is not required in a pipeline as the connection with Azure is 
     ```bash
         vscode ➜ /workspace $ ./projects/web-app-auth/scripts/load-testing-tool.sh  -a createconfig -c ./projects/web-app-auth/configuration/.default.env -r 'eastus2' 
     ```
+    **Note:**  
+    The Static Web App can only be deployed in the following regions: **westus2,centralus,eastus2,westeurope,eastasia**  
 
     After this step, the variables AZURE_REGION, AZURE_TEST_SUFFIX, AZURE_SUBSCRIPTION_ID and AZURE_TENANT_ID used for the deployment are stored in the file ./configuration/.default.env.
 
