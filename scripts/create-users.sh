@@ -37,7 +37,7 @@ function usage() {
     infoMessage " -c  Sets the users count (maximum value 10): by default: '5'  "
     infoMessage
     infoMessage "Example:"
-    infoMessage " create-users.sh -a create -t b5c9fc83-fbd0-4368-9cb6-1b5823479b6a -s https://fdpo.onmicrosoft.com/d3c5dde6-2a9e-4e96-b09f-9340bbcbcadf/user_impersonation -p automationtest -c 8"
+    infoMessage " create-users.sh -a create -t b5c9fc83-fbd0-4368-9cb6-1b5823479b6a -p automationtest -c 8"
 }
 AZURE_AUTOMATION_USER_PREFIX="automationtest"
 AZURE_USERS_COUNT=5

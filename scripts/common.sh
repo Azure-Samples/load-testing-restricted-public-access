@@ -606,7 +606,7 @@ function buildWebAppContainerAzure() {
 #- buildWebAppContainer
 ##############################################################################
 function buildWebAppContainer() {
-    ContainerRegistryName="${1}"
+    ContainerRegistryDns="${1}"
     targetDirectory="$2"
     imageName="$3"
     imageTag="$4"
@@ -633,7 +633,7 @@ function buildWebAppContainer() {
         buildArgAppEnvironment="Development"
     fi
 
-    
+    ContainerRegistryName="${ContainerRegistryDns%%.azurecr.io}"
     # 1) Log in to ACR
     # Either via Azure CLI:
     cmd="az acr login --name \"$ContainerRegistryName\""
