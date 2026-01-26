@@ -331,16 +331,16 @@ class VisitPage extends Page {
     this.updateData(false);
     // Initialize Page  
     this.createTable();
-    this.getListVisit()
-      .then((count) => {
+    (async () => {
+      try {
+        const count = await this.getListVisit();
         this.logMessage(`${count} record(s) in Visit table`);
-      })
-      .catch((e) => {
+      } catch (e) {
         this.logError(`Error while loading page: ${e}`);
-      })
-      .finally(() => {
+      } finally {
         waiting.hide();
-      });
+      }
+    })();
 
     return true;
   }

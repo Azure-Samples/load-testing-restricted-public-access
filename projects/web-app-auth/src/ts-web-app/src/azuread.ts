@@ -102,34 +102,27 @@ export class AzureADClient {
     return false;
   }
 
-  signInAsync(): Promise<AccountInfo | null> {
-    return new Promise<AccountInfo | null>((resolve, reject) => {
-      this.MSAuthClient.initialize().then(() => { 
-        this.logClient.log("MSAuthClient.initialize");
-        this.MSAuthClient.clearCache().then(() => {
-          this.logClient.log("MSAuthClient.clearCache");
-          this.logClient.log("Login interactively");
-          this.MSAuthClient.loginPopup(this.loginRequest)
-            .then(loginResponse => {
-              const message = `id_token acquired - expireon: ${loginResponse.expiresOn} cached: ${loginResponse.fromCache} idToken: ${loginResponse.idToken} `;
-              this.logClient.log(message);
-              const account = this.getAccount();
-              if (account)
-                this.setAccount(account);
-              resolve(account);
-            }).catch(error => {
-              this.logClient.error(error);
-              reject(error)
-            });
-          }).catch(error => {
-            this.logClient.error(error);
-            reject(error)
-          });
-        }).catch(error => {
-          this.logClient.error(error);
-          reject(error)
-        });
-    });
+  async signInAsync(): Promise<AccountInfo | null> {
+    try {
+      await this.MSAuthClient.initialize();
+      this.logClient.log("MSAuthClient.initialize");
+
+      await this.MSAuthClient.clearCache();
+      this.logClient.log("MSAuthClient.clearCache");
+      this.logClient.log("Login interactively");
+
+      const loginResponse = await this.MSAuthClient.loginPopup(this.loginRequest);
+      const message = `id_token acquired - expireon: ${loginResponse.expiresOn} cached: ${loginResponse.fromCache} idToken: ${loginResponse.idToken} `;
+      this.logClient.log(message);
+      const account = this.getAccount();
+      if (account)
+        this.setAccount(account);
+      return account;
+
+    } catch (error) {
+      this.logClient.error(error);
+      throw error;
+    }
   }
 
   
@@ -157,228 +150,172 @@ export class AzureADClient {
     return null;
   }
 
-
-
-  // signInAsync(): Promise<AccountInfo | null> {
-  //   // Force account picker to avoid reusing cached account implicitly.
-  //   var interactive = Object.assign({}, loginRequest, { prompt: "select_account" });
-
-  //   this.logClient.log("Login interactively (popup) ...");
-
-  //   // 1) Interactive login
-  //   return this.MSAuthClient.loginPopup(interactive)
-  //     .then(function (loginResponse: AuthenticationResult) {
-  //       // 2) Choose account: prefer the one returned by login
-  //       var account: AccountInfo | null =
-  //         (loginResponse && loginResponse.account) ||
-  //         (function () {
-  //           var accts = this.MSAuthClient.getAllAccounts();
-  //           return (accts && accts.length > 0) ? accts[0] : null;
-  //         })();
-
-  //       // 3) Make it the active account so future acquireTokenSilent() doesn’t need `account`
-  //       if (account) {
-  //         this.MSAuthClient.setActiveAccount(account);
-  //       }
-
-  //       // 4) Minimal, non‑PII logging
-  //       var exp = loginResponse && loginResponse.expiresOn
-  //         ? loginResponse.expiresOn.toISOString()
-  //         : "unknown";
-  //       var cacheFlag = loginResponse && (loginResponse as any).fromCache ? " (from cache)" : "";
-  //       this.logClient.log("ID token acquired; expiresOn=" + exp + cacheFlag);
-
-  //       return account;
-  //     })
-  //     .catch(function (error) {
-  //       this.logClient.error(error);
-  //       return Promise.reject(error);
-  //     });
-  // }
-
   async signOutAsync(): Promise<void> {
     await this.MSAuthClient.logoutRedirect();
   }
 
-  getTokenPopup(request: SilentRequest): Promise<AuthenticationResult | void> {
+  async getTokenPopup(request: SilentRequest): Promise<AuthenticationResult | void> {
+    await this.MSAuthClient.initialize();
+    this.logClient.log("Acquiring Token silently");
+    try {
+      const result: AuthenticationResult = await this.MSAuthClient.acquireTokenSilent(request);
+      if (result) {
+        this.logClient.log("Acquire Token silently successful: response received");
+        return result;
+      }
+      else {
+        this.logClient.error(`Silent token acquisition fails. Response null `);
+      }
+    }
+    catch (error) {
+      this.logClient.error(`Silent token acquisition fails. Exception: ${error}. acquiring token using popup`);
+    }
 
-    return new Promise<AuthenticationResult | void>((resolve, reject) => {
-      (async () => {
-        await this.MSAuthClient.initialize();
-        this.logClient.log("Acquiring Token silently");
-        try {
-          const result: AuthenticationResult = await this.MSAuthClient.acquireTokenSilent(request);
-          if (result) {
-            this.logClient.log("Acquire Token silently successful: response received");
-            resolve(result);
-            return;
-          }
-          else {
-            this.logClient.error(`Silent token acquisition fails. Response null `);
-          }
-        }
-        catch (error) {
-          this.logClient.error(`Silent token acquisition fails. Exception: ${error}. acquiring token using popup`);
-        }
-
-        this.logClient.log("Acquiring Token interactively");
-        try {
-          const result: AuthenticationResult = await this.MSAuthClient.acquireTokenPopup(request);
-          if (result) {
-            this.logClient.log("Acquire Token interactively successful: response received");
-            resolve(result);
-            return;
-          }
-          else {
-            const error = "Token interactively acquisition failed: Response null";
-            this.logClient.error(error);
-            reject(error);
-            return;
-          }
-        }
-        catch (error) {
-          const message = `Token interactively acquisition failed. Exception: ${error}. acquiring token using popup`;
-          this.logClient.error(message);
-          reject(message);
-        }
-      })();
-    });
+    this.logClient.log("Acquiring Token interactively");
+    try {
+      const result: AuthenticationResult = await this.MSAuthClient.acquireTokenPopup(request);
+      if (result) {
+        this.logClient.log("Acquire Token interactively successful: response received");
+        return result;
+      }
+      else {
+        const error = "Token interactively acquisition failed: Response null";
+        this.logClient.error(error);
+        throw error;
+      }
+    }
+    catch (error) {
+      const message = `Token interactively acquisition failed. Exception: ${error}. acquiring token using popup`;
+      this.logClient.error(message);
+      throw message;
+    }
   }
 
   // Helper function to call MS Graph API endpoint 
   // using authorization bearer token scheme
-  callMSGraphAsync(endpoint: string, token: string): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      const headers = new Headers();
-      const bearer = `Bearer ${token}`;
+  async callMSGraphAsync(endpoint: string, token: string): Promise<any> {
+    const headers = new Headers();
+    const bearer = `Bearer ${token}`;
 
-      headers.append("Authorization", bearer);
+    headers.append("Authorization", bearer);
 
-      const options = {
-        method: "GET",
-        headers: headers
-      };
+    const options = {
+      method: "GET",
+      headers: headers
+    };
 
-      this.logClient.log('request made to Graph API at: ' + new Date().toString());
+    this.logClient.log('request made to Graph API at: ' + new Date().toString());
 
-      fetch(endpoint, options)
-        .then(response => response.json())
-        .then(response => resolve(response))
-        .catch(error => {
+    try {
+      const response = await fetch(endpoint, options);
+      const json = await response.json();
+      return json;
+    } catch (error) {
+      this.logClient.error(error);
+      throw error;
+    }
+  }
+
+  async getStorageTokenAsync(): Promise<any> {
+    if (this.getAccount()) {
+      this.logClient.log("Get Token for Storage: account present");
+      try {
+        const response: any = await this.getTokenPopup(this.tokenStorageRequest);
+        this.logClient.log("Get Token for Storage: SUCCESS");
+        return (<AuthResponse>response).accessToken;
+      } catch (error: any) {
+        this.logClient.log("Get Token for Storage: Exception:" + error);
+        throw error;
+      }
+    }
+    else {
+      const error = "Can't get authentication token: No active Azure AD session";
+      this.logClient.log("Get Token for Storage:" + error);
+      throw "Get Token for Storage:" + error;
+    }
+  }
+
+  async getAPITokenAsync(): Promise<any> {
+    if (this.getAccount()) {
+      this.logClient.log("Get Token for API: account present");
+      try {
+        const response: any = await this.getTokenPopup(this.tokenAPIRequest);
+        if (isNullOrUndefinedOrEmpty(response)) {
+          const error = "Get Token for API:Response for token undefined";
           this.logClient.error(error);
-          reject(error)
-        })
-    });
+          throw error;
+        }
+        else {
+          this.logClient.log("Get Token for API: success");
+          return (<AuthResponse>response).accessToken;
+        }
+      } catch (error: any) {
+        this.logClient.error("Get Token for API:" + error);
+        throw "Get Token for API:" + error;
+      };
+    }
+    else {
+      const error = "Can't get authentication token: No active Azure AD session";
+      this.logClient.error("Get Token for API: " + error);
+      throw "Get Token for API:" + error;
+    }
   }
 
-  getStorageTokenAsync(): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      if (this.getAccount()) {
-        this.logClient.log("Get Token for Storage: account present");
-        this.getTokenPopup(this.tokenStorageRequest)
-          .then(async (response: any) => {
-            this.logClient.log("Get Token for Storage: SUCCESS");
-            resolve((<AuthResponse>response).accessToken);
-          }).catch((error: any) => {
-            this.logClient.log("Get Token for Storage: Exception:" + error);
-            reject(error);
-          });
-      }
-      else {
-        const error = "Can't get authentication token: No active Azure AD session";
-        this.logClient.log("Get Token for Storage:" + error);
-        reject("Get Token for Storage:" + error);
-      }
-    });
-  }
-
-  getAPITokenAsync(): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      if (this.getAccount()) {
-        this.logClient.log("Get Token for API: account present");
-        this.getTokenPopup(this.tokenAPIRequest)
-          .then(async (response: any) => {
-            if (isNullOrUndefinedOrEmpty(response)) {
-              const error = "Get Token for API:Response for token undefined";
-              this.logClient.error(error);
-              reject(error);
-            }
-            else {
-              this.logClient.log("Get Token for API: success");
-              resolve((<AuthResponse>response).accessToken);
-            }
-          }).catch((error: any) => {
-            this.logClient.error("Get Token for API:" + error);
-            reject("Get Token for API:" + error);
-          });
-      }
-      else {
-        const error = "Can't get authentication token: No active Azure AD session";
-        this.logClient.error("Get Token for API: " + error);
-        reject("Get Token for API:" + error);
-      }
-    });
-  }
-
-  getGraphMeDataAsync(): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      if (this.getAccount()) {
-        this.logClient.log("Get Token for GRAPH: account present");
-        this.getTokenPopup(this.loginRequest)
-          .then(async (response: void | AuthenticationResult) => {
-            if (isNullOrUndefinedOrEmpty(response)) {
-              const error = "Get Token for GRAPH:Response for token undefined";
-              this.logClient.error(error);
-              reject(error);
-            }
-            else {
-              this.logClient.log("Get Token for GRAPH: SUCCESS");
-              const data = await this.callMSGraphAsync(this.graphMeEndpoint, (<AuthResponse>response).accessToken);
-              resolve(data);
-            }
-          }).catch((error: any) => {
-            this.logClient.error(error);
-            reject(error);
-          });
-      }
-      else {
-        const error = "Get Token for GRAPH: No active Azure AD Session";
-        this.logClient.log(error);
-        reject(error);
-      }
-
-    });
-  }
-
-  getGraphMailDataAsync(): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      if (this.getAccount()) {
-        this.logClient.log("Get Token for MAIL: account present");
-        this.getTokenPopup(this.tokenStorageRequest)
-          .then(async (response: any) => {
-            if (isNullOrUndefinedOrEmpty(response)) {
-              const error = "Get Token for MAIL:Response for token undefined";
-              this.logClient.error(error);
-              reject(error);
-            }
-            else {
-              const message = "Get Token for MAIL: SUCCESS";
-              this.logClient.log(message);
-              const data = await this.callMSGraphAsync(this.graphMailEndpoint, (<AuthResponse>response).accessToken);
-              resolve(data);
-            }
-          }).catch((error: any) => {
-            this.logClient.error("Get Token for MAIL Exception:" + error);
-            reject(error);
-          });
-      }
-      else {
-        const error = "Get Token for MAIL: No active Azure AD session";
+  async getGraphMeDataAsync(): Promise<any> {
+    if (this.getAccount()) {
+      this.logClient.log("Get Token for GRAPH: account present");
+      try {
+        const response: void | AuthenticationResult = await this.getTokenPopup(this.loginRequest);
+        if (isNullOrUndefinedOrEmpty(response)) {
+          const error = "Get Token for GRAPH:Response for token undefined";
+          this.logClient.error(error);
+          throw error;
+        }
+        else {
+          this.logClient.log("Get Token for GRAPH: SUCCESS");
+          const data = await this.callMSGraphAsync(this.graphMeEndpoint, (<AuthResponse>response).accessToken);
+          return data;
+        }
+      } catch (error: any) {
         this.logClient.error(error);
-        reject(error);
+        throw error;
       }
-    });
+    }
+    else {
+      const error = "Get Token for GRAPH: No active Azure AD Session";
+      this.logClient.log(error);
+      throw error;
+    }
   }
+
+  async getGraphMailDataAsync(): Promise<any> {
+    if (this.getAccount()) {
+      this.logClient.log("Get Token for MAIL: account present");
+      try {
+        const response: any = await this.getTokenPopup(this.tokenStorageRequest);
+        if (isNullOrUndefinedOrEmpty(response)) {
+          const error = "Get Token for MAIL:Response for token undefined";
+          this.logClient.error(error);
+          throw error;
+        }
+        else {
+          const message = "Get Token for MAIL: SUCCESS";
+          this.logClient.log(message);
+          const data = await this.callMSGraphAsync(this.graphMailEndpoint, (<AuthResponse>response).accessToken);
+          return data;
+        }
+      } catch (error: any) {
+        this.logClient.error("Get Token for MAIL Exception:" + error);
+        throw error;
+      };
+    }
+    else {
+      const error = "Get Token for MAIL: No active Azure AD session";
+      this.logClient.error(error);
+      throw error;
+    }
+  }
+
 
   isConnected(): boolean {
     if (isNullOrUndefinedOrEmpty(this.getAccount()))

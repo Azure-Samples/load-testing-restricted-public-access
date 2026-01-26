@@ -254,25 +254,27 @@ export class StorageClient {
 
     // upload file
     try {
-      blobClient.uploadBrowserData(file, {
-        blockSize: 4 * 1024 * 1024, // 4MB block size
-        concurrency: 20, // 20 concurrency
-        onProgress: (ev) => {
-          this.logClient.log(`${ev.loadedBytes} bytes prepared for upload`);
-          const progress = (ev.loadedBytes / file.size) * 100;
-          progressCallback(file.name, folder, progress);
-        },
-        blobHTTPHeaders: { blobContentType: file.type }
-      }).then(response => {
-        this.logClient.log(response);
-        completedCallback(file.name, folder, response.errorCode);
-      })
-        .catch((error) => {
+      (async () => {
+        try {
+          const response = await blobClient.uploadBrowserData(file, {
+            blockSize: 4 * 1024 * 1024, // 4MB block size
+            concurrency: 20, // 20 concurrency
+            onProgress: (ev) => {
+              this.logClient.log(`${ev.loadedBytes} bytes prepared for upload`);
+              const progress = (ev.loadedBytes / file.size) * 100;
+              progressCallback(file.name, folder, progress);
+            },
+            blobHTTPHeaders: { blobContentType: file.type }
+          });
+          this.logClient.log(response);
+          completedCallback(file.name, folder, response.errorCode);
+        } catch (error) {
           this.logClient.error(error);
           progressCallback(file.name, folder, 0);
           this.logClient.error(this.getErrorMessage(error))
           completedCallback(file.name, folder, this.getErrorMessage(error));
-        })
+        }
+      })();
       return true;
     }
     catch (e) {
