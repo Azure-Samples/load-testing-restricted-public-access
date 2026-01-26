@@ -18,8 +18,11 @@ public class VisitController : ControllerBase
 {
     private readonly ILogger<VisitController> _logger;
     private readonly ITableStorageVisitService _storageService;
-    private readonly string tenantId;
-    private readonly string userName;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    private string TenantId => _httpContextAccessor.HttpContext?.User?.Claims?.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/tenantid")?.Value ?? "";
+
+    private string UserName => _httpContextAccessor.HttpContext?.User?.Claims?.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn")?.Value ?? "";
 
     /// <summary>
     /// Constructor
@@ -31,11 +34,7 @@ public class VisitController : ControllerBase
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-        //tenantId = accessor.HttpContext?.User.GetTenantId() ?? "";
-
-        tenantId = accessor.HttpContext?.User?.Claims?.FirstOrDefault(c => c.Type == "tid")?.Value ?? "";
-        userName = accessor.HttpContext?.User?.Claims?.FirstOrDefault(c => c.Type == "preferred_username")?.Value ?? "";
-        _logger.LogInformation($"TenantId: {tenantId}, UserName: {userName}");
+        _httpContextAccessor = accessor ?? throw new ArgumentNullException(nameof(accessor));
     }
 
     private ObjectResult GenerateInternalError(Exception ex, string message = "Exception occured")
@@ -114,7 +113,7 @@ public class VisitController : ControllerBase
     {
         try
         {
-            LogInformation("Calling GetAllVisits");
+            LogInformation($"Calling GetAllVisits tenant: {TenantId} user: {UserName}");
             List<Visit>? list = await _storageService.RetrieveAllVisitAsync();
             if (list != null)
             {
@@ -142,12 +141,10 @@ public class VisitController : ControllerBase
     {
         try
         {
-            LogInformation($"Calling GetVisit ${id} tenant: ${tenantId}");
+            LogInformation($"Calling GetVisit {id} tenant: {TenantId} user: {UserName}");
             Visit? ent = await _storageService.RetrieveVisitAsync(id);
             if (ent != null)
             {
-
-
                 return Ok(ent);
             }
             else
@@ -171,14 +168,14 @@ public class VisitController : ControllerBase
     {
         try
         {
-            LogInformation($"Calling CreateVisit tenant: ${tenantId}");
+            LogInformation($"Calling CreateVisit tenant: {TenantId} user: {UserName}");
 
             var entity = new Visit
             {
                 id = Guid.NewGuid().ToString(),
-                user = this.userName,
+                user = UserName.Length>0 ? UserName : inputEntity.user,
                 information = inputEntity.information,
-                tenantId = this.tenantId,
+                tenantId = this.TenantId,
                 localIp = (HttpContext.Connection != null && HttpContext.Connection.LocalIpAddress != null ? HttpContext.Connection.LocalIpAddress.ToString() : ""),
                 localPort = (HttpContext.Connection != null ? HttpContext.Connection.LocalPort : 0),
                 remoteIp = GetClientIPAddress(HttpContext),
@@ -209,7 +206,7 @@ public class VisitController : ControllerBase
     {
         try
         {
-            LogInformation($"Calling UpdateVisit ${id} tenant: ${tenantId}");
+            LogInformation($"Calling UpdateVisit {id} tenant: {TenantId} user: {UserName}");
             if (!string.IsNullOrEmpty(id))
             {
                 var ent = await _storageService.RetrieveVisitAsync(id);
@@ -219,9 +216,9 @@ public class VisitController : ControllerBase
                 var entity = new Visit
                 {
                     id = id,
-                    user = this.userName,
+                    user = UserName.Length>0 ? UserName : entityRequest.user,
                     information = entityRequest.information,
-                    tenantId = this.tenantId,
+                    tenantId = this.TenantId,
                     localIp = (HttpContext.Connection != null && HttpContext.Connection.LocalIpAddress != null ? HttpContext.Connection.LocalIpAddress.ToString() : ""),
                     localPort = (HttpContext.Connection != null ? HttpContext.Connection.LocalPort : 0),
                     remoteIp = (HttpContext.Connection != null && HttpContext.Connection.RemoteIpAddress != null ? HttpContext.Connection.RemoteIpAddress.ToString() : ""),
@@ -257,7 +254,7 @@ public class VisitController : ControllerBase
     {
         try
         {
-            LogInformation($"Calling DeleteVisit ${id} tenant: ${tenantId}");
+            LogInformation($"Calling DeleteVisit {id} tenant: {TenantId} user: {UserName}");
 
             var entity = await _storageService.DeleteVisitAsync(id);
             if (entity != null)

@@ -133,6 +133,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Add services HttpClient to call gridwich endpoint.
 builder.Services.AddHttpClient();
 
+// Add HttpContextAccessor to access HttpContext in controllers
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddControllers();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -170,12 +173,6 @@ builder.Services.AddApplicationInsightsTelemetry();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
 //app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
@@ -183,12 +180,13 @@ app.UseDefaultFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-
-
 if (app.Environment.IsDevelopment())
-    app.MapControllers().WithMetadata(new AllowAnonymousAttribute());
-else
-    app.MapControllers();
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.MapControllers();
 
 app.MapDefaultControllerRoute();
 app.Run();
