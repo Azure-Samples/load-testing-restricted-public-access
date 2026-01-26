@@ -73,7 +73,7 @@ public class VisitController : ControllerBase
         string ip = string.Empty;
         if (!string.IsNullOrEmpty(context.Request.Headers["X-Forwarded-For"]))
         {
-            ip = context.Request.Headers["X-Forwarded-For"];
+            ip = context.Request.Headers["X-Forwarded-For"].ToString();
             if (!string.IsNullOrEmpty(ip))
                 ip = ip.Split(':')[0];
         }
@@ -88,7 +88,7 @@ public class VisitController : ControllerBase
         int port = 0;
         if (!string.IsNullOrEmpty(context.Request.Headers["X-Forwarded-For"]))
         {
-            string header = context.Request.Headers["X-Forwarded-For"];
+            string header = context.Request.Headers["X-Forwarded-For"].ToString();
             if (!string.IsNullOrEmpty(header))
             {
                 string[] array = header.Split(':');
