@@ -306,6 +306,7 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     APP_VERSION=$(date +"%y%m%d.%H%M%S")
     APP_PORT=80  
     APP_AUTHORIZATION_DISABLED=false
+    APP_MULTITENANT=true
 
     # Build dotnet-api docker image
     TEMPDIR=$(mktemp -d)
@@ -401,8 +402,11 @@ if [[ "${ACTION}" == "deployservices" ]] ; then
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tokenAPIRequest.scopes = [\"https://${AZURE_TENANT_DNS_NAME}/${AZURE_APP_ID}/user_impersonation\" ]' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"   
 
-    #cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
-    cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/common\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    if [ ${APP_MULTITENANT} == "true" ]; then
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/common\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    else
+        cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.authority = \"https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
+    fi
     eval "$cmd"    
     cmd="cat $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json  | jq -r '.tenantId = \"${AZURE_TENANT_ID}\"' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" $SCRIPTS_DIRECTORY/../../../projects/web-app-auth/src/ts-web-app/src/config/config.json"
     eval "$cmd"    
@@ -586,6 +590,10 @@ if [[ "${ACTION}" == "deploytest" ]] ; then
     printMessage "       Backend: 'Multi-Tenant Web App'"
     # Get Agent IP address
     ip=$(curl -s https://ifconfig.me/ip) || true
+
+    cmd="az config set extension.dynamic_install_allow_preview=true"
+    printProgress "$cmd"
+    eval "$cmd" >/dev/null
 
     # Get resources names for the infrastructure deployment
     LOAD_TESTING_RESOURCE_GROUP=$(getLoadTestingResourceGroupName "${AZURE_TEST_SUFFIX}")
@@ -1060,7 +1068,7 @@ if [[ "${ACTION}" == "opentest" ]] ; then
     readConfigurationFile "$CONFIGURATION_FILE"
 
     printProgress "Open access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
-    cmd="az keyvault update --default-action Allow --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
+    cmd="az keyvault update --default-action Allow --public-network-access Enabled --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
     # echo "$cmd"
     eval "${cmd}" >/dev/null
     checkError
@@ -1078,7 +1086,7 @@ if [[ "${ACTION}" == "closetest" ]] ; then
     readConfigurationFile "$CONFIGURATION_FILE"
 
     printProgress "Close access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
-    cmd="az keyvault update --default-action Deny --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
+    cmd="az keyvault update --default-action Deny --public-network-access Disabled --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
     # echo "$cmd"
     eval "${cmd}" >/dev/null
     checkError

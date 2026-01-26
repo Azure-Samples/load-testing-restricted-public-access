@@ -565,15 +565,16 @@ function checkScenario(){
     fi
 }
 ##############################################################################
-#- buildWebAppContainer
+#- buildWebAppContainerAzure
 ##############################################################################
-function buildWebAppContainer() {
+function buildWebAppContainerAzure() {
     ContainerRegistryName="${1}"
     targetDirectory="$2"
     imageName="$3"
     imageTag="$4"
     imageLatestTag="$5"
     portHttp="$6"
+    production="${7:-true}"
 
     if [ ! -d "$targetDirectory" ]; then
             echo "Directory '$targetDirectory' does not exist."
@@ -588,8 +589,12 @@ function buildWebAppContainer() {
 
     # Build the image
     echo "Building the docker image for '$imageName:$imageTag'"
-    cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Production\" . --only-show-errors 2> /dev/null"
-    #cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Development\" . --only-show-errors 2> /dev/null"
+    if [ "$production" = true ]; then
+        buildArgAppEnvironment="Production"
+    else
+        buildArgAppEnvironment="Development"
+    fi
+    cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"${buildArgAppEnvironment}\" . --only-show-errors 2> /dev/null"
     printProgress "$cmd"
     eval "$cmd"
 
@@ -597,6 +602,73 @@ function buildWebAppContainer() {
     popd > /dev/null
 
 }
+##############################################################################
+#- buildWebAppContainer
+##############################################################################
+function buildWebAppContainer() {
+    ContainerRegistryDns="${1}"
+    targetDirectory="$2"
+    imageName="$3"
+    imageTag="$4"
+    imageLatestTag="$5"
+    portHttp="$6"
+    production="${7:-true}"
+
+    if [ ! -d "$targetDirectory" ]; then
+            echo "Directory '$targetDirectory' does not exist."
+            exit 1
+    fi
+
+    echo "Building and uploading the docker image for '$targetDirectory'"
+
+    # Navigate to API module folder
+    # shellcheck disable=SC2164
+    pushd "$targetDirectory" > /dev/null
+
+    # Build the image
+    echo "Building the docker image for '$imageName:$imageTag'"
+    if [ "$production" = true ]; then
+        buildArgAppEnvironment="Production"
+    else
+        buildArgAppEnvironment="Development"
+    fi
+
+    ContainerRegistryName="${ContainerRegistryDns%%.azurecr.io}"
+    # 1) Log in to ACR
+    # Either via Azure CLI:
+    cmd="az acr login --name \"$ContainerRegistryName\""
+    printProgress "$cmd"
+    eval "$cmd"
+
+    # Or (if you have admin-enabled creds):
+    # docker login "$ContainerRegistryName.azurecr.io" -u <username> -p <password>
+
+    # 2) Build locally with two tags and the same build args
+    REGISTRY="${ContainerRegistryName}.azurecr.io"
+    cmd="docker build \
+    -f Dockerfile \
+    --build-arg APP_VERSION=\"${imageTag}\" \
+    --build-arg ARG_PORT_HTTP=\"${portHttp}\" \
+    --build-arg ARG_APP_ENVIRONMENT=\"${buildArgAppEnvironment}\" \
+    -t \"${REGISTRY}/${imageName}:${imageTag}\" \
+    -t \"${REGISTRY}/${imageName}:${imageLatestTag}\" \
+    . "
+    printProgress "$cmd"
+    eval "$cmd"
+
+    # 3) Push both tags
+    cmd="docker push \"${REGISTRY}/${imageName}:${imageTag}\""
+    printProgress "$cmd"
+    eval "$cmd"
+    cmd="docker push \"${REGISTRY}/${imageName}:${imageLatestTag}\""
+    printProgress "$cmd"
+    eval "$cmd"
+
+    # shellcheck disable=SC2164
+    popd > /dev/null
+
+}
+
 ##############################################################################
 #- deployWebAppContainer
 ##############################################################################
@@ -771,6 +843,7 @@ createApplication()
 {
     local suffix=$1
     local webAppUrl=$2
+    local multiTenant=${3:-true}
     local appId=""
     local appName=$(getApplicationName "${suffix}")
     cmd="az ad app list --filter \"displayName eq '${appName}'\" -o json --only-show-errors | jq -r .[0].appId"
@@ -802,7 +875,7 @@ createApplication()
             TENANT_DNS_NAME=$(az rest --method get --url https://graph.microsoft.com/v1.0/domains --query 'value[?isDefault].id' -o tsv)
             cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/${objectId}\" \
                 --headers \"Content-Type=application/json\" \
-                --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${webAppUrl}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
+                --body \"{\\\"api\\\":{\\\"oauth2PermissionScopes\\\":[{\\\"id\\\": \\\"1619f87e-396b-48f1-91cf-9dedd9c786c8\\\",\\\"adminConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"adminConsentDisplayName\\\": \\\"Full access to Visit API\\\",\\\"userConsentDescription\\\": \\\"Grants full access to Visit web services APIs\\\",\\\"userConsentDisplayName\\\": null,\\\"isEnabled\\\": true,\\\"type\\\": \\\"User\\\",\\\"value\\\": \\\"user_impersonation\\\"}]},\\\"web\\\":{\\\"homePageUrl\\\":\\\"${webAppUrl}\\\",\\\"implicitGrantSettings\\\":{\\\"enableAccessTokenIssuance\\\":true,\\\"enableIdTokenIssuance\\\":true}},\\\"spa\\\":{\\\"redirectUris\\\":[\\\"${webAppUrl}\\\"]},\\\"identifierUris\\\":[\\\"https://${TENANT_DNS_NAME}/${appId}\\\"]}\""
             # printProgress "$cmd"
             local azRestResult=$(eval "$cmd")
             checkError   
@@ -814,6 +887,19 @@ createApplication()
             # printProgress "$cmd"
             local azRestResult=$(eval "$cmd")
             checkError   
+            # Wait few seconds before updating the Application record in Azure AD 
+            sleep 10
+            if [[ "${multiTenant}" == "true" ]]; then
+                SIGNIN_AUDIENCE="AzureADMultipleOrgs"
+            else
+                SIGNIN_AUDIENCE="AzureADMyOrg"
+            fi
+            cmd="az rest --method PATCH --uri \"https://graph.microsoft.com/v1.0/applications/${objectId}\" \
+                --headers \"Content-Type=application/json\" \
+                --body \"{\\\"signInAudience\\\":\\\"${SIGNIN_AUDIENCE}\\\"}\""
+            # printProgress "$cmd"
+            local azRestResult=$(eval "$cmd")
+            checkError               
         else
             printError "Error while creating application ${appName} can't get objectId"
             exit 1

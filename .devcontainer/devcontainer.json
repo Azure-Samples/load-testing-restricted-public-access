@@ -1,37 +1,47 @@
 {
-	"$schema": "https://json-schema.org/draft-07/schema#",
-	"name": "Workspace",
-	"workspaceFolder": "/workspace",
-	  "build": {
-		  "dockerfile": "Dockerfile",
-		  "context": "..",
-		  "args": { }
-	  },
+  "name": "load-testing container",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    // https://containers.dev/features
+	"git": "latest",
+	"ghcr.io/devcontainers/features/azure-cli:1": {
+		"extensions": "connectedk8s,k8s-extension,containerapp",
+		"installBicep": true
+	},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
+	"ghcr.io/devcontainers/features/dotnet:1": {
+       "version": "6.0"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers-extra/features/typescript:2": {
+      "version": "latest"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-vscode.azurecli",
+        "ms-vscode.vscode-bicep",
+         "ms-azuretools.vscode-azurestaticwebapps",
+         "dbaeumer.vscode-eslint"  
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "python.terminal.activateEnvironment": true
+      }
+    }
+  },
 
-	  "customizations": {
-		  "vscode": {
-			  "settings": { },
-			  
-			  "extensions": [
-				  "humao.rest-client",
-				  "hediet.vscode-drawio",
-				  "ms-vscode.hexeditor"
-				  ]
-		  }
-	  },  
-	  "remoteUser": "vscode",
-	  "features": {
-		  "git": "latest",
-		  "azure-cli": "latest",
-	  "ghcr.io/devcontainers/features/docker-in-docker:1": {
-		"version": "latest"
-	  }
-	  },  
-	  "mounts": [
-		  "type=bind,source=${localWorkspaceFolder},target=/workspace",
-		  "type=bind,source=${localEnv:HOME}${env:USERPROFILE}/.ssh,target=/home/vscode/.ssh",
-		  "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock",    
-		  "source=content-volume,target=/content,type=volume"
-	  ],  
-	"postAttachCommand": "mkdir -p /home/$(id -un)/.ssh && touch /home/$(id -un)/.ssh/config && sudo chown -R vscode:vscode /var/run/docker.sock && sudo chown -R vscode:vscode /content"
+  // Create a project-local venv (avoids system pip writes per PEP 668)
+  "postCreateCommand": "npm install -g @azure/static-web-apps-cli webpack webpack-cli && echo \"dotnet $(dotnet --version)\" && echo \"python $(python --version)\" && echo \"node $(node --version)\" && echo \"npm $(npm --version)\" && echo \"tsc $(tsc --version)\" && echo \"swa $(swa --version)\" && echo \"webpack $(webpack --version)\" && echo \"webpack-cli $(webpack-cli --version)\"",
+
+  "remoteUser": "vscode"
 }

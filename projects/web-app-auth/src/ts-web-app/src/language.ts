@@ -8,17 +8,6 @@
 
 import './globalconfig';
 import './globalclient';
-import { LogClient } from './logclient';
-import { StorageClient } from './storage';
-import { APIClient, Visit } from './apiclient';
-import { AzureADClient } from './azuread';
-import { Page } from "./page";
-import { AddVisitDialog } from './addvisitdialog';
-import { UpdateVisitDialog } from './updatevisitdialog';
-import { RemoveVisitDialog } from './removevisitdialog';
-
-import { Table } from './table';
-import { PageWaiting, Alert } from './notificationclient';
 
 export class VisitVersionText {
   language: string = ""
