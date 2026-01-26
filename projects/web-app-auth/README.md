@@ -350,6 +350,19 @@ https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment
 
 You need to disable the MFA (Multi Factor Authentication) for each new user. If the MFA is not disabled, the script or the pipeline running the load testing scenario won't be able to get the Microsoft Entry ID token for the user.
 
+**To disable the MFA:** 
+
+1. On the Azure Portal (https://portal.azure.com/), navigate to the Microsoft Entra ID tab on the left
+2. On the Microsoft Entra ID page, select the tab 'Manage->Properties'. On this page, you should see a 'Security defaults' section, in this section, you should see either the link 'Manage security defaults' or  'Manage Conditional Access'.  
+
+**With Manage security defaults:**  
+1. Click on this link [Enable per-user Microsoft Entra multifactor authentication](https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-userstates), and follow the steps to disable the MFA for the accounts associated with Load Testing scenarios.  
+
+**With Manage Conditional Access:**  
+1. Click on the link 'Manage Conditional Access', on the 'Policies', you should see a policy about Multifactor authentication, select this policy.  
+2. On the 'Multifactor authentication' policy page, select the 'Users or agents' in the 'Assignments' section. In the 'Exclude' Tab on the main page, add the load testing accounts in the list of excluded users and groups.  
+
+
 The load testing script and the pipeline will use the environment variable LOAD_TESTING_USERS_CONFIGURATION to get the list of users for the load testing scenario.
 
 The value of the variable LOAD_TESTING_USERS_CONFIGURATION is a json string with the following format:
