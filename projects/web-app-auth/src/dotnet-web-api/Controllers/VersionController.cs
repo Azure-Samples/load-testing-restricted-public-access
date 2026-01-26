@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using dotnet_web_api.Models;
 namespace dotnet_web_api.Controllers;
@@ -8,6 +9,7 @@ namespace dotnet_web_api.Controllers;
 /// This method can be used by the CI/CD pipeline to check whether the expected version has been deployed.
 /// </summary>
 
+[AllowAnonymous]
 [ApiController]
 [Route("[controller]")]
 public class VersionController : ControllerBase
