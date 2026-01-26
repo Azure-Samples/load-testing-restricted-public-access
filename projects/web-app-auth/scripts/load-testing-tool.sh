@@ -886,7 +886,7 @@ if [[ "${ACTION}" == "runtest" ]] ; then
                 cmd="curl -s -X POST https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token  \
                 -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' \
                 -d 'client_id=${CLIENT_ID}&scope=${SCOPE}&username=${AD_USER}&password=${ENCODED_PASSWORD}&grant_type=password' "
-                echo "${cmd}"
+                # echo "${cmd}"
                 RESULT=$(eval "${cmd}")
                 AZURE_AD_TOKEN=$(echo "${RESULT}" | jq -r '.access_token')
                 if [[ -z "${AZURE_AD_TOKEN}" || "${AZURE_AD_TOKEN}" == "null" ]]; then
@@ -1068,7 +1068,7 @@ if [[ "${ACTION}" == "opentest" ]] ; then
     readConfigurationFile "$CONFIGURATION_FILE"
 
     printProgress "Open access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
-    cmd="az keyvault update --default-action Allow --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
+    cmd="az keyvault update --default-action Allow --public-network-access Enabled --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
     # echo "$cmd"
     eval "${cmd}" >/dev/null
     checkError
@@ -1086,7 +1086,7 @@ if [[ "${ACTION}" == "closetest" ]] ; then
     readConfigurationFile "$CONFIGURATION_FILE"
 
     printProgress "Close access to Key Vault '${LOAD_TESTING_KEY_VAULT_NAME}' for the test..."    
-    cmd="az keyvault update --default-action Deny --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
+    cmd="az keyvault update --default-action Deny --public-network-access Disabled --name ${LOAD_TESTING_KEY_VAULT_NAME} -g ${LOAD_TESTING_RESOURCE_GROUP}"
     # echo "$cmd"
     eval "${cmd}" >/dev/null
     checkError
