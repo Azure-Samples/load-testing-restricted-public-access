@@ -14,7 +14,7 @@
     "@microsoft/applicationinsights-web": "^2.8.6",
     "bootstrap": "^5.2.0",
     "bootstrap-table": "^1.21.0",
-    "copy-webpack-plugin": "^11.0.0",
+    "copy-webpack-plugin": "^14.0.0",
     "http-server": "^14.1.1",
     "jquery": "^3.7.1",
     "jquery-resizable-columns": "^0.2.3",
